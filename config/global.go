@@ -1,0 +1,30 @@
+package config
+
+import (
+	"fmt"
+	"io/ioutil"
+
+	"github.com/BurntSushi/toml"
+)
+
+type Global struct {
+	LogLevel  string
+	LogFile   string
+	LogFormat string
+}
+
+func LoadFromFile(file string) (Global, error) {
+	data, err := ioutil.ReadFile(file)
+	if err != nil {
+		return Global{}, fmt.Errorf("couldn't read configuration file %q: %w", file, err)
+	}
+
+	var cfg Global
+
+	err = toml.Unmarshal(data, &cfg)
+	if err != nil {
+		return Global{}, fmt.Errorf("couldn't parse TOML content of the configuration file: %w", err)
+	}
+
+	return cfg, nil
+}
