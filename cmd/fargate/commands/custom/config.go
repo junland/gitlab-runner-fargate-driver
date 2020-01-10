@@ -53,7 +53,7 @@ func (c *ConfigCommand) CustomExecute(ctx *cli.Context) error {
 
 	err = runner.GetAdapter().WriteCustomExecutorConfig(os.Stdout, hostname)
 	if err != nil {
-		return fmt.Errorf("couldn't write JSON output for the ConfigCommand")
+		return fmt.Errorf("couldn't write JSON output for the ConfigCommand: %w", err)
 	}
 
 	return nil
