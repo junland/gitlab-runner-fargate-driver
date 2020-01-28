@@ -9,6 +9,9 @@ cache:
 
 image: ${CI_IMAGE}
 
+before_script:
+- unset GPG_KEY
+
 .gitlab_org_runners:
   tags:
   - gitlab-org

@@ -9,4 +9,6 @@ import (
 	_ "github.com/jstemmer/go-junit-report"   // converting go test results to jUnit report file
 	_ "github.com/mitchellh/gox"              // cross-compilation of the binary
 	_ "github.com/vektra/mockery/cmd/mockery" // automatic generation of the mocks
+
+	_ "gitlab.com/gitlab-org/ci-cd/runner-tools/release-index-generator/cmd/release-index-gen" // generation of index file
 )
