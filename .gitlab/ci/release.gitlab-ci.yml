@@ -22,6 +22,7 @@
 .release_S3:
   needs:
   - compile linux/386 linux/amd64
+  before_script:
   script:
   - make release_s3
   only:
