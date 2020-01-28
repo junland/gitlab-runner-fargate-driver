@@ -9,6 +9,7 @@ export BUILD_PLATFORMS ?= -osarch 'linux/amd64 linux/386'
 export goJunitReport ?= $(GOPATH)/bin/go-junit-report
 mockery ?= $(GOPATH)/bin/mockery
 gox ?= $(GOPATH)/bin/gox
+releaseIndexGen ?= $(GOPATH)/bin/release-index-gen
 
 PKG := $(shell go list .)
 PKGs := $(shell go list ./... | grep -vE "^/vendor/")
@@ -166,11 +167,18 @@ ifneq ($(CI_COMMIT_TAG),)
 endif
 
 .PHONY: index_file
-index_file: REF ?= $(BRANCH)
-index_file: REV ?= $(shell git rev-parse HEAD)
-index_file:
+index_file: CI_COMMIT_REF_NAME ?= $(BRANCH)
+index_file: CI_COMMIT_SHA ?= $(REVISION)
+index_file: $(releaseIndexGen)
 	# generating index.html file
-	@go run ./scripts/generate-index-file/main.go build/ $(VERSION) $(REF) $(REV)
+	@$(releaseIndexGen) -working-directory build/ \
+                        -project-version $(VERSION) \
+                        -project-git-ref $(CI_COMMIT_REF_NAME) \
+                        -project-git-revision $(CI_COMMIT_SHA) \
+                        -project-name "GitLab Runner - Custom Executor's AWS Fargate driver" \
+                        -project-repo-url "https://gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate" \
+                        -gpg-key-env GPG_KEY \
+                        -gpg-password-env GPG_PASSPHRASE
 
 .PHONY: check_modules
 check_modules:
@@ -190,3 +198,7 @@ $(goJunitReport):
 $(gox):
 	# Installing gox
 	@go install github.com/mitchellh/gox
+
+$(releaseIndexGen):
+	# Installing release-index-gen
+	@go get gitlab.com/gitlab-org/ci-cd/runner-tools/release-index-generator/cmd/release-index-gen
