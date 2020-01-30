@@ -1,7 +1,7 @@
 variables:
-  GO: 1.13.5
+  GO: 1.13.7
   GOPATH: $CI_PROJECT_DIR/.go
-  CI_IMAGE: registry.gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/ci:go${GO}-alpine3.10-1
+  CI_IMAGE: registry.gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/ci:go${GO}-alpine3.11-1
 
 cache:
   paths:
