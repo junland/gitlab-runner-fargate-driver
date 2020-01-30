@@ -113,9 +113,17 @@ check_mocks:
 .PHONY: prepare_ci_image
 prepare_ci_image: CI_IMAGE ?= fargate-ci-image
 prepare_ci_image: CI_REGISTRY ?= ""
+prepare_ci_image: GO ?= latest
+prepare_ci_image: ALPINE ?= latest
 prepare_ci_image:
 	# Builiding the $(CI_IMAGE) image
-	@docker build --pull --no-cache -t $(CI_IMAGE) -f dockerfiles/ci/Dockerfile dockerfiles/ci/
+	@docker build \
+		--pull \
+		--no-cache \
+		--build-arg GO=$(GO) \
+		--build-arg ALPINE=$(ALPINE) \
+		-t $(CI_IMAGE) \
+		-f dockerfiles/ci/Dockerfile dockerfiles/ci/
 ifneq ($(CI_REGISTRY),)
 	# Pushing the $(CI_IMAGE) image to $(CI_REGISTRY)
 	@docker login --username $${CI_REGISTRY_USER} --password $${CI_REGISTRY_PASSWORD} $(CI_REGISTRY)
