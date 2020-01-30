@@ -109,7 +109,13 @@ prepare_ci_image: CI_IMAGE ?= fargate-ci-image
 prepare_ci_image: CI_REGISTRY ?= ""
 prepare_ci_image:
 	# Builiding the $(CI_IMAGE) image
-	@docker build --pull --no-cache -t $(CI_IMAGE) -f dockerfiles/ci/Dockerfile dockerfiles/ci/
+	@docker build \
+		--pull \
+		--no-cache \
+		--build-arg GO_VERSION=$(GO_VERSION) \
+		--build-arg ALPINE_VERSION=$(ALPINE_VERSION) \
+		-t $(CI_IMAGE) \
+		-f dockerfiles/ci/Dockerfile dockerfiles/ci/
 ifneq ($(CI_REGISTRY),)
 	# Pushing the $(CI_IMAGE) image to $(CI_REGISTRY)
 	@docker login --username $${CI_REGISTRY_USER} --password $${CI_REGISTRY_PASSWORD} $(CI_REGISTRY)
