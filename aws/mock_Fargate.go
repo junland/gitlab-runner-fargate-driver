@@ -2,6 +2,7 @@
 
 package aws
 
+import context "context"
 import logging "gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
 import mock "github.com/stretchr/testify/mock"
 
@@ -10,20 +11,20 @@ type MockFargate struct {
 	mock.Mock
 }
 
-// GetContainerIP provides a mock function with given fields: taskArn, clusterName, usePublicIP
-func (_m *MockFargate) GetContainerIP(taskArn string, clusterName string, usePublicIP bool) (string, error) {
-	ret := _m.Called(taskArn, clusterName, usePublicIP)
+// GetContainerIP provides a mock function with given fields: ctx, taskARN, cluster, usePublicIP
+func (_m *MockFargate) GetContainerIP(ctx context.Context, taskARN string, cluster string, usePublicIP bool) (string, error) {
+	ret := _m.Called(ctx, taskARN, cluster, usePublicIP)
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func(string, string, bool) string); ok {
-		r0 = rf(taskArn, clusterName, usePublicIP)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, bool) string); ok {
+		r0 = rf(ctx, taskARN, cluster, usePublicIP)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(string, string, bool) error); ok {
-		r1 = rf(taskArn, clusterName, usePublicIP)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, bool) error); ok {
+		r1 = rf(ctx, taskARN, cluster, usePublicIP)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -45,20 +46,20 @@ func (_m *MockFargate) Init(logger logging.Logger, awsRegion string) error {
 	return r0
 }
 
-// RunTask provides a mock function with given fields: taskDefinition, cluster, subnet, securityGroup, enablePublicIP
-func (_m *MockFargate) RunTask(taskDefinition string, cluster string, subnet string, securityGroup string, enablePublicIP bool) (string, error) {
-	ret := _m.Called(taskDefinition, cluster, subnet, securityGroup, enablePublicIP)
+// RunTask provides a mock function with given fields: ctx, taskDefinition, cluster, subnet, securityGroup, enablePublicIP
+func (_m *MockFargate) RunTask(ctx context.Context, taskDefinition string, cluster string, subnet string, securityGroup string, enablePublicIP bool) (string, error) {
+	ret := _m.Called(ctx, taskDefinition, cluster, subnet, securityGroup, enablePublicIP)
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func(string, string, string, string, bool) string); ok {
-		r0 = rf(taskDefinition, cluster, subnet, securityGroup, enablePublicIP)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string, bool) string); ok {
+		r0 = rf(ctx, taskDefinition, cluster, subnet, securityGroup, enablePublicIP)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(string, string, string, string, bool) error); ok {
-		r1 = rf(taskDefinition, cluster, subnet, securityGroup, enablePublicIP)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, string, bool) error); ok {
+		r1 = rf(ctx, taskDefinition, cluster, subnet, securityGroup, enablePublicIP)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -66,13 +67,13 @@ func (_m *MockFargate) RunTask(taskDefinition string, cluster string, subnet str
 	return r0, r1
 }
 
-// StopTask provides a mock function with given fields: taskArn, clusterName
-func (_m *MockFargate) StopTask(taskArn string, clusterName string) error {
-	ret := _m.Called(taskArn, clusterName)
+// StopTask provides a mock function with given fields: ctx, taskARN, cluster
+func (_m *MockFargate) StopTask(ctx context.Context, taskARN string, cluster string) error {
+	ret := _m.Called(ctx, taskARN, cluster)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, string) error); ok {
-		r0 = rf(taskArn, clusterName)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = rf(ctx, taskARN, cluster)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -80,13 +81,13 @@ func (_m *MockFargate) StopTask(taskArn string, clusterName string) error {
 	return r0
 }
 
-// WaitUntilTaskRunning provides a mock function with given fields: taskArn, clusterName
-func (_m *MockFargate) WaitUntilTaskRunning(taskArn string, clusterName string) error {
-	ret := _m.Called(taskArn, clusterName)
+// WaitUntilTaskRunning provides a mock function with given fields: ctx, taskARN, cluster
+func (_m *MockFargate) WaitUntilTaskRunning(ctx context.Context, taskARN string, cluster string) error {
+	ret := _m.Called(ctx, taskARN, cluster)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, string) error); ok {
-		r0 = rf(taskArn, clusterName)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = rf(ctx, taskARN, cluster)
 	} else {
 		r0 = ret.Error(0)
 	}
