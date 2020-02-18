@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/assertions"
-	mocks "gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/mocks/logging/storage"
 )
 
 func TestFile_Open(t *testing.T) {
@@ -50,7 +49,7 @@ func TestFile_Close(t *testing.T) {
 	testError := errors.New("test error")
 
 	mockStorageWithCloseError := func(t *testing.T, err error) (Storage, func()) {
-		s := new(mocks.Storage)
+		s := new(MockStorage)
 		cleanup := func() {
 			s.AssertExpectations(t)
 		}
@@ -102,7 +101,7 @@ func TestFile_Write(t *testing.T) {
 	testError := errors.New("test error")
 
 	mockStorageWithWriteError := func(t *testing.T, n int, err error) (Storage, func()) {
-		s := new(mocks.Storage)
+		s := new(MockStorage)
 		cleanup := func() {
 			s.AssertExpectations(t)
 		}
