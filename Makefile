@@ -89,26 +89,20 @@ fmt:
 .PHONY: mocks
 mocks: $(mockery)
 	# Removing existing mocks
-	@rm -rf ./mocks/
-	@rm -rf ./internal/mocks/
+	@find * -name "mock_*.go" -delete
 	# Generating new mocks
-	@$(mockery) -recursive -all -keeptree -outpkg mocks -output ./mocks/ -dir ./
-	@rm -rf ./mocks/internal
-	@$(mockery) -recursive -all -keeptree -outpkg mocks -output ./internal/mocks/ -dir ./internal/
+	@$(mockery) -recursive -all -inpkg -dir ./
 
 .PHONY: check_mocks
 check_mocks:
 	# Checking if mocks are up-to-date
 	# Saving the list of committed mocks
-	@git status -sb mocks/ > /tmp/mocks-$${CI_JOB_ID}-before
-	@git status -sb internal/mocks/ > /tmp/mocks-$${CI_JOB_ID}-internal-before
+	@git status -sb > /tmp/mocks-$${CI_JOB_ID}-before
 	@$(MAKE) mocks
 	# Saving the list of created mocks
-	@git status -sb mocks/ > /tmp/mocks-$${CI_JOB_ID}-after
-	@git status -sb internal/mocks/ > /tmp/mocks-$${CI_JOB_ID}-internal-after
+	@git status -sb > /tmp/mocks-$${CI_JOB_ID}-after
 	# Checking the difference
 	@diff -U0 /tmp/mocks-$${CI_JOB_ID}-before /tmp/mocks-$${CI_JOB_ID}-after
-	@diff -U0 /tmp/mocks-$${CI_JOB_ID}-internal-before /tmp/mocks-$${CI_JOB_ID}-internal-after
 
 .PHONY: prepare_ci_image
 prepare_ci_image: CI_IMAGE ?= fargate-ci-image

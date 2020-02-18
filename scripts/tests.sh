@@ -29,7 +29,8 @@ function generate_junit_report() {
 function normal() {
   local exitCode=0
 
-  go test -v ./... -cover -covermode=count -coverprofile="${testsDir}/coverage.out" | tee "${testsDir}/output.txt" || exitCode=1
+  go test -v ./... -cover -covermode=count -coverprofile="${testsDir}/coverage.out.source" | tee "${testsDir}/output.txt" || exitCode=1
+  grep -v -E "mock_.*\.go" "${testsDir}/coverage.out.source" > "${testsDir}/coverage.out"
 
   generate_coverage_report
   generate_junit_report "junit.xml"
