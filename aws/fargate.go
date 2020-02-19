@@ -3,6 +3,7 @@ package aws
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -14,11 +15,14 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
 )
 
+// ErrNotInitialized is returned when the fargate methods are invoked without initialization
+var ErrNotInitialized = errors.New("fargate adapter is not initialized")
+
 // Fargate should be used to manage AWS Fargate Tasks (start, stop, etc)
 type Fargate interface {
 	// RunTask starts a new task in a pre configured Fargate
-	RunTask(ctx context.Context, taskDefinition string, cluster string, subnet string,
-		securityGroup string, enablePublicIP bool) (string, error)
+	RunTask(ctx context.Context, taskDefinition string, cluster string,
+		subnet string, securityGroup string, enablePublicIP bool) (string, error)
 
 	// WaitUntilTaskRunning blocks the request until the task is in "running"
 	// state or failed to reach this state
@@ -31,26 +35,25 @@ type Fargate interface {
 	GetContainerIP(ctx context.Context, taskARN string, cluster string, usePublicIP bool) (string, error)
 
 	// Init initialize variables and executes necessary procedures
-	Init(logger logging.Logger, awsRegion string) error
+	Init() error
 }
 
-// ECSClient is an adapter for the ECS client interface
-type ECSClient interface {
+type ecsClient interface {
 	RunTaskWithContext(aws.Context, *ecs.RunTaskInput, ...request.Option) (*ecs.RunTaskOutput, error)
 	WaitUntilTasksRunningWithContext(aws.Context, *ecs.DescribeTasksInput, ...request.WaiterOption) error
 	StopTaskWithContext(aws.Context, *ecs.StopTaskInput, ...request.Option) (*ecs.StopTaskOutput, error)
 	DescribeTasksWithContext(aws.Context, *ecs.DescribeTasksInput, ...request.Option) (*ecs.DescribeTasksOutput, error)
 }
 
-// EC2Client is an adapter for the EC2 client interface
-type EC2Client interface {
+type ec2Client interface {
 	DescribeNetworkInterfacesWithContext(aws.Context, *ec2.DescribeNetworkInterfacesInput, ...request.Option) (*ec2.DescribeNetworkInterfacesOutput, error)
 }
 
 type awsFargate struct {
-	logger logging.Logger
-	ecsSvc ECSClient
-	ec2Svc EC2Client
+	logger    logging.Logger
+	awsRegion string
+	ecsSvc    ecsClient
+	ec2Svc    ec2Client
 
 	// The AWS NewSession function was encapsulated into the sessionCreator
 	// to make easier creating unit tests
@@ -58,9 +61,11 @@ type awsFargate struct {
 }
 
 // NewFargate is a constructor for the concrete type of the Fargate interface
-func NewFargate() Fargate {
-	awsFargate := awsFargate{}
+func NewFargate(logger logging.Logger, awsRegion string) Fargate {
+	awsFargate := new(awsFargate)
 
+	awsFargate.logger = logger
+	awsFargate.awsRegion = awsRegion
 	awsFargate.sessionCreator = func(awsRegion string) (*session.Session, error) {
 		return session.NewSession(
 			&aws.Config{
@@ -69,24 +74,28 @@ func NewFargate() Fargate {
 		)
 	}
 
-	return &awsFargate
+	return awsFargate
 }
 
-func (a *awsFargate) Init(logger logging.Logger, awsRegion string) error {
-	sess, err := a.sessionCreator(awsRegion)
+func (a *awsFargate) Init() error {
+	sess, err := a.sessionCreator(a.awsRegion)
 	if err != nil {
 		return fmt.Errorf("couldn't create AWS session: %w", err)
 	}
 
-	a.logger = logger
 	a.ecsSvc = ecs.New(sess)
 	a.ec2Svc = ec2.New(sess)
 
 	return nil
 }
 
-func (a *awsFargate) RunTask(ctx context.Context, taskDefinition string, cluster string, subnet string,
-	securityGroup string, enablePublicIP bool) (string, error) {
+func (a *awsFargate) RunTask(ctx context.Context, taskDefinition string, cluster string,
+	subnet string, securityGroup string, enablePublicIP bool) (string, error) {
+	err := a.errIfNotInitialized()
+	if err != nil {
+		return "", fmt.Errorf("could not start AWS Fargate Task: %w", err)
+	}
+
 	a.logger.Debug("[RunTask] Will start a new Fargate Task")
 
 	publicIP := "DISABLED"
@@ -119,7 +128,20 @@ func (a *awsFargate) RunTask(ctx context.Context, taskDefinition string, cluster
 	return taskARN, nil
 }
 
+func (a *awsFargate) errIfNotInitialized() error {
+	if a.ecsSvc != nil && a.ec2Svc != nil {
+		return nil
+	}
+
+	return ErrNotInitialized
+}
+
 func (a *awsFargate) WaitUntilTaskRunning(ctx context.Context, taskARN string, cluster string) error {
+	err := a.errIfNotInitialized()
+	if err != nil {
+		return fmt.Errorf("could not wait AWS Fargate task: %w", err)
+	}
+
 	a.logger.
 		WithField("task-arn", taskARN).
 		Debug(`[WaitUntilTaskRunning] Will wait until Fargate task is in "Running" state`)
@@ -129,7 +151,7 @@ func (a *awsFargate) WaitUntilTaskRunning(ctx context.Context, taskARN string, c
 		Tasks:   []*string{&taskARN},
 	}
 
-	err := a.ecsSvc.WaitUntilTasksRunningWithContext(ctx, &input)
+	err = a.ecsSvc.WaitUntilTasksRunningWithContext(ctx, &input)
 	if err != nil {
 		return fmt.Errorf(`error waiting AWS Fargate Task %q to be in "Running" state: %w`, taskARN, err)
 	}
@@ -142,6 +164,11 @@ func (a *awsFargate) WaitUntilTaskRunning(ctx context.Context, taskARN string, c
 }
 
 func (a *awsFargate) StopTask(ctx context.Context, taskARN string, cluster string) error {
+	err := a.errIfNotInitialized()
+	if err != nil {
+		return fmt.Errorf("could not stop AWS Fargate Task: %w", err)
+	}
+
 	a.logger.
 		WithField("task-arn", taskARN).
 		Debug("[StopTask] Will stop the task")
@@ -151,7 +178,7 @@ func (a *awsFargate) StopTask(ctx context.Context, taskARN string, cluster strin
 		Task:    &taskARN,
 	}
 
-	_, err := a.ecsSvc.StopTaskWithContext(ctx, &input)
+	_, err = a.ecsSvc.StopTaskWithContext(ctx, &input)
 	if err != nil {
 		return fmt.Errorf("error stopping AWS Fargate Task %q: %w", taskARN, err)
 	}
@@ -164,19 +191,26 @@ func (a *awsFargate) StopTask(ctx context.Context, taskARN string, cluster strin
 }
 
 func (a *awsFargate) GetContainerIP(ctx context.Context, taskARN string, cluster string, usePublicIP bool) (string, error) {
+	err := a.errIfNotInitialized()
+	if err != nil {
+		return "", fmt.Errorf("could not get container IP: %w", err)
+	}
+
 	a.logger.
 		WithField("task-arn", taskARN).
 		Debug("[GetContainerIP] Will get the IP for the task")
 
-	privateIP, networkInterfaceID, err := a.getPrivateIPAndNetworkInterface(ctx, taskARN, cluster)
+	taskDetails, err := a.getTaskDetails(ctx, taskARN, cluster)
 	if err != nil {
-		return "", fmt.Errorf("error accessing information for the task %q: %w", taskARN, err)
+		return "", fmt.Errorf("error accessing information about the task %q: %w", taskARN, err)
 	}
 
 	if !usePublicIP {
+		privateIP := a.extractPrivateIP(taskDetails)
 		return privateIP, nil
 	}
 
+	networkInterfaceID := a.extractNetworkInterfaceID(taskDetails)
 	publicIP, err := a.getPublicIP(ctx, networkInterfaceID)
 	if err != nil {
 		return "", fmt.Errorf("error trying to get the public IP: %w", err)
@@ -185,6 +219,54 @@ func (a *awsFargate) GetContainerIP(ctx context.Context, taskARN string, cluster
 	a.logger.Debug("[GetContainerIP] Ip fetched with success")
 
 	return publicIP, nil
+}
+
+func (a *awsFargate) getTaskDetails(ctx context.Context, taskARN string, cluster string) (*ecs.DescribeTasksOutput, error) {
+	dt, err := a.ecsSvc.DescribeTasksWithContext(
+		ctx,
+		&ecs.DescribeTasksInput{
+			Cluster: &cluster,
+			Tasks:   []*string{&taskARN},
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error during call to describe fargate task: %w", err)
+	}
+
+	a.logger.Debug("[getTaskDetails] Finished fetching the task details")
+
+	return dt, nil
+}
+
+func (a *awsFargate) extractPrivateIP(descOut *ecs.DescribeTasksOutput) string {
+	privateIP := *descOut.
+		Tasks[0].
+		Containers[0].
+		NetworkInterfaces[0].
+		PrivateIpv4Address
+
+	a.logger.
+		WithField("private-ip", privateIP).
+		Debug("[extractPrivateIP] Finished extracting the private IP")
+
+	return privateIP
+}
+
+func (a *awsFargate) extractNetworkInterfaceID(descOut *ecs.DescribeTasksOutput) string {
+	var networkInterfaceID string
+
+	for _, detail := range descOut.Tasks[0].Attachments[0].Details {
+		if *detail.Name == "networkInterfaceId" {
+			networkInterfaceID = *detail.Value
+			break
+		}
+	}
+
+	a.logger.
+		WithField("network-interface-id", networkInterfaceID).
+		Debug("[extractNetworkInterfaceID] Finished extracting the network interface ID")
+
+	return networkInterfaceID
 }
 
 func (a *awsFargate) getPublicIP(ctx context.Context, networkInterfaceID string) (string, error) {
@@ -204,42 +286,4 @@ func (a *awsFargate) getPublicIP(ctx context.Context, networkInterfaceID string)
 		Debug("[getPublicIP] Finished fetching the public IP")
 
 	return publicIP, nil
-}
-
-func (a *awsFargate) getPrivateIPAndNetworkInterface(ctx context.Context, taskARN string, cluster string) (string, string, error) {
-	dt, err := a.ecsSvc.DescribeTasksWithContext(
-		ctx,
-		&ecs.DescribeTasksInput{
-			Cluster: &cluster,
-			Tasks:   []*string{&taskARN},
-		},
-	)
-	if err != nil {
-		return "", "", fmt.Errorf("error fetching information about the Fargate task: %w", err)
-	}
-
-	privateIP := *dt.Tasks[0].Containers[0].NetworkInterfaces[0].PrivateIpv4Address
-	a.logger.
-		WithField("private-ip", privateIP).
-		Debug("[getPrivateIPAndNetworkInterface] Finished fetching the private IP")
-
-	networkInterfaceID := a.getNetworkInterfaceID(dt)
-	a.logger.
-		WithField("network-interface-id", networkInterfaceID).
-		Debug("[getPrivateIPAndNetworkInterface] Finished fetching the network interface ID")
-
-	return privateIP, networkInterfaceID, nil
-}
-
-func (a *awsFargate) getNetworkInterfaceID(descOut *ecs.DescribeTasksOutput) string {
-	var networkInterfaceID string
-
-	for _, detail := range descOut.Tasks[0].Attachments[0].Details {
-		if *detail.Name == "networkInterfaceId" {
-			networkInterfaceID = *detail.Value
-			break
-		}
-	}
-
-	return networkInterfaceID
 }

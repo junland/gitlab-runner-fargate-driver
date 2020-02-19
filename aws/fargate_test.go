@@ -12,66 +12,83 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/assertions"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging/test"
-	mocks "gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/mocks/aws"
 )
 
 func TestRunTask(t *testing.T) {
 	testError := errors.New("simulated error")
+	taskARN := "my-task-arn"
+	logger := createTestLogger()
 
-	tests := []struct {
-		name                string
-		awsReturn           error
-		expectedARNReturn   string
-		expectedErrorReturn error
+	tests := map[string]struct {
+		initializeAdapter bool
+		awsError          error
+		expectedARN       string
+		expectedError     error
 	}{
-		{
-			name:                "Fargate API returning success",
-			awsReturn:           nil,
-			expectedARNReturn:   "my-task-arn",
-			expectedErrorReturn: nil,
+		"Fargate API returning success": {
+			initializeAdapter: true,
+			awsError:          nil,
+			expectedARN:       taskARN,
+			expectedError:     nil,
 		},
-		{
-			name:                "Fargate API returning error",
-			awsReturn:           testError,
-			expectedARNReturn:   "",
-			expectedErrorReturn: testError,
+		"Fargate API returning error": {
+			initializeAdapter: true,
+			awsError:          testError,
+			expectedARN:       "",
+			expectedError:     testError,
+		},
+		"Fargate adapter not initialized error": {
+			initializeAdapter: false,
+			awsError:          nil,
+			expectedARN:       "",
+			expectedError:     ErrNotInitialized,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			taskARN := "my-task-arn"
-
-			mockECS := new(mocks.ECSClient)
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			mockECS := new(mockEcsClient)
 			defer mockECS.AssertExpectations(t)
 
-			mockECS.On(
-				"RunTaskWithContext",
-				mock.AnythingOfType("*context.emptyCtx"),
-				mock.AnythingOfType("*ecs.RunTaskInput"),
-			).
-				Return(
-					&ecs.RunTaskOutput{
-						Tasks: []*ecs.Task{&ecs.Task{TaskArn: &taskARN}},
-					}, tt.awsReturn,
+			if tt.initializeAdapter {
+				mockECS.On(
+					"RunTaskWithContext",
+					mock.AnythingOfType("*context.emptyCtx"),
+					mock.AnythingOfType("*ecs.RunTaskInput"),
 				).
-				Once()
+					Return(
+						&ecs.RunTaskOutput{
+							Tasks: []*ecs.Task{{TaskArn: &taskARN}},
+						}, tt.awsError,
+					).
+					Once()
+			}
 
-			logger := createTestLogger()
+			mockEC2 := new(mockEc2Client)
+			defer mockEC2.AssertExpectations(t)
 
-			awsFargate := awsFargate{ecsSvc: mockECS, logger: logger}
+			fargate := NewFargate(logger, "us-east-1")
+			if tt.initializeAdapter {
+				fargate.Init()
 
-			arn, err := awsFargate.RunTask(context.Background(), "param1", "param2", "param3", "param4", true)
+				// Overwrite initialized values with the mocks
+				fargate.(*awsFargate).ecsSvc = mockECS
+				fargate.(*awsFargate).ec2Svc = mockEC2
+			}
 
-			if tt.expectedErrorReturn != nil {
+			arn, err := fargate.RunTask(context.Background(), "param1", "param2", "param3", "param4", true)
+
+			if tt.expectedError != nil {
 				assert.Error(t, err)
+				assertions.ErrorIs(t, err, tt.expectedError)
 				return
 			}
 
 			assert.NoError(t, err)
-			assert.Equal(t, tt.expectedARNReturn, arn, "Wrong task ARN received")
+			assert.Equal(t, tt.expectedARN, arn, "Wrong task ARN received")
 		})
 	}
 }
@@ -81,58 +98,54 @@ func createTestLogger() logging.Logger {
 }
 
 func TestNewFargate(t *testing.T) {
-	f := NewFargate()
+	logger := createTestLogger()
+	awsRegion := "us-east-1"
+	f := NewFargate(logger, awsRegion)
 	assert.NotNil(t, f, "Should instantiate the AWS client")
+	assert.Equal(t, logger, f.(*awsFargate).logger, "Should have initialized the logger")
+	assert.Equal(t, awsRegion, f.(*awsFargate).awsRegion, "Should have initialized the region")
 }
 
 func TestInit(t *testing.T) {
 	testError := errors.New("simulated error")
 
-	tests := []struct {
-		name                     string
-		errorDuringCreateSession bool
-		expectedErrorReturn      error
+	tests := map[string]struct {
+		sessionCreator func(awsRegion string) (*session.Session, error)
+		expectedError  error
 	}{
-		{
-			name:                     "Init succeeded",
-			errorDuringCreateSession: false,
-			expectedErrorReturn:      nil,
+		"Init succeeded": {
+			sessionCreator: func(awsRegion string) (*session.Session, error) {
+				return session.NewSession(
+					&aws.Config{
+						Region: aws.String(awsRegion),
+					},
+				)
+			},
+			expectedError: nil,
 		},
-		{
-			name:                     "Init failed",
-			errorDuringCreateSession: true,
-			expectedErrorReturn:      testError,
+		"Init failed due to AWS session error": {
+			sessionCreator: func(_ string) (*session.Session, error) {
+				return nil, testError
+			},
+			expectedError: testError,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			logger := createTestLogger()
-			awsFargate := awsFargate{}
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			awsFargate := new(awsFargate)
 
-			if tt.errorDuringCreateSession {
-				awsFargate.sessionCreator = func(string) (*session.Session, error) {
-					return nil, testError
-				}
-			} else {
-				awsFargate.sessionCreator = func(awsRegion string) (*session.Session, error) {
-					return session.NewSession(
-						&aws.Config{
-							Region: aws.String(awsRegion),
-						},
-					)
-				}
-			}
+			awsFargate.sessionCreator = tt.sessionCreator
 
-			err := awsFargate.Init(logger, "us-east-1")
+			err := awsFargate.Init()
 
-			if tt.expectedErrorReturn != nil {
+			if tt.expectedError != nil {
 				assert.Error(t, err)
+				assertions.ErrorIs(t, err, testError)
 				return
 			}
 
 			assert.NoError(t, err)
-			assert.Equal(t, logger, awsFargate.logger, "The logger should have been initialized")
 			assert.NotNil(t, awsFargate.ecsSvc, "The AWS client should have been initialized")
 		})
 	}
@@ -140,45 +153,62 @@ func TestInit(t *testing.T) {
 
 func TestWaitUntilTaskRunning(t *testing.T) {
 	testError := errors.New("simulated error")
+	logger := createTestLogger()
 
-	tests := []struct {
-		name           string
-		awsReturn      error
-		expectedReturn error
+	tests := map[string]struct {
+		initializeAdapter bool
+		awsError          error
+		expectedError     error
 	}{
-		{
-			name:           "Fargate API returning success",
-			awsReturn:      nil,
-			expectedReturn: nil,
+		"Fargate API returning success": {
+			initializeAdapter: true,
+			awsError:          nil,
+			expectedError:     nil,
 		},
-		{
-			name:           "Fargate API returning error",
-			awsReturn:      testError,
-			expectedReturn: testError,
+		"Fargate API returning error": {
+			initializeAdapter: true,
+			awsError:          testError,
+			expectedError:     testError,
+		},
+		"Fargate adapter not initialized error": {
+			initializeAdapter: false,
+			awsError:          nil,
+			expectedError:     ErrNotInitialized,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockECS := new(mocks.ECSClient)
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			mockECS := new(mockEcsClient)
 			defer mockECS.AssertExpectations(t)
 
-			mockECS.On(
-				"WaitUntilTasksRunningWithContext",
-				mock.AnythingOfType("*context.emptyCtx"),
-				mock.AnythingOfType("*ecs.DescribeTasksInput"),
-			).
-				Return(tt.awsReturn).
-				Once()
+			if tt.initializeAdapter {
+				mockECS.On(
+					"WaitUntilTasksRunningWithContext",
+					mock.AnythingOfType("*context.emptyCtx"),
+					mock.AnythingOfType("*ecs.DescribeTasksInput"),
+				).
+					Return(tt.awsError).
+					Once()
+			}
 
-			logger := createTestLogger()
+			mockEC2 := new(mockEc2Client)
+			defer mockEC2.AssertExpectations(t)
 
-			awsFargate := awsFargate{ecsSvc: mockECS, logger: logger}
+			fargate := NewFargate(logger, "us-east-1")
+			if tt.initializeAdapter {
+				fargate.Init()
 
-			err := awsFargate.WaitUntilTaskRunning(context.Background(), "param1", "param2")
+				// Overwrite initialized values with the mocks
+				fargate.(*awsFargate).ecsSvc = mockECS
+				fargate.(*awsFargate).ec2Svc = mockEC2
+			}
 
-			if tt.expectedReturn != nil {
+			err := fargate.WaitUntilTaskRunning(context.Background(), "param1", "param2")
+
+			if tt.expectedError != nil {
 				assert.Error(t, err)
+				assertions.ErrorIs(t, err, tt.expectedError)
 				return
 			}
 
@@ -189,54 +219,72 @@ func TestWaitUntilTaskRunning(t *testing.T) {
 
 func TestStopTask(t *testing.T) {
 	testError := errors.New("simulated error")
+	logger := createTestLogger()
 
-	tests := []struct {
-		name                string
-		awsTaskOutputReturn *ecs.StopTaskOutput
-		awsErrorReturn      error
-		expectedReturn      error
+	tests := map[string]struct {
+		initializeAdapter bool
+		awsTaskOutput     *ecs.StopTaskOutput
+		awsError          error
+		expectedError     error
 	}{
-		{
-			name:                "Fargate API returning success",
-			awsTaskOutputReturn: &ecs.StopTaskOutput{},
-			awsErrorReturn:      nil,
-			expectedReturn:      nil,
+		"Fargate API returning success": {
+			initializeAdapter: true,
+			awsTaskOutput:     &ecs.StopTaskOutput{},
+			awsError:          nil,
+			expectedError:     nil,
 		},
-		{
-			name:                "Fargate API returning error and task output",
-			awsTaskOutputReturn: &ecs.StopTaskOutput{},
-			awsErrorReturn:      testError,
-			expectedReturn:      testError,
+		"Fargate API returning error and task output": {
+			initializeAdapter: true,
+			awsTaskOutput:     &ecs.StopTaskOutput{},
+			awsError:          testError,
+			expectedError:     testError,
 		},
-		{
-			name:                "Fargate API returning error without task output",
-			awsTaskOutputReturn: nil,
-			awsErrorReturn:      testError,
-			expectedReturn:      testError,
+		"Fargate API returning error without task output": {
+			initializeAdapter: true,
+			awsTaskOutput:     nil,
+			awsError:          testError,
+			expectedError:     testError,
+		},
+		"Fargate adapter not initialized error": {
+			initializeAdapter: false,
+			awsTaskOutput:     nil,
+			awsError:          nil,
+			expectedError:     ErrNotInitialized,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockECS := new(mocks.ECSClient)
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			mockECS := new(mockEcsClient)
 			defer mockECS.AssertExpectations(t)
 
-			mockECS.On(
-				"StopTaskWithContext",
-				mock.AnythingOfType("*context.emptyCtx"),
-				mock.AnythingOfType("*ecs.StopTaskInput"),
-			).
-				Return(tt.awsTaskOutputReturn, tt.awsErrorReturn).
-				Once()
+			if tt.initializeAdapter {
+				mockECS.On(
+					"StopTaskWithContext",
+					mock.AnythingOfType("*context.emptyCtx"),
+					mock.AnythingOfType("*ecs.StopTaskInput"),
+				).
+					Return(tt.awsTaskOutput, tt.awsError).
+					Once()
+			}
 
-			logger := createTestLogger()
+			mockEC2 := new(mockEc2Client)
+			defer mockEC2.AssertExpectations(t)
 
-			awsFargate := awsFargate{ecsSvc: mockECS, logger: logger}
+			fargate := NewFargate(logger, "us-east-1")
+			if tt.initializeAdapter {
+				fargate.Init()
 
-			err := awsFargate.StopTask(context.Background(), "param1", "param2")
+				// Overwrite initialized values with the mocks
+				fargate.(*awsFargate).ecsSvc = mockECS
+				fargate.(*awsFargate).ec2Svc = mockEC2
+			}
 
-			if tt.expectedReturn != nil {
+			err := fargate.StopTask(context.Background(), "param1", "param2")
+
+			if tt.expectedError != nil {
 				assert.Error(t, err)
+				assertions.ErrorIs(t, err, tt.expectedError)
 				return
 			}
 
@@ -247,78 +295,95 @@ func TestStopTask(t *testing.T) {
 
 func TestGetContainerIP(t *testing.T) {
 	testError := errors.New("simulated error")
+	logger := createTestLogger()
 
-	tests := []struct {
-		name                     string
-		usePublicIP              bool
-		awsDescribeTaskReturn    error
-		awsDescribeNetworkReturn error
-		expectedIP               string
-		expectedError            error
+	tests := map[string]struct {
+		initializeAdapter  bool
+		usePublicIP        bool
+		awsDescribeTask    error
+		awsDescribeNetwork error
+		expectedIP         string
+		expectedError      error
 	}{
-		{
-			name:                     "Successfully obtained IP when private desired",
-			usePublicIP:              false,
-			awsDescribeTaskReturn:    nil,
-			awsDescribeNetworkReturn: nil,
-			expectedIP:               "10.0.0.1",
-			expectedError:            nil,
+		"Successfully obtained IP when private desired": {
+			initializeAdapter:  true,
+			usePublicIP:        false,
+			awsDescribeTask:    nil,
+			awsDescribeNetwork: nil,
+			expectedIP:         "10.0.0.1",
+			expectedError:      nil,
 		},
-		{
-			name:                     "Successfully obtained IP when public desired",
-			usePublicIP:              true,
-			awsDescribeTaskReturn:    nil,
-			awsDescribeNetworkReturn: nil,
-			expectedIP:               "172.0.0.1",
-			expectedError:            nil,
+		"Successfully obtained IP when public desired": {
+			initializeAdapter:  true,
+			usePublicIP:        true,
+			awsDescribeTask:    nil,
+			awsDescribeNetwork: nil,
+			expectedIP:         "172.0.0.1",
+			expectedError:      nil,
 		},
-		{
-			name:                     "Error during fetching task info for private IP",
-			usePublicIP:              false,
-			awsDescribeTaskReturn:    testError,
-			awsDescribeNetworkReturn: nil,
-			expectedIP:               "",
-			expectedError:            testError,
+		"Error during fetching task info for private IP": {
+			initializeAdapter:  true,
+			usePublicIP:        false,
+			awsDescribeTask:    testError,
+			awsDescribeNetwork: nil,
+			expectedIP:         "",
+			expectedError:      testError,
 		},
-		{
-			name:                     "Error during fetching task info for public IP",
-			usePublicIP:              true,
-			awsDescribeTaskReturn:    testError,
-			awsDescribeNetworkReturn: nil,
-			expectedIP:               "",
-			expectedError:            testError,
+		"Error during fetching task info for public IP": {
+			initializeAdapter:  true,
+			usePublicIP:        true,
+			awsDescribeTask:    testError,
+			awsDescribeNetwork: nil,
+			expectedIP:         "",
+			expectedError:      testError,
 		},
-		{
-			name:                     "Error during fetching ip for public IP",
-			usePublicIP:              true,
-			awsDescribeTaskReturn:    nil,
-			awsDescribeNetworkReturn: testError,
-			expectedIP:               "",
-			expectedError:            testError,
+		"Error during fetching ip for public IP": {
+			initializeAdapter:  true,
+			usePublicIP:        true,
+			awsDescribeTask:    nil,
+			awsDescribeNetwork: testError,
+			expectedIP:         "",
+			expectedError:      testError,
+		},
+		"Fargate adapter not initialized error": {
+			initializeAdapter:  false,
+			usePublicIP:        true,
+			awsDescribeTask:    nil,
+			awsDescribeNetwork: nil,
+			expectedIP:         "",
+			expectedError:      ErrNotInitialized,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockECS := mockFargateDescribeTask(tt.awsDescribeTaskReturn)
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			mockECS := mockFargateDescribeTask(tt.initializeAdapter, tt.awsDescribeTask)
 			defer mockECS.AssertExpectations(t)
 
-			var mockEC2 *mocks.EC2Client
-			if tt.usePublicIP && tt.awsDescribeTaskReturn == nil {
-				mockEC2 = mockFargateDescribeNetworkInterfaces(tt.awsDescribeNetworkReturn)
-				defer mockEC2.AssertExpectations(t)
+			networkAPIShouldBeCalled := tt.usePublicIP &&
+				tt.awsDescribeTask == nil &&
+				tt.initializeAdapter
+			mockEC2 := mockFargateDescribeNetworkInterfaces(
+				networkAPIShouldBeCalled, tt.awsDescribeNetwork,
+			)
+			defer mockEC2.AssertExpectations(t)
+
+			fargate := NewFargate(logger, "us-east-1")
+			if tt.initializeAdapter {
+				fargate.Init()
+
+				// Overwrite initialized values with the mocks
+				fargate.(*awsFargate).ecsSvc = mockECS
+				fargate.(*awsFargate).ec2Svc = mockEC2
 			}
 
-			logger := createTestLogger()
-
-			awsFargate := awsFargate{ecsSvc: mockECS, ec2Svc: mockEC2, logger: logger}
-
-			ip, err := awsFargate.GetContainerIP(context.Background(), "param1", "param2", tt.usePublicIP)
+			ip, err := fargate.GetContainerIP(context.Background(), "param1", "param2", tt.usePublicIP)
 
 			assert.Equal(t, tt.expectedIP, ip)
 
 			if tt.expectedError != nil {
 				assert.Error(t, err)
+				assertions.ErrorIs(t, err, tt.expectedError)
 				return
 			}
 
@@ -327,8 +392,12 @@ func TestGetContainerIP(t *testing.T) {
 	}
 }
 
-func mockFargateDescribeNetworkInterfaces(errorToReturn error) *mocks.EC2Client {
-	mockEC2 := new(mocks.EC2Client)
+func mockFargateDescribeNetworkInterfaces(shouldBeCalled bool, errorToReturn error) *mockEc2Client {
+	mockEC2 := new(mockEc2Client)
+
+	if !shouldBeCalled {
+		return mockEC2
+	}
 
 	publicIP := "172.0.0.1"
 	mockEC2.On(
@@ -352,8 +421,12 @@ func mockFargateDescribeNetworkInterfaces(errorToReturn error) *mocks.EC2Client 
 	return mockEC2
 }
 
-func mockFargateDescribeTask(errorToReturn error) *mocks.ECSClient {
-	mockECS := new(mocks.ECSClient)
+func mockFargateDescribeTask(shouldBeCalled bool, errorToReturn error) *mockEcsClient {
+	mockECS := new(mockEcsClient)
+
+	if !shouldBeCalled {
+		return mockECS
+	}
 
 	privateIP := "10.0.0.1"
 	expectedNetworkIDKey := "networkInterfaceId"
