@@ -79,7 +79,13 @@ func TestRunTask(t *testing.T) {
 				fargate.(*awsFargate).ec2Svc = mockEC2
 			}
 
-			arn, err := fargate.RunTask(context.Background(), "param1", "param2", "param3", "param4", true)
+			connection := ConnectionSettings{
+				Cluster:        "cluster-name",
+				Subnet:         "subnet-name",
+				SecurityGroup:  "security-group-name",
+				EnablePublicIP: true,
+			}
+			arn, err := fargate.RunTask(context.Background(), "param1", connection)
 
 			if tt.expectedError != nil {
 				assert.Error(t, err)

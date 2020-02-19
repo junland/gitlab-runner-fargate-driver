@@ -21,8 +21,7 @@ var ErrNotInitialized = errors.New("fargate adapter is not initialized")
 // Fargate should be used to manage AWS Fargate Tasks (start, stop, etc)
 type Fargate interface {
 	// RunTask starts a new task in a pre configured Fargate
-	RunTask(ctx context.Context, taskDefinition string, cluster string,
-		subnet string, securityGroup string, enablePublicIP bool) (string, error)
+	RunTask(ctx context.Context, taskDefinition string, connection ConnectionSettings) (string, error)
 
 	// WaitUntilTaskRunning blocks the request until the task is in "running"
 	// state or failed to reach this state
@@ -36,6 +35,14 @@ type Fargate interface {
 
 	// Init initialize variables and executes necessary procedures
 	Init() error
+}
+
+// ConnectionSettings centralizes attributes related to the cluster configuration
+type ConnectionSettings struct {
+	Cluster        string
+	Subnet         string
+	SecurityGroup  string
+	EnablePublicIP bool
 }
 
 type ecsClient interface {
@@ -89,8 +96,7 @@ func (a *awsFargate) Init() error {
 	return nil
 }
 
-func (a *awsFargate) RunTask(ctx context.Context, taskDefinition string, cluster string,
-	subnet string, securityGroup string, enablePublicIP bool) (string, error) {
+func (a *awsFargate) RunTask(ctx context.Context, taskDefinition string, connection ConnectionSettings) (string, error) {
 	err := a.errIfNotInitialized()
 	if err != nil {
 		return "", fmt.Errorf("could not start AWS Fargate Task: %w", err)
@@ -99,16 +105,16 @@ func (a *awsFargate) RunTask(ctx context.Context, taskDefinition string, cluster
 	a.logger.Debug("[RunTask] Will start a new Fargate Task")
 
 	publicIP := "DISABLED"
-	if enablePublicIP {
+	if connection.EnablePublicIP {
 		publicIP = "ENABLED"
 	}
 	taskInput := ecs.RunTaskInput{
 		TaskDefinition: &taskDefinition,
-		Cluster:        &cluster,
+		Cluster:        &connection.Cluster,
 		NetworkConfiguration: &ecs.NetworkConfiguration{
 			AwsvpcConfiguration: &ecs.AwsVpcConfiguration{
-				SecurityGroups: []*string{&securityGroup},
-				Subnets:        []*string{&subnet},
+				SecurityGroups: []*string{&connection.SecurityGroup},
+				Subnets:        []*string{&connection.Subnet},
 				AssignPublicIp: &publicIP,
 			},
 		},

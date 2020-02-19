@@ -45,20 +45,20 @@ func (_m *MockFargate) Init() error {
 	return r0
 }
 
-// RunTask provides a mock function with given fields: ctx, taskDefinition, cluster, subnet, securityGroup, enablePublicIP
-func (_m *MockFargate) RunTask(ctx context.Context, taskDefinition string, cluster string, subnet string, securityGroup string, enablePublicIP bool) (string, error) {
-	ret := _m.Called(ctx, taskDefinition, cluster, subnet, securityGroup, enablePublicIP)
+// RunTask provides a mock function with given fields: ctx, taskDefinition, connection
+func (_m *MockFargate) RunTask(ctx context.Context, taskDefinition string, connection ConnectionSettings) (string, error) {
+	ret := _m.Called(ctx, taskDefinition, connection)
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string, bool) string); ok {
-		r0 = rf(ctx, taskDefinition, cluster, subnet, securityGroup, enablePublicIP)
+	if rf, ok := ret.Get(0).(func(context.Context, string, ConnectionSettings) string); ok {
+		r0 = rf(ctx, taskDefinition, connection)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, string, bool) error); ok {
-		r1 = rf(ctx, taskDefinition, cluster, subnet, securityGroup, enablePublicIP)
+	if rf, ok := ret.Get(1).(func(context.Context, string, ConnectionSettings) error); ok {
+		r1 = rf(ctx, taskDefinition, connection)
 	} else {
 		r1 = ret.Error(1)
 	}
