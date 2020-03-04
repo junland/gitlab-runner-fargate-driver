@@ -53,6 +53,11 @@ func TestRunTask(t *testing.T) {
 			mockECS := new(mockEcsClient)
 			defer mockECS.AssertExpectations(t)
 
+			mockEC2 := new(mockEc2Client)
+			defer mockEC2.AssertExpectations(t)
+
+			fargate := NewFargate(logger, "us-east-1")
+
 			if tt.initializeAdapter {
 				mockECS.On(
 					"RunTaskWithContext",
@@ -65,13 +70,7 @@ func TestRunTask(t *testing.T) {
 						}, tt.awsError,
 					).
 					Once()
-			}
 
-			mockEC2 := new(mockEc2Client)
-			defer mockEC2.AssertExpectations(t)
-
-			fargate := NewFargate(logger, "us-east-1")
-			if tt.initializeAdapter {
 				fargate.Init()
 
 				// Overwrite initialized values with the mocks
