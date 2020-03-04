@@ -87,7 +87,6 @@ func TestRunTask(t *testing.T) {
 			arn, err := fargate.RunTask(context.Background(), "param1", connection)
 
 			if tt.expectedError != nil {
-				assert.Error(t, err)
 				assertions.ErrorIs(t, err, tt.expectedError)
 				return
 			}
@@ -145,7 +144,6 @@ func TestInit(t *testing.T) {
 			err := awsFargate.Init()
 
 			if tt.expectedError != nil {
-				assert.Error(t, err)
 				assertions.ErrorIs(t, err, testError)
 				return
 			}
@@ -187,6 +185,11 @@ func TestWaitUntilTaskRunning(t *testing.T) {
 			mockECS := new(mockEcsClient)
 			defer mockECS.AssertExpectations(t)
 
+			mockEC2 := new(mockEc2Client)
+			defer mockEC2.AssertExpectations(t)
+
+			fargate := NewFargate(logger, "us-east-1")
+
 			if tt.initializeAdapter {
 				mockECS.On(
 					"WaitUntilTasksRunningWithContext",
@@ -195,13 +198,7 @@ func TestWaitUntilTaskRunning(t *testing.T) {
 				).
 					Return(tt.awsError).
 					Once()
-			}
 
-			mockEC2 := new(mockEc2Client)
-			defer mockEC2.AssertExpectations(t)
-
-			fargate := NewFargate(logger, "us-east-1")
-			if tt.initializeAdapter {
 				fargate.Init()
 
 				// Overwrite initialized values with the mocks
@@ -212,7 +209,6 @@ func TestWaitUntilTaskRunning(t *testing.T) {
 			err := fargate.WaitUntilTaskRunning(context.Background(), "param1", "param2")
 
 			if tt.expectedError != nil {
-				assert.Error(t, err)
 				assertions.ErrorIs(t, err, tt.expectedError)
 				return
 			}
@@ -263,6 +259,11 @@ func TestStopTask(t *testing.T) {
 			mockECS := new(mockEcsClient)
 			defer mockECS.AssertExpectations(t)
 
+			mockEC2 := new(mockEc2Client)
+			defer mockEC2.AssertExpectations(t)
+
+			fargate := NewFargate(logger, "us-east-1")
+
 			if tt.initializeAdapter {
 				mockECS.On(
 					"StopTaskWithContext",
@@ -271,13 +272,7 @@ func TestStopTask(t *testing.T) {
 				).
 					Return(tt.awsTaskOutput, tt.awsError).
 					Once()
-			}
 
-			mockEC2 := new(mockEc2Client)
-			defer mockEC2.AssertExpectations(t)
-
-			fargate := NewFargate(logger, "us-east-1")
-			if tt.initializeAdapter {
 				fargate.Init()
 
 				// Overwrite initialized values with the mocks
@@ -288,7 +283,6 @@ func TestStopTask(t *testing.T) {
 			err := fargate.StopTask(context.Background(), "param1", "param2")
 
 			if tt.expectedError != nil {
-				assert.Error(t, err)
 				assertions.ErrorIs(t, err, tt.expectedError)
 				return
 			}
@@ -387,7 +381,6 @@ func TestGetContainerIP(t *testing.T) {
 			assert.Equal(t, tt.expectedIP, ip)
 
 			if tt.expectedError != nil {
-				assert.Error(t, err)
 				assertions.ErrorIs(t, err, tt.expectedError)
 				return
 			}
