@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/assertions"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
@@ -71,7 +72,8 @@ func TestRunTask(t *testing.T) {
 					).
 					Once()
 
-				fargate.Init()
+				err := fargate.Init()
+				require.NoError(t, err)
 
 				// Overwrite initialized values with the mocks
 				fargate.(*awsFargate).ecsSvc = mockECS
@@ -199,7 +201,8 @@ func TestWaitUntilTaskRunning(t *testing.T) {
 					Return(tt.awsError).
 					Once()
 
-				fargate.Init()
+				err := fargate.Init()
+				require.NoError(t, err)
 
 				// Overwrite initialized values with the mocks
 				fargate.(*awsFargate).ecsSvc = mockECS
@@ -273,7 +276,8 @@ func TestStopTask(t *testing.T) {
 					Return(tt.awsTaskOutput, tt.awsError).
 					Once()
 
-				fargate.Init()
+				err := fargate.Init()
+				require.NoError(t, err)
 
 				// Overwrite initialized values with the mocks
 				fargate.(*awsFargate).ecsSvc = mockECS
@@ -369,7 +373,8 @@ func TestGetContainerIP(t *testing.T) {
 
 			fargate := NewFargate(logger, "us-east-1")
 			if tt.initializeAdapter {
-				fargate.Init()
+				err := fargate.Init()
+				require.NoError(t, err)
 
 				// Overwrite initialized values with the mocks
 				fargate.(*awsFargate).ecsSvc = mockECS
@@ -406,7 +411,7 @@ func mockFargateDescribeNetworkInterfaces(shouldBeCalled bool, errorToReturn err
 		Return(
 			&ec2.DescribeNetworkInterfacesOutput{
 				NetworkInterfaces: []*ec2.NetworkInterface{
-					&ec2.NetworkInterface{
+					{
 						Association: &ec2.NetworkInterfaceAssociation{
 							PublicIp: &publicIP,
 						},
@@ -437,18 +442,18 @@ func mockFargateDescribeTask(shouldBeCalled bool, errorToReturn error) *mockEcsC
 		Return(
 			&ecs.DescribeTasksOutput{
 				Tasks: []*ecs.Task{
-					&ecs.Task{
+					{
 						Containers: []*ecs.Container{
-							&ecs.Container{
+							{
 								NetworkInterfaces: []*ecs.NetworkInterface{
-									&ecs.NetworkInterface{PrivateIpv4Address: &privateIP},
+									{PrivateIpv4Address: &privateIP},
 								},
 							},
 						},
 						Attachments: []*ecs.Attachment{
-							&ecs.Attachment{
+							{
 								Details: []*ecs.KeyValuePair{
-									&ecs.KeyValuePair{
+									{
 										Name:  &expectedNetworkIDKey,
 										Value: &expectedNetworkIDValue,
 									},
