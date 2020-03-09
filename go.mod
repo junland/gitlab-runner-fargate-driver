@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/BurntSushi/toml v0.3.1
-	github.com/aws/aws-sdk-go v1.28.10
+	github.com/aws/aws-sdk-go v1.29.19
 	github.com/jstemmer/go-junit-report v0.9.1
 	github.com/mitchellh/gox v1.0.1
 	github.com/sirupsen/logrus v1.4.2
@@ -13,7 +13,8 @@ require (
 	github.com/urfave/cli v1.22.2
 	github.com/vektra/mockery v0.0.0-20181123154057-e78b021dcbb5
 	gitlab.com/ayufan/golang-cli-helpers v0.0.0-20171103152739-a7cf72d604cd
-	gitlab.com/gitlab-org/ci-cd/runner-tools/release-index-generator v0.0.0-20200128145756-4b03f39cb151
+	gitlab.com/gitlab-org/ci-cd/runner-tools/release-index-generator v0.2.0
 	gitlab.com/gitlab-org/gitlab-runner v12.5.0+incompatible
-	golang.org/x/net v0.0.0-20200202094626-16171245cfb2 // indirect
+	golang.org/x/crypto v0.0.0-20200214034016-1d94cc7ab1c6
+	golang.org/x/sys v0.0.0-20200217220822-9197077df867 // indirect
 )
