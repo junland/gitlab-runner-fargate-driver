@@ -19,7 +19,7 @@ tests race:
   - .merge_request_pipelines
   - .gitlab_org_runners
   stage: test
-  image: golang:${GO}-buster
+  image: golang:${GO_VERSION}-buster
   variables:
     CGO_ENABLED: 1
   script:
