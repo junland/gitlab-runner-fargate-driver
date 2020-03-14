@@ -9,7 +9,9 @@ export BUILD_PLATFORMS ?= -osarch 'linux/amd64 linux/386'
 export goJunitReport ?= $(GOPATH)/bin/go-junit-report
 mockery ?= $(GOPATH)/bin/mockery
 gox ?= $(GOPATH)/bin/gox
-releaseIndexGen ?= $(GOPATH)/bin/release-index-gen
+
+RELEASE_INDEX_GEN_VERSION ?= master
+releaseIndexGen ?= .tmp/release-index-gen-$(RELEASE_INDEX_GEN_VERSION)
 
 PKG := $(shell go list .)
 PKGs := $(shell go list ./... | grep -vE "^/vendor/")
@@ -193,6 +195,10 @@ $(gox):
 	# Installing gox
 	@go install github.com/mitchellh/gox
 
+$(releaseIndexGen): OS_TYPE ?= $(shell uname -s | tr '[:upper:]' '[:lower:]')
+$(releaseIndexGen): DOWNLOAD_URL = "https://storage.googleapis.com/gitlab-runner-tools/release-index-generator/$(RELEASE_INDEX_GEN_VERSION)/release-index-gen-$(OS_TYPE)-amd64"
 $(releaseIndexGen):
-	# Installing release-index-gen
-	@go get gitlab.com/gitlab-org/ci-cd/runner-tools/release-index-generator/cmd/release-index-gen
+	# Installing $(DOWNLOAD_URL) as $(releaseIndexGen)
+	@mkdir -p $(shell dirname $(releaseIndexGen))
+	@curl -sL "$(DOWNLOAD_URL)" -o "$(releaseIndexGen)"
+	@chmod +x "$(releaseIndexGen)"
