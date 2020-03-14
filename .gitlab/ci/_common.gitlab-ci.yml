@@ -1,5 +1,6 @@
 variables:
   GO: 1.13.8
+  RELEASE_INDEX_GEN_VERSION: "v0.2.0"
   GOPATH: $CI_PROJECT_DIR/.go
   CI_IMAGE: registry.gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/ci:go${GO}-alpine3.11-1
 
