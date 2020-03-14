@@ -13,7 +13,6 @@ require (
 	github.com/urfave/cli v1.22.2
 	github.com/vektra/mockery v0.0.0-20181123154057-e78b021dcbb5
 	gitlab.com/ayufan/golang-cli-helpers v0.0.0-20171103152739-a7cf72d604cd
-	gitlab.com/gitlab-org/ci-cd/runner-tools/release-index-generator v0.0.0-20200128145756-4b03f39cb151
 	gitlab.com/gitlab-org/gitlab-runner v12.5.0+incompatible
 	golang.org/x/net v0.0.0-20200202094626-16171245cfb2 // indirect
 )
