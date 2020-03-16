@@ -9,9 +9,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"golang.org/x/crypto/ssh"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/executors"
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/executors/ssh/internal/client"
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/executors/ssh/internal/session"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/assertions"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging/test"
@@ -27,142 +30,185 @@ func createTestLogger() logging.Logger {
 	return test.NewNullLogger()
 }
 
+type connectClientFn func(string, string, *ssh.ClientConfig) (client.Client, error)
+
+func newConnectClientFn(cli client.Client, err error) connectClientFn {
+	return func(network string, addr string, config *ssh.ClientConfig) (client.Client, error) {
+		return cli, err
+	}
+}
+
 func TestExecute(t *testing.T) {
+	testScript := "echo 1"
+
 	testError := errors.New("simulated error")
-	testErrorSSHInternal := errors.New("ssh: no key found")
+	testErrorSSHInternal := new(errInvalidPrivateKey)
 	testErrorSession := errors.New("simulated error 1")
 	testErrorScript := errors.New("simulated error 2")
 
-	assertErrorByEqual := func(t *testing.T, err error, expectedError error) {
-		assertions.ErrorIs(t, err, expectedError)
-	}
-
-	// This assert will be necessary because we can't directly compare the
-	// ssh.ParsePrivateKey() returned error
-	assertErrorByContains := func(t *testing.T, err error, expectedError error) {
-		assert.Contains(t, err.Error(), expectedError.Error())
-	}
-
 	tests := map[string]struct {
-		client                *ssh.Client
-		validPrivateKey       bool
-		sshHandshakeError     error
-		sshCreateSessionError error
-		sshExecuteScriptError error
-		sshDisconnectError    error
-		expectedError         error
-		errorAssertion        func(*testing.T, error, error)
+		client          *ssh.Client
+		validPrivateKey bool
+		connectClient   func() (connectClientFn, func(*testing.T))
+		expectedError   error
 	}{
 		"Execute with success": {
-			client:                &ssh.Client{},
-			validPrivateKey:       true,
-			sshHandshakeError:     nil,
-			sshCreateSessionError: nil,
-			sshExecuteScriptError: nil,
-			sshDisconnectError:    nil,
-			expectedError:         nil,
-			errorAssertion:        nil,
+			validPrivateKey: true,
+			connectClient: func() (connectClientFn, func(*testing.T)) {
+				sess := new(session.MockSession)
+				sess.On("ExecuteScript", testScript).
+					Return(nil).
+					Once()
+				sess.On("Close").
+					Once()
+
+				cli := new(client.MockClient)
+				cli.On("NewSession", mock.Anything, mock.Anything).
+					Return(sess, nil).
+					Once()
+				cli.On("Disconnect").
+					Return(nil).
+					Once()
+
+				mocksAssertions := func(t *testing.T) {
+					cli.AssertExpectations(t)
+					sess.AssertExpectations(t)
+				}
+
+				return newConnectClientFn(cli, nil), mocksAssertions
+			},
+			expectedError: nil,
 		},
-		"Connect to server with private key problem": {
-			client:                &ssh.Client{},
-			validPrivateKey:       false,
-			sshHandshakeError:     testError,
-			sshCreateSessionError: nil,
-			sshExecuteScriptError: nil,
-			sshDisconnectError:    nil,
-			expectedError:         testErrorSSHInternal,
-			errorAssertion:        assertErrorByContains,
+		"Private key invalid": {
+			validPrivateKey: false,
+			connectClient: func() (connectClientFn, func(*testing.T)) {
+				return newConnectClientFn(nil, nil), func(t *testing.T) {}
+			},
+			expectedError: testErrorSSHInternal,
 		},
-		"Connect to server with handshake problem": {
-			client:                &ssh.Client{},
-			validPrivateKey:       true,
-			sshHandshakeError:     testError,
-			sshCreateSessionError: nil,
-			sshExecuteScriptError: nil,
-			sshDisconnectError:    nil,
-			expectedError:         testError,
-			errorAssertion:        assertErrorByEqual,
-		},
-		"Connect to server with private key and handshake problems": {
-			client:                &ssh.Client{},
-			validPrivateKey:       false,
-			sshHandshakeError:     nil,
-			sshCreateSessionError: nil,
-			sshExecuteScriptError: nil,
-			sshDisconnectError:    nil,
-			expectedError:         testErrorSSHInternal,
-			errorAssertion:        assertErrorByContains,
+		"Connect to server error": {
+			validPrivateKey: true,
+			connectClient: func() (connectClientFn, func(*testing.T)) {
+				return newConnectClientFn(nil, testError), func(t *testing.T) {}
+			},
+			expectedError: testError,
 		},
 		"Error on creating session": {
-			client:                &ssh.Client{},
-			validPrivateKey:       true,
-			sshHandshakeError:     nil,
-			sshCreateSessionError: testErrorSession,
-			sshExecuteScriptError: nil,
-			sshDisconnectError:    nil,
-			expectedError:         testErrorSession,
-			errorAssertion:        assertErrorByEqual,
+			validPrivateKey: true,
+			connectClient: func() (connectClientFn, func(*testing.T)) {
+				cli := new(client.MockClient)
+				cli.On("NewSession", mock.Anything, mock.Anything).
+					Return(nil, testErrorSession).
+					Once()
+				cli.On("Disconnect").
+					Return(nil).
+					Once()
+
+				mocksAssertions := func(t *testing.T) {
+					cli.AssertExpectations(t)
+				}
+
+				return newConnectClientFn(cli, nil), mocksAssertions
+			},
+			expectedError: testErrorSession,
 		},
 		"Error on executing script": {
-			client:                &ssh.Client{},
-			validPrivateKey:       true,
-			sshHandshakeError:     nil,
-			sshCreateSessionError: nil,
-			sshExecuteScriptError: testErrorScript,
-			sshDisconnectError:    nil,
-			expectedError:         testErrorScript,
-			errorAssertion:        assertErrorByEqual,
-		},
-		"Error on creating session and executing script": {
-			client:                &ssh.Client{},
-			validPrivateKey:       true,
-			sshHandshakeError:     nil,
-			sshCreateSessionError: testErrorSession,
-			sshExecuteScriptError: testErrorScript,
-			sshDisconnectError:    nil,
-			expectedError:         testErrorSession,
-			errorAssertion:        assertErrorByEqual,
+			validPrivateKey: true,
+			connectClient: func() (connectClientFn, func(*testing.T)) {
+				sess := new(session.MockSession)
+				sess.On("ExecuteScript", testScript).
+					Return(testErrorScript).
+					Once()
+				sess.On("Close").
+					Once()
+
+				cli := new(client.MockClient)
+				cli.On("NewSession", mock.Anything, mock.Anything).
+					Return(sess, nil).
+					Once()
+				cli.On("Disconnect").
+					Return(nil).
+					Once()
+
+				mocksAssertions := func(t *testing.T) {
+					cli.AssertExpectations(t)
+					sess.AssertExpectations(t)
+				}
+
+				return newConnectClientFn(cli, nil), mocksAssertions
+			},
+			expectedError: testErrorScript,
 		},
 		"Error when not connected to server": {
-			client:                nil,
-			validPrivateKey:       true,
-			sshHandshakeError:     nil,
-			sshCreateSessionError: nil,
-			sshExecuteScriptError: nil,
-			sshDisconnectError:    nil,
-			expectedError:         ErrNotConnected,
-			errorAssertion:        assertErrorByEqual,
+			validPrivateKey: true,
+			connectClient: func() (connectClientFn, func(*testing.T)) {
+				return newConnectClientFn(nil, nil), func(t *testing.T) {}
+			},
+			expectedError: ErrNotConnected,
 		},
 		"Error on disconnect from server": {
-			client:                &ssh.Client{},
-			validPrivateKey:       true,
-			sshHandshakeError:     nil,
-			sshCreateSessionError: nil,
-			sshExecuteScriptError: nil,
-			sshDisconnectError:    testError,
-			expectedError:         testError,
-			errorAssertion:        assertErrorByEqual,
+			validPrivateKey: true,
+			connectClient: func() (connectClientFn, func(*testing.T)) {
+				sess := new(session.MockSession)
+				sess.On("ExecuteScript", testScript).
+					Return(nil).
+					Once()
+				sess.On("Close").
+					Once()
+
+				cli := new(client.MockClient)
+				cli.On("NewSession", mock.Anything, mock.Anything).
+					Return(sess, nil).
+					Once()
+				cli.On("Disconnect").
+					Return(testError).
+					Once()
+
+				mocksAssertions := func(t *testing.T) {
+					cli.AssertExpectations(t)
+					sess.AssertExpectations(t)
+				}
+
+				return newConnectClientFn(cli, nil), mocksAssertions
+			},
+			expectedError: testError,
+		},
+		"Error on disconnect from server when script execution also failed": {
+			validPrivateKey: true,
+			connectClient: func() (connectClientFn, func(*testing.T)) {
+				sess := new(session.MockSession)
+				sess.On("ExecuteScript", testScript).
+					Return(testErrorScript).
+					Once()
+				sess.On("Close").
+					Once()
+
+				cli := new(client.MockClient)
+				cli.On("NewSession", mock.Anything, mock.Anything).
+					Return(sess, nil).
+					Once()
+				cli.On("Disconnect").
+					Return(testError).
+					Once()
+
+				mocksAssertions := func(t *testing.T) {
+					cli.AssertExpectations(t)
+					sess.AssertExpectations(t)
+				}
+
+				return newConnectClientFn(cli, nil), mocksAssertions
+			},
+			expectedError: testErrorScript,
 		},
 	}
 
 	for tc, tt := range tests {
 		t.Run(tc, func(t *testing.T) {
-			executor := &executor{logger: createTestLogger()}
+			connectClient, assertExpectations := tt.connectClient()
+			defer assertExpectations(t)
 
-			executor.internalDial = func(network string, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
-				config.HostKeyCallback("test", nil, nil)
-				return tt.client, tt.sshHandshakeError
-			}
-			executor.internalCreateSession = func(client *ssh.Client) (*ssh.Session, error) {
-				return &ssh.Session{}, tt.sshCreateSessionError
-			}
-			executor.internalExecuteScript = func(session *ssh.Session, script string) error {
-				return tt.sshExecuteScriptError
-			}
-			executor.internalCloseSession = func(session *ssh.Session) {}
-			executor.internalDisconnect = func(client *ssh.Client) error {
-				return tt.sshDisconnectError
-			}
+			executor := &executor{logger: createTestLogger()}
+			executor.connectClient = connectClient
 
 			connection := executors.ConnectionSettings{
 				Hostname:   "localhost",
@@ -171,27 +217,27 @@ func TestExecute(t *testing.T) {
 				PrivateKey: createFakePrivateKeyForTests(tt.validPrivateKey),
 			}
 
-			err := executor.Execute(connection, []byte("echo 1"))
+			err := executor.Execute(connection, []byte(testScript))
 
-			if tt.expectedError == nil {
-				assert.NoError(t, err, "Should not have returned any error")
-				assert.Nil(t, executor.client, "SSH client should be nil after disconnecting")
+			if tt.expectedError != nil {
+				assert.Error(t, err, "Should have returned error")
+				assertions.ErrorIs(t, err, tt.expectedError)
 				return
 			}
 
-			assert.Error(t, err, "Should have returned error")
-			tt.errorAssertion(t, err, tt.expectedError)
+			assert.NoError(t, err, "Should not have returned any error")
+			assert.Nil(t, executor.client, "SSH client should be nil after disconnecting")
 		})
 	}
 }
 
 func createFakePrivateKeyForTests(valid bool) []byte {
-	if valid {
-		privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-		return encodePrivateKeyToPEM(privateKey)
+	if !valid {
+		return []byte("invalid key")
 	}
 
-	return []byte("invalid key")
+	privateKey, _ := rsa.GenerateKey(rand.Reader, 64)
+	return encodePrivateKeyToPEM(privateKey)
 }
 
 func encodePrivateKeyToPEM(privateKey *rsa.PrivateKey) []byte {
@@ -203,7 +249,5 @@ func encodePrivateKeyToPEM(privateKey *rsa.PrivateKey) []byte {
 		Bytes:   privDER,
 	}
 
-	privatePEM := pem.EncodeToMemory(&privBlock)
-
-	return privatePEM
+	return pem.EncodeToMemory(&privBlock)
 }

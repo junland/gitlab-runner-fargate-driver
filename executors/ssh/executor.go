@@ -9,42 +9,44 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/executors"
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/executors/ssh/internal/client"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
 )
 
 // ErrNotConnected is return when a previous connection was not established
 var ErrNotConnected = errors.New("not connected to server")
 
+// errInvalidPrivateKey will be used to wrap a ssh internal error
+type errInvalidPrivateKey struct {
+	inner error
+}
+
+func (e *errInvalidPrivateKey) Error() string {
+	return fmt.Sprintf("invalid private key: %v", e.inner)
+}
+
+func (e *errInvalidPrivateKey) Unwrap() error {
+	return e.inner
+}
+
+func (e *errInvalidPrivateKey) Is(err error) bool {
+	_, ok := err.(*errInvalidPrivateKey)
+	return ok
+}
+
 type executor struct {
-	client *ssh.Client
+	client client.Client
 	logger logging.Logger
 
-	// Some functions were encapsulated to make easier creating unit tests for this module
-	internalDial          func(network, addr string, config *ssh.ClientConfig) (*ssh.Client, error)
-	internalCreateSession func(client *ssh.Client) (*ssh.Session, error)
-	internalExecuteScript func(session *ssh.Session, script string) error
-	internalCloseSession  func(session *ssh.Session)
-	internalDisconnect    func(client *ssh.Client) error
+	connectClient func(network string, addr string, config *ssh.ClientConfig) (client.Client, error)
 }
 
 // NewExecutor is the constructor for an instance of the executor interface
 func NewExecutor(logger logging.Logger) executors.Executor {
-	executor := &executor{}
+	executor := new(executor)
 	executor.logger = logger
 
-	executor.internalDial = ssh.Dial
-	executor.internalCreateSession = func(client *ssh.Client) (*ssh.Session, error) {
-		return client.NewSession()
-	}
-	executor.internalExecuteScript = func(session *ssh.Session, script string) error {
-		return session.Run(script)
-	}
-	executor.internalCloseSession = func(session *ssh.Session) {
-		session.Close()
-	}
-	executor.internalDisconnect = func(client *ssh.Client) error {
-		return client.Close()
-	}
+	executor.connectClient = client.NewConnectClient
 
 	return executor
 }
@@ -52,24 +54,22 @@ func NewExecutor(logger logging.Logger) executors.Executor {
 func (s *executor) Execute(connection executors.ConnectionSettings, script []byte) (err error) {
 	s.logger.Debug("[Execute] Will connect to server and execute the specified shell script")
 
-	err = s.connectToServer(
-		connection.Hostname, connection.Port, connection.Username, connection.PrivateKey,
-	)
+	err = s.connect(connection)
 	if err != nil {
-		return fmt.Errorf("error connecting to server: %w", err)
+		return fmt.Errorf("connecting to server: %w", err)
 	}
 
 	// Use a defer function to ensure disconnection after executing the script
 	defer func() {
-		ferr := s.disconnect()
-		if ferr != nil && err == nil {
-			err = fmt.Errorf("error disconnecting from server: %w", ferr)
+		disconnectErr := s.disconnect()
+		if err == nil && disconnectErr != nil {
+			err = fmt.Errorf("disconnecting from server: %w", disconnectErr)
 		}
 	}()
 
 	err = s.executeScript(script, os.Stdout, os.Stderr)
 	if err != nil {
-		return fmt.Errorf("error executing script: %w", err)
+		return fmt.Errorf("executing script: %w", err)
 	}
 
 	s.logger.Debug("[Execute] Successfully executed script")
@@ -77,29 +77,29 @@ func (s *executor) Execute(connection executors.ConnectionSettings, script []byt
 	return nil
 }
 
-func (s *executor) connectToServer(hostname string, port int, username string, privateKey []byte) error {
-	s.logger.Debug("[connectToServer] Will connect to server via SSH")
+func (s *executor) connect(connection executors.ConnectionSettings) error {
+	s.logger.Debug("[connect] Will connect to server via SSH")
 
-	signer, err := ssh.ParsePrivateKey(privateKey)
+	signer, err := ssh.ParsePrivateKey(connection.PrivateKey)
 	if err != nil {
-		return fmt.Errorf("error parsing private key: %w", err)
+		return &errInvalidPrivateKey{inner: err}
 	}
 
 	config := &ssh.ClientConfig{
-		User:            username,
+		User:            connection.Username,
 		Auth:            []ssh.AuthMethod{ssh.PublicKeys(signer)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
-	addr := fmt.Sprintf("%s:%d", hostname, port)
-	client, err := s.internalDial("tcp", addr, config)
+	addr := fmt.Sprintf("%s:%d", connection.Hostname, connection.Port)
+	cli, err := s.connectClient("tcp", addr, config)
 	if err != nil {
-		return fmt.Errorf("error connecting to server: %w", err)
+		return fmt.Errorf("connecting to server: %w", err)
 	}
 
-	s.client = client
+	s.client = cli
 
-	s.logger.Debug("[connectToServer] Successfully connected to server")
+	s.logger.Debug("[connect] Successfully connected to server")
 
 	return nil
 }
@@ -111,9 +111,9 @@ func (s *executor) disconnect() error {
 		return nil
 	}
 
-	err := s.internalDisconnect(s.client)
+	err := s.client.Disconnect()
 	if err != nil {
-		return fmt.Errorf("error disconnecting from server: %w", err)
+		return fmt.Errorf("disconnecting from server: %w", err)
 	}
 
 	s.client = nil
@@ -127,21 +127,18 @@ func (s *executor) executeScript(script []byte, stdout io.Writer, stderr io.Writ
 	s.logger.Debug("[executeScript] Will execute a remote script")
 
 	if s.client == nil {
-		return fmt.Errorf("could not execute the script: %w", ErrNotConnected)
+		return ErrNotConnected
 	}
 
-	session, err := s.internalCreateSession(s.client)
+	session, err := s.client.NewSession(stdout, stderr)
 	if err != nil {
-		return fmt.Errorf("error creating session for ssh client: %w", err)
+		return fmt.Errorf("creating session for ssh client: %w", err)
 	}
-	defer s.internalCloseSession(session)
+	defer session.Close()
 
-	session.Stdout = stdout
-	session.Stderr = stderr
-
-	err = s.internalExecuteScript(session, string(script))
+	err = session.ExecuteScript(string(script))
 	if err != nil {
-		return fmt.Errorf("error executing remote script: %w", err)
+		return fmt.Errorf("executing remote script: %w", err)
 	}
 
 	s.logger.Debug("[executeScript] Command executed")
