@@ -260,7 +260,7 @@ func setExpectationForPersistData(mockMetadataManager *task.MockMetadataManager,
 	}
 
 	mockMetadataManager.On("Persist",
-		mock.AnythingOfType("task.FargateTaskData"),
+		mock.AnythingOfType("task.Data"),
 	).
 		Return(errorToReturn).
 		Once()

@@ -139,7 +139,7 @@ func (c *PrepareCommand) prepareNewFargateTask(ctx *cli.Context) (string, string
 func (c *PrepareCommand) persistDataForLaterStages(taskARN string, containerIP string) error {
 	c.logger.Info("Persisting data that will be used by other commands")
 
-	data := task.FargateTaskData{
+	data := task.Data{
 		TaskARN:     taskARN,
 		ContainerIP: containerIP,
 	}
