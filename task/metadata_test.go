@@ -2,10 +2,12 @@ package task
 
 import (
 	"errors"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/assertions"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/encoding"
@@ -16,10 +18,21 @@ import (
 )
 
 func TestNewMetadataManager(t *testing.T) {
-	runner.InitAdapter()
+	initializeAdapterForTesting(t)
 
 	manager := NewMetadataManager(createTestLogger(), "/tmp/")
 	assert.NotNil(t, manager, "instance should have been created")
+}
+
+func initializeAdapterForTesting(t *testing.T) {
+	err := os.Setenv("BUILD_FAILURE_EXIT_CODE", "1")
+	require.NoError(t, err)
+
+	err = os.Setenv("SYSTEM_FAILURE_EXIT_CODE", "1")
+	require.NoError(t, err)
+
+	err = runner.InitAdapter()
+	require.NoError(t, err)
 }
 
 func createTestLogger() logging.Logger {
@@ -27,29 +40,34 @@ func createTestLogger() logging.Logger {
 }
 
 func TestPersist(t *testing.T) {
-	runner.InitAdapter()
+	initializeAdapterForTesting(t)
+
+	data := Data{
+		TaskARN:     "task-arn",
+		ContainerIP: "192.168.0.1",
+	}
 
 	testError := errors.New("simulated error")
 
 	tests := map[string]struct {
-		marshallingError error
-		writeFileError   error
-		expectedError    error
+		encodingError  error
+		writeFileError error
+		expectedError  error
 	}{
 		"Persist with success": {
-			marshallingError: nil,
-			writeFileError:   nil,
-			expectedError:    nil,
+			encodingError:  nil,
+			writeFileError: nil,
+			expectedError:  nil,
 		},
-		"Error on marshalling": {
-			marshallingError: testError,
-			writeFileError:   nil,
-			expectedError:    testError,
+		"Error on encoding JSON": {
+			encodingError:  testError,
+			writeFileError: nil,
+			expectedError:  testError,
 		},
 		"Error on persisting file": {
-			marshallingError: nil,
-			writeFileError:   testError,
-			expectedError:    testError,
+			encodingError:  nil,
+			writeFileError: testError,
+			expectedError:  testError,
 		},
 	}
 
@@ -61,14 +79,11 @@ func TestPersist(t *testing.T) {
 			mockEncoder := new(encoding.MockEncoder)
 			defer mockEncoder.AssertExpectations(t)
 
-			mockEncoder.On("Encode",
-				mock.AnythingOfType("FargateTaskData"),
-				mock.AnythingOfType("*bytes.Buffer"),
-			).
-				Return(tt.marshallingError).
+			mockEncoder.On("Encode", data, mock.AnythingOfType("*bytes.Buffer")).
+				Return(tt.encodingError).
 				Once()
 
-			if tt.marshallingError == nil {
+			if tt.encodingError == nil {
 				mockFS.On("WriteFile",
 					mock.AnythingOfType("string"),
 					mock.AnythingOfType("[]uint8"),
@@ -82,8 +97,7 @@ func TestPersist(t *testing.T) {
 			manager.(*fsMetadataManager).fs = mockFS
 			manager.(*fsMetadataManager).encoder = mockEncoder
 
-			fargateTaskData := FargateTaskData{}
-			err := manager.Persist(fargateTaskData)
+			err := manager.Persist(data)
 
 			if tt.expectedError != nil {
 				assertions.ErrorIs(t, err, tt.expectedError)
@@ -96,51 +110,51 @@ func TestPersist(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	runner.InitAdapter()
+	initializeAdapterForTesting(t)
 
 	testError := errors.New("simulated error")
 
 	tests := map[string]struct {
-		fileExists         bool
-		accessFileError    error
-		readFileError      error
-		unmarshallingError error
-		expectedError      error
+		fileExists      bool
+		accessFileError error
+		readFileError   error
+		decodingError   error
+		expectedError   error
 	}{
 		"Retrieve metadata with success": {
-			fileExists:         true,
-			accessFileError:    nil,
-			readFileError:      nil,
-			unmarshallingError: nil,
-			expectedError:      nil,
+			fileExists:      true,
+			accessFileError: nil,
+			readFileError:   nil,
+			decodingError:   nil,
+			expectedError:   nil,
 		},
 		"Error by file not accessible": {
-			fileExists:         true,
-			accessFileError:    testError,
-			readFileError:      nil,
-			unmarshallingError: nil,
-			expectedError:      testError,
+			fileExists:      true,
+			accessFileError: testError,
+			readFileError:   nil,
+			decodingError:   nil,
+			expectedError:   testError,
 		},
 		"Error by file not exist": {
-			fileExists:         false,
-			accessFileError:    nil,
-			readFileError:      nil,
-			unmarshallingError: nil,
-			expectedError:      ErrFileNotExists,
+			fileExists:      false,
+			accessFileError: nil,
+			readFileError:   nil,
+			decodingError:   nil,
+			expectedError:   os.ErrNotExist,
 		},
 		"Error when reading file": {
-			fileExists:         true,
-			accessFileError:    nil,
-			readFileError:      testError,
-			unmarshallingError: nil,
-			expectedError:      testError,
+			fileExists:      true,
+			accessFileError: nil,
+			readFileError:   testError,
+			decodingError:   nil,
+			expectedError:   testError,
 		},
-		"Error when unmarshalling": {
-			fileExists:         true,
-			accessFileError:    nil,
-			readFileError:      nil,
-			unmarshallingError: testError,
-			expectedError:      testError,
+		"Error when decoding JSON": {
+			fileExists:      true,
+			accessFileError: nil,
+			readFileError:   nil,
+			decodingError:   testError,
+			expectedError:   testError,
 		},
 	}
 
@@ -152,9 +166,7 @@ func TestGet(t *testing.T) {
 			mockEncoder := new(encoding.MockEncoder)
 			defer mockEncoder.AssertExpectations(t)
 
-			mockFS.On("Exists",
-				mock.AnythingOfType("string"),
-			).
+			mockFS.On("Exists", mock.AnythingOfType("string")).
 				Return(tt.fileExists, tt.accessFileError).
 				Once()
 
@@ -164,7 +176,7 @@ func TestGet(t *testing.T) {
 
 			// Encode will be called if no previous errors occurred
 			shouldCallEncode := shouldCallReadFile && tt.readFileError == nil
-			setExpectationForDecode(mockEncoder, shouldCallEncode, tt.unmarshallingError)
+			setExpectationForDecode(mockEncoder, shouldCallEncode, tt.decodingError)
 
 			manager := NewMetadataManager(createTestLogger(), "/tmp/")
 			manager.(*fsMetadataManager).fs = mockFS
@@ -189,9 +201,7 @@ func setExpectationForFSReadFile(mockFS *fs.MockFS, shouldCall bool, errorToRetu
 
 	validFileContent := []byte(`{"taskARN":"1234"}`)
 
-	mockFS.On("ReadFile",
-		mock.AnythingOfType("string"),
-	).
+	mockFS.On("ReadFile", mock.AnythingOfType("string")).
 		Return(validFileContent, errorToReturn).
 		Once()
 }
@@ -201,16 +211,13 @@ func setExpectationForDecode(mockEncoder *encoding.MockEncoder, shouldCall bool,
 		return
 	}
 
-	mockEncoder.On("Decode",
-		mock.AnythingOfType("*bytes.Buffer"),
-		mock.Anything,
-	).
+	mockEncoder.On("Decode", mock.AnythingOfType("*bytes.Buffer"), mock.Anything).
 		Return(errorToReturn).
 		Once()
 }
 
 func TestClear(t *testing.T) {
-	runner.InitAdapter()
+	initializeAdapterForTesting(t)
 
 	testError := errors.New("simulated error")
 
@@ -236,7 +243,7 @@ func TestClear(t *testing.T) {
 			fileExists:      false,
 			accessFileError: nil,
 			removeFileError: nil,
-			expectedError:   ErrFileNotExists,
+			expectedError:   os.ErrNotExist,
 		},
 		"Error removing file": {
 			fileExists:      true,
@@ -254,16 +261,12 @@ func TestClear(t *testing.T) {
 			mockEncoder := new(encoding.MockEncoder)
 			defer mockEncoder.AssertExpectations(t)
 
-			mockFS.On("Exists",
-				mock.AnythingOfType("string"),
-			).
+			mockFS.On("Exists", mock.AnythingOfType("string")).
 				Return(tt.fileExists, tt.accessFileError).
 				Once()
 
 			if tt.fileExists && tt.accessFileError == nil {
-				mockFS.On("Remove",
-					mock.AnythingOfType("string"),
-				).
+				mockFS.On("Remove", mock.AnythingOfType("string")).
 					Return(tt.removeFileError).
 					Once()
 			}

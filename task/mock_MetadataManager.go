@@ -24,14 +24,14 @@ func (_m *MockMetadataManager) Clear() error {
 }
 
 // Get provides a mock function with given fields:
-func (_m *MockMetadataManager) Get() (FargateTaskData, error) {
+func (_m *MockMetadataManager) Get() (Data, error) {
 	ret := _m.Called()
 
-	var r0 FargateTaskData
-	if rf, ok := ret.Get(0).(func() FargateTaskData); ok {
+	var r0 Data
+	if rf, ok := ret.Get(0).(func() Data); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(FargateTaskData)
+		r0 = ret.Get(0).(Data)
 	}
 
 	var r1 error
@@ -44,13 +44,13 @@ func (_m *MockMetadataManager) Get() (FargateTaskData, error) {
 	return r0, r1
 }
 
-// Persist provides a mock function with given fields: fargateTask
-func (_m *MockMetadataManager) Persist(fargateTask FargateTaskData) error {
-	ret := _m.Called(fargateTask)
+// Persist provides a mock function with given fields: data
+func (_m *MockMetadataManager) Persist(data Data) error {
+	ret := _m.Called(data)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(FargateTaskData) error); ok {
-		r0 = rf(fargateTask)
+	if rf, ok := ret.Get(0).(func(Data) error); ok {
+		r0 = rf(data)
 	} else {
 		r0 = ret.Error(0)
 	}

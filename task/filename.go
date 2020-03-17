@@ -5,24 +5,21 @@ import (
 	"fmt"
 )
 
-// RunnerData centralizes the necessary attributes for generating the filename
-type RunnerData struct {
+type runnerData struct {
 	ShortToken string
 	ProjectURL string
 	PipelineID int64
 	JobID      int64
 }
 
-// GenerateFilename returns a statically generated filename considering some environment parameters
-func GenerateFilename(runnerData RunnerData) string {
+func generateFilename(data runnerData) string {
 	longID := fmt.Sprintf(
-		"%s-%s-%d-%d",
-		runnerData.ShortToken,
-		runnerData.ProjectURL,
-		runnerData.PipelineID,
-		runnerData.JobID,
+		"%s-%d-%d",
+		data.ProjectURL,
+		data.PipelineID,
+		data.JobID,
 	)
-	hash := fmt.Sprintf("%x", sha256.Sum256([]byte(longID)))
+	hash := fmt.Sprintf("%s-%x", data.ShortToken, sha256.Sum256([]byte(longID)))
 
-	return hash[:40]
+	return hash
 }

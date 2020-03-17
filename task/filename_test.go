@@ -16,31 +16,31 @@ func TestGenerateFilename(t *testing.T) {
 	}{
 		"Valid parameters": {
 			shortToken:       "test",
-			projectURL:       "http://testing.com",
-			pipelineID:       155678,
-			jobID:            215487,
-			expectedFilename: "f5b00218f7b028e8f84cb27f893d388ad81fdc66",
+			projectURL:       "http://gitlab.example.com/my/project",
+			pipelineID:       1,
+			jobID:            1,
+			expectedFilename: "test-293ac3a36135714f5953037b893ee39de22e40d9c8622a626308e13b91fa0c3f",
 		},
 		"Zeroed parameters": {
 			shortToken:       "",
 			projectURL:       "",
 			pipelineID:       0,
 			jobID:            0,
-			expectedFilename: "12a519293788ee661cff04d149c3226a47096efd",
+			expectedFilename: "-76ce04054fc6b568295815cdadc2daf5f2b5e6847592d04a7cdd6cb6c13f06fe",
 		},
 	}
 
 	for tn, tt := range tests {
 		t.Run(tn, func(t *testing.T) {
-			runnerData := RunnerData{
+			runnerData := runnerData{
 				ShortToken: tt.shortToken,
 				ProjectURL: tt.projectURL,
 				PipelineID: tt.pipelineID,
 				JobID:      tt.jobID,
 			}
-			filename := GenerateFilename(runnerData)
+			filename := generateFilename(runnerData)
 
-			assert.Equal(t, filename, tt.expectedFilename, "wrong identifier calculated")
+			assert.Equal(t, tt.expectedFilename, filename, "wrong identifier calculated")
 		})
 	}
 }

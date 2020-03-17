@@ -3,8 +3,8 @@ package task
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/encoding"
@@ -13,23 +13,20 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/runner"
 )
 
-// ErrFileNotExists is returned when trying to operate in a file that does not exist
-var ErrFileNotExists = errors.New("file does not exist")
-
 // MetadataManager represents a repository to store temporary data related to task information
 type MetadataManager interface {
 	// Persist stores the desired data
-	Persist(fargateTask FargateTaskData) error
+	Persist(data Data) error
 
 	// Get fetches existing data from the metadata storage
-	Get() (FargateTaskData, error)
+	Get() (Data, error)
 
 	// Clear removes existing data
 	Clear() error
 }
 
-// FargateTaskData centralizes data that should be persisted in the metadata storage
-type FargateTaskData struct {
+// Data centralizes attributes that should be persisted in the metadata storage
+type Data struct {
 	TaskARN     string
 	ContainerIP string
 }
@@ -51,30 +48,33 @@ func NewMetadataManager(logger logging.Logger, filesDir string) MetadataManager 
 	manager.encoder = encoding.NewJSON()
 	manager.directory = filesDir
 
-	runnerData := RunnerData{
-		ShortToken: runner.GetAdapter().ShortToken(),
-		ProjectURL: runner.GetAdapter().ProjectURL(),
-		PipelineID: runner.GetAdapter().PipelineID(),
-		JobID:      runner.GetAdapter().JobID(),
+	runnerAdapter := runner.GetAdapter()
+	runnerData := runnerData{
+		ShortToken: runnerAdapter.ShortToken(),
+		ProjectURL: runnerAdapter.ProjectURL(),
+		PipelineID: runnerAdapter.PipelineID(),
+		JobID:      runnerAdapter.JobID(),
 	}
-	manager.filename = GenerateFilename(runnerData)
+	manager.filename = generateFilename(runnerData)
 
 	return manager
 }
 
-func (f *fsMetadataManager) Persist(fargateTask FargateTaskData) error {
-	f.logger.Debug("Will persist metadata")
+func (f *fsMetadataManager) Persist(data Data) error {
+	f.logger.Debug("[Persist] Will persist metadata")
 
 	buf := new(bytes.Buffer)
-	err := f.encoder.Encode(fargateTask, buf)
+	err := f.encoder.Encode(data, buf)
 	if err != nil {
-		return fmt.Errorf("error marshalling data: %w", err)
+		return fmt.Errorf("encoding data to JSON: %w", err)
 	}
 
-	err = f.fs.WriteFile(f.getFullFilePath(), buf.Bytes(), 0644)
+	err = f.fs.WriteFile(f.getFullFilePath(), buf.Bytes(), 0600)
 	if err != nil {
-		return fmt.Errorf("error writing file: %w", err)
+		return fmt.Errorf("writing file: %w", err)
 	}
+
+	f.logger.Debug("[Persist] Metadata was persisted")
 
 	return nil
 }
@@ -83,54 +83,58 @@ func (f *fsMetadataManager) getFullFilePath() string {
 	return filepath.Join(f.directory, fmt.Sprintf("%s.json", f.filename))
 }
 
-func (f *fsMetadataManager) Get() (FargateTaskData, error) {
-	f.logger.Debug("Will get existing metadata")
+func (f *fsMetadataManager) Get() (Data, error) {
+	f.logger.Debug("[Get] Will get existing metadata")
 
-	fargateTaskData := FargateTaskData{}
+	data := Data{}
 
 	err := f.errIfFileNotExists()
 	if err != nil {
-		return fargateTaskData, fmt.Errorf("could not access file: %w", err)
+		return data, fmt.Errorf("trying to access file: %w", err)
 	}
 
-	data, err := f.fs.ReadFile(f.getFullFilePath())
+	fileContent, err := f.fs.ReadFile(f.getFullFilePath())
 	if err != nil {
-		return fargateTaskData, fmt.Errorf("error reading file: %w", err)
+		return data, fmt.Errorf("reading file %q: %w", f.getFullFilePath(), err)
 	}
 
-	err = f.encoder.Decode(bytes.NewBuffer(data), &fargateTaskData)
+	err = f.encoder.Decode(bytes.NewBuffer(fileContent), &data)
 	if err != nil {
-		return fargateTaskData, fmt.Errorf("error unmarshalling data: %w", err)
+		return data, fmt.Errorf("decoding JSON: %w", err)
 	}
 
-	return fargateTaskData, nil
+	f.logger.Debug("[Persist] Metadata was fetched")
+
+	return data, nil
 }
 
 func (f *fsMetadataManager) errIfFileNotExists() error {
 	exists, err := f.fs.Exists(f.getFullFilePath())
 	if err != nil {
-		return fmt.Errorf("error trying to access file: %w", err)
+		return fmt.Errorf("trying to read file: %w", err)
 	}
 
 	if !exists {
-		return ErrFileNotExists
+		return os.ErrNotExist
 	}
 
 	return nil
 }
 
 func (f *fsMetadataManager) Clear() error {
-	f.logger.Debug("Will delete existing metadata")
+	f.logger.Debug("[Clear] Will delete existing metadata")
 
 	err := f.errIfFileNotExists()
 	if err != nil {
-		return fmt.Errorf("could not access file: %w", err)
+		return fmt.Errorf("trying to access file %q: %w", f.getFullFilePath(), err)
 	}
 
 	err = f.fs.Remove(f.getFullFilePath())
 	if err != nil {
-		return fmt.Errorf("error deleting file: %w", err)
+		return fmt.Errorf("deleting file %q: %w", f.getFullFilePath(), err)
 	}
+
+	f.logger.Debug("[Persist] Metadata was deleted")
 
 	return nil
 }
