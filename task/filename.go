@@ -19,7 +19,5 @@ func generateFilename(data runnerData) string {
 		data.PipelineID,
 		data.JobID,
 	)
-	hash := fmt.Sprintf("%s-%x", data.ShortToken, sha256.Sum256([]byte(longID)))
-
-	return hash
+	return fmt.Sprintf("%s-%x", data.ShortToken, sha256.Sum256([]byte(longID)))
 }

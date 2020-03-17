@@ -71,7 +71,7 @@ func (f *fsMetadataManager) Persist(data Data) error {
 
 	err = f.fs.WriteFile(f.getFullFilePath(), buf.Bytes(), 0600)
 	if err != nil {
-		return fmt.Errorf("writing file: %w", err)
+		return fmt.Errorf("writing file %q: %w", f.getFullFilePath(), err)
 	}
 
 	f.logger.Debug("[Persist] Metadata was persisted")
@@ -90,7 +90,7 @@ func (f *fsMetadataManager) Get() (Data, error) {
 
 	err := f.errIfFileNotExists()
 	if err != nil {
-		return data, fmt.Errorf("trying to access file: %w", err)
+		return data, fmt.Errorf("trying to access file %q: %w", f.getFullFilePath(), err)
 	}
 
 	fileContent, err := f.fs.ReadFile(f.getFullFilePath())
@@ -103,7 +103,7 @@ func (f *fsMetadataManager) Get() (Data, error) {
 		return data, fmt.Errorf("decoding JSON: %w", err)
 	}
 
-	f.logger.Debug("[Persist] Metadata was fetched")
+	f.logger.Debug("[Get] Metadata was fetched")
 
 	return data, nil
 }
@@ -111,7 +111,7 @@ func (f *fsMetadataManager) Get() (Data, error) {
 func (f *fsMetadataManager) errIfFileNotExists() error {
 	exists, err := f.fs.Exists(f.getFullFilePath())
 	if err != nil {
-		return fmt.Errorf("trying to read file: %w", err)
+		return err
 	}
 
 	if !exists {
@@ -134,7 +134,7 @@ func (f *fsMetadataManager) Clear() error {
 		return fmt.Errorf("deleting file %q: %w", f.getFullFilePath(), err)
 	}
 
-	f.logger.Debug("[Persist] Metadata was deleted")
+	f.logger.Debug("[Clear] Metadata was deleted")
 
 	return nil
 }
