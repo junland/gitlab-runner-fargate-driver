@@ -220,7 +220,6 @@ func TestExecute(t *testing.T) {
 			err := executor.Execute(connection, []byte(testScript))
 
 			if tt.expectedError != nil {
-				assert.Error(t, err, "Should have returned error")
 				assertions.ErrorIs(t, err, tt.expectedError)
 				return
 			}

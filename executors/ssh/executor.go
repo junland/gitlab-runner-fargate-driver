@@ -94,7 +94,7 @@ func (s *executor) connect(connection executors.ConnectionSettings) error {
 	addr := fmt.Sprintf("%s:%d", connection.Hostname, connection.Port)
 	cli, err := s.connectClient("tcp", addr, config)
 	if err != nil {
-		return fmt.Errorf("connecting to server: %w", err)
+		return fmt.Errorf("connecting to server %q as user %q: %w", addr, connection.Username, err)
 	}
 
 	s.client = cli
