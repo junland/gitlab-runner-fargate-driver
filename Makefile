@@ -9,7 +9,9 @@ export BUILD_PLATFORMS ?= -osarch 'linux/amd64 linux/386'
 export goJunitReport ?= $(GOPATH)/bin/go-junit-report
 mockery ?= $(GOPATH)/bin/mockery
 gox ?= $(GOPATH)/bin/gox
-releaseIndexGen ?= $(GOPATH)/bin/release-index-gen
+
+RELEASE_INDEX_GEN_VERSION ?= master
+releaseIndexGen ?= .tmp/release-index-gen-$(RELEASE_INDEX_GEN_VERSION)
 
 PKG := $(shell go list .)
 PKGs := $(shell go list ./... | grep -vE "^/vendor/")
@@ -120,20 +122,19 @@ else
 	# No CI_REGISTRY value, skipping image push
 endif
 
+latest_stable_tag := $(shell git -c versionsort.prereleaseSuffix="-rc" tag -l "v*.*.*" --sort=-v:refname | awk '!/rc/' | head -n 1)
+
 .PHONY: release_s3
 release_s3: CI_COMMIT_REF_NAME ?= $(BRANCH)
 release_s3: CI_COMMIT_SHA ?= $(REVISION)
 release_s3: S3_BUCKET ?=
-release_s3: latest_stable_tag := $(shell git -c versionsort.prereleaseSuffix="-rc" tag -l "v*.*.*" --sort=-v:refname | awk '!/rc/' | head -n 1)
 release_s3:
-	# Preparing index page
-	@$(MAKE) index_file REF=$(CI_COMMIT_REF_NAME) REV=$(CI_COMMIT_SHA)
+	@$(MAKE) index_file
 ifneq ($(S3_BUCKET),)
-	# Syncing with "s3://$(S3_BUCKET)/$(CI_COMMIT_REF_NAME)"
 	@$(MAKE) sync_s3_release S3_URL="s3://$(S3_BUCKET)/$(CI_COMMIT_REF_NAME)"
-	@if [ $$(git describe --exact-match --match $(latest_stable_tag) >/dev/null 2>&1) ]; then \
-		@$(MAKE) sync_s3_release S3_URL="s3://$(S3_BUCKET)/latest"; \
-    fi
+ifeq ($(shell git describe --exact-match --match $(latest_stable_tag) >/dev/null 2>&1; echo $$?), 0)
+	@$(MAKE) sync_s3_release S3_URL="s3://$(S3_BUCKET)/latest";
+endif
 	@$(MAKE) release_gitlab
 endif
 
@@ -193,6 +194,10 @@ $(gox):
 	# Installing gox
 	@go install github.com/mitchellh/gox
 
+$(releaseIndexGen): OS_TYPE ?= $(shell uname -s | tr '[:upper:]' '[:lower:]')
+$(releaseIndexGen): DOWNLOAD_URL = "https://storage.googleapis.com/gitlab-runner-tools/release-index-generator/$(RELEASE_INDEX_GEN_VERSION)/release-index-gen-$(OS_TYPE)-amd64"
 $(releaseIndexGen):
-	# Installing release-index-gen
-	@go get gitlab.com/gitlab-org/ci-cd/runner-tools/release-index-generator/cmd/release-index-gen
+	# Installing $(DOWNLOAD_URL) as $(releaseIndexGen)
+	@mkdir -p $(shell dirname $(releaseIndexGen))
+	@curl -sL "$(DOWNLOAD_URL)" -o "$(releaseIndexGen)"
+	@chmod +x "$(releaseIndexGen)"
