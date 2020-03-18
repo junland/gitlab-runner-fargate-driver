@@ -3,12 +3,10 @@ package custom
 import (
 	"context"
 	"errors"
-	"flag"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	urfaveCli "github.com/urfave/cli"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/aws"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/config"
@@ -16,9 +14,18 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/cli"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging/test"
-	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/runner"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/task"
 )
+
+type prepareCommandTestCase struct {
+	fargateInitError        error
+	fargateRunTaskError     error
+	fargateWaitTaskError    error
+	fargateContainerIPError error
+	fargateStopTaskError    error
+	persistDataError        error
+	expectedError           error
+}
 
 func TestNewPrepareCommand(t *testing.T) {
 	cmd := NewPrepareCommand()
@@ -31,79 +38,37 @@ func TestCustomExecutePrepare(t *testing.T) {
 	testError := errors.New("simulated error")
 	testErrorStopTask := errors.New("simulated error 2")
 
-	runner.InitAdapter()
-
-	tests := map[string]struct {
-		fargateInitError        error
-		fargateRunTaskError     error
-		fargateWaitTaskError    error
-		fargateContainerIPError error
-		fargateStopTaskError    error
-		persistDataError        error
-		expectedError           error
-	}{
-		"Execute prepare with success": {
-			fargateInitError:        nil,
-			fargateRunTaskError:     nil,
-			fargateWaitTaskError:    nil,
-			fargateContainerIPError: nil,
-			fargateStopTaskError:    nil,
-			persistDataError:        nil,
-			expectedError:           nil,
-		},
+	tests := map[string]prepareCommandTestCase{
+		"Execute prepare with success": {},
 		"Error during Fargate Init": {
-			fargateInitError:        testError,
-			fargateRunTaskError:     nil,
-			fargateWaitTaskError:    nil,
-			fargateContainerIPError: nil,
-			fargateStopTaskError:    nil,
-			persistDataError:        nil,
-			expectedError:           testError,
+			fargateInitError: testError,
+			expectedError:    testError,
 		},
 		"Error during Fargate Run Task": {
-			fargateInitError:        nil,
-			fargateRunTaskError:     testError,
-			fargateWaitTaskError:    nil,
-			fargateContainerIPError: nil,
-			fargateStopTaskError:    nil,
-			persistDataError:        nil,
-			expectedError:           testError,
+			fargateRunTaskError: testError,
+			expectedError:       testError,
 		},
 		"Error during Fargate Wait Task": {
-			fargateInitError:        nil,
-			fargateRunTaskError:     nil,
-			fargateWaitTaskError:    testError,
-			fargateContainerIPError: nil,
-			fargateStopTaskError:    nil,
-			persistDataError:        nil,
-			expectedError:           testError,
+			fargateWaitTaskError: testError,
+			expectedError:        testError,
 		},
 		"Error during Fargate Wait Task and Stop Task": {
-			fargateInitError:        nil,
-			fargateRunTaskError:     nil,
-			fargateWaitTaskError:    testError,
-			fargateContainerIPError: nil,
-			fargateStopTaskError:    testErrorStopTask,
-			persistDataError:        nil,
-			expectedError:           testError,
+			fargateWaitTaskError: testError,
+			fargateStopTaskError: testErrorStopTask,
+			expectedError:        testError,
 		},
 		"Error during Fargate Get Container IP": {
-			fargateInitError:        nil,
-			fargateRunTaskError:     nil,
-			fargateWaitTaskError:    nil,
 			fargateContainerIPError: testError,
-			fargateStopTaskError:    nil,
-			persistDataError:        nil,
 			expectedError:           testError,
 		},
 		"Error during persisting data": {
-			fargateInitError:        nil,
-			fargateRunTaskError:     nil,
-			fargateWaitTaskError:    nil,
-			fargateContainerIPError: nil,
-			fargateStopTaskError:    nil,
-			persistDataError:        testError,
-			expectedError:           testError,
+			persistDataError: testError,
+			expectedError:    testError,
+		},
+		"Error during persisting data and stop task": {
+			persistDataError:     testError,
+			fargateStopTaskError: testErrorStopTask,
+			expectedError:        testError,
 		},
 	}
 
@@ -115,25 +80,10 @@ func TestCustomExecutePrepare(t *testing.T) {
 			mockMetadataManager := new(task.MockMetadataManager)
 			defer mockMetadataManager.AssertExpectations(t)
 
-			setExpectationsForFargate(
-				mockAwsFargate,
-				tt.fargateInitError,
-				tt.fargateRunTaskError,
-				tt.fargateWaitTaskError,
-				tt.fargateContainerIPError,
-				tt.persistDataError,
-			)
+			setExpectationsForFargate(mockAwsFargate, tt)
+			setExpectationsForMetadataManager(mockMetadataManager, tt)
 
-			setExpectationsForMetadataManager(
-				mockMetadataManager,
-				tt.fargateInitError,
-				tt.fargateRunTaskError,
-				tt.fargateWaitTaskError,
-				tt.fargateContainerIPError,
-				tt.persistDataError,
-			)
-
-			prepare := &PrepareCommand{}
+			prepare := new(PrepareCommand)
 
 			prepare.newFargate = func(logger logging.Logger, awsRegion string) aws.Fargate {
 				return mockAwsFargate
@@ -156,37 +106,28 @@ func TestCustomExecutePrepare(t *testing.T) {
 	}
 }
 
-func setExpectationsForFargate(mock *aws.MockFargate, initError error, runTaskError error,
-	waitTaskError error, getIPError error, persistDataError error) {
-	setExpectationForFargateInit(mock, true, initError)
+func setExpectationsForFargate(mock *aws.MockFargate, testParams prepareCommandTestCase) {
+	mock.On("Init").
+		Return(testParams.fargateInitError).
+		Once()
 
 	// Run task API will be called only if the Fargate was properly initialized
-	shouldCallRunTask := initError == nil
-	setExpectationForFargateRunTask(mock, shouldCallRunTask, runTaskError)
+	shouldCallRunTask := testParams.fargateInitError == nil
+	setExpectationForFargateRunTask(mock, shouldCallRunTask, testParams.fargateRunTaskError)
 
 	// Wait Task API will be called if previous calls succeeded
-	shouldCallWaitTask := shouldCallRunTask && runTaskError == nil
-	setExpectationForFargateWaitTask(mock, shouldCallWaitTask, waitTaskError)
+	shouldCallWaitTask := shouldCallRunTask && testParams.fargateRunTaskError == nil
+	setExpectationForFargateWaitTask(mock, shouldCallWaitTask, testParams.fargateWaitTaskError)
 
 	// Get Container API will be called if previous calls succeeded
-	shouldCallGetIP := shouldCallWaitTask && waitTaskError == nil
-	setExpectationForFargateGetIP(mock, shouldCallGetIP, getIPError)
+	shouldCallGetIP := shouldCallWaitTask && testParams.fargateWaitTaskError == nil
+	setExpectationForFargateGetIP(mock, shouldCallGetIP, testParams.fargateContainerIPError)
 
 	// Wait Task API will be called if any error occurred after the task was started
-	shouldCallStopTask := runTaskError != nil ||
-		waitTaskError != nil || getIPError != nil ||
-		persistDataError != nil
-	setExpectationForFargateStopTask(mock, shouldCallStopTask, nil)
-}
-
-func setExpectationForFargateInit(mockAwsFargate *aws.MockFargate, shouldCall bool, errorToReturn error) {
-	if !shouldCall {
-		return
-	}
-
-	mockAwsFargate.On("Init").
-		Return(errorToReturn).
-		Once()
+	shouldCallStopTask := testParams.fargateRunTaskError != nil ||
+		testParams.fargateWaitTaskError != nil || testParams.fargateContainerIPError != nil ||
+		testParams.persistDataError != nil
+	setExpectationForFargateStopTask(mock, shouldCallStopTask, testParams.fargateStopTaskError)
 }
 
 func setExpectationForFargateRunTask(mockAwsFargate *aws.MockFargate, shouldCall bool, errorToReturn error) {
@@ -246,37 +187,30 @@ func setExpectationForFargateStopTask(mockAwsFargate *aws.MockFargate, shouldCal
 		Once()
 }
 
-func setExpectationsForMetadataManager(mock *task.MockMetadataManager, initError error, runTaskError error,
-	waitTaskError error, getIPError error, persistDataError error) {
+func setExpectationsForMetadataManager(mockManager *task.MockMetadataManager, testParams prepareCommandTestCase) {
 	// Data will be persisted if the task is properly in running state and its IP was fetched
-	shouldPersistData := initError == nil && runTaskError == nil &&
-		waitTaskError == nil && getIPError == nil
-	setExpectationForPersistData(mock, shouldPersistData, persistDataError)
-}
-
-func setExpectationForPersistData(mockMetadataManager *task.MockMetadataManager, shouldCall bool, errorToReturn error) {
-	if !shouldCall {
+	shouldPersistData := testParams.fargateInitError == nil &&
+		testParams.fargateRunTaskError == nil &&
+		testParams.fargateWaitTaskError == nil &&
+		testParams.fargateContainerIPError == nil
+	if !shouldPersistData {
 		return
 	}
 
-	mockMetadataManager.On("Persist",
+	mockManager.On("Persist",
 		mock.AnythingOfType("task.Data"),
 	).
-		Return(errorToReturn).
+		Return(testParams.persistDataError).
 		Once()
 }
 
 func createContextForTests() *cli.Context {
-	ctx := &cli.Context{}
+	ctx := new(cli.Context)
 	ctx.SetConfig(config.Global{
 		FargateConfig: config.FargateConfig{},
+		TaskMetadata:  config.TaskMetadata{},
 	})
 	ctx.SetLogger(createTestLogger())
-	flagSet := flag.NewFlagSet("myflags", flag.ExitOnError)
-	flagSet.String("p", "test", "my p variable")
-	flagSet.String("k", "test", "my k variable")
-	flagSet.Parse([]string{"p", "k"})
-	ctx.Cli = urfaveCli.NewContext(nil, flagSet, nil)
 	ctx.Ctx = context.Background()
 	return ctx
 }

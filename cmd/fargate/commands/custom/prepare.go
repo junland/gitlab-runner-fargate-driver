@@ -10,6 +10,11 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/task"
 )
 
+type newFargateTaskDetails struct {
+	taskARN   string
+	ipAddress string
+}
+
 // NewPrepareCommand constructs the command line abstraction for the "prepare" stage
 func NewPrepareCommand() cli.Command {
 	cmd := new(PrepareCommand)
@@ -30,6 +35,9 @@ func NewPrepareCommand() cli.Command {
 			Usage:   "Prepare the environment for Custom Executor",
 			Description: `
 This is the implementation of Prepare stage of the Custom Executor.
+
+This command is starting a new AWS Fargate Task that exposes a
+container, which will be next used to execute the scripts.
 
 Details about how this command is used can be found at
 https://docs.gitlab.com/runner/executors/custom.html#prepare.`,
@@ -56,32 +64,33 @@ type PrepareCommand struct {
 func (c *PrepareCommand) CustomExecute(ctx *cli.Context) error {
 	err := c.init(ctx)
 	if err != nil {
-		return fmt.Errorf("couldn't initialize PrepareCommand: %w", err)
+		return fmt.Errorf("initializing PrepareCommand: %w", err)
 	}
 
 	c.logger.Info("Executing the command")
 
-	taskARN, containerIP, err := c.prepareNewFargateTask(ctx)
+	taskDetails, err := c.prepareNewFargateTask(ctx)
 	if err != nil {
-		if taskARN != "" {
-			c.logger.Error(
-				"Error during task initialization. Will kill the task for cleanup",
-			)
-			c.awsFargate.StopTask(ctx.Ctx, taskARN, c.cfg.FargateConfig.Cluster)
+		if taskDetails.taskARN != "" {
+			c.logger.
+				WithField("taskARN", taskDetails.taskARN).
+				WithError(err).
+				Error("Error during task initialization. Will kill the task for cleanup")
+			c.stopTask(ctx, taskDetails.taskARN, c.cfg.FargateConfig.Cluster)
 		}
 
-		return fmt.Errorf("error preparing new Fargate task: %w", err)
+		return fmt.Errorf("preparing new Fargate task: %w", err)
 	}
 
-	err = c.persistDataForLaterStages(taskARN, containerIP)
+	err = c.persistDataForLaterStages(taskDetails.taskARN, taskDetails.ipAddress)
 	if err != nil {
-		c.logger.Error(
-			`Error persiting task data necessary for next stages.
-			Will kill the task for cleanup`,
-		)
-		c.awsFargate.StopTask(ctx.Ctx, taskARN, c.cfg.FargateConfig.Cluster)
+		c.logger.
+			WithField("taskARN", taskDetails.taskARN).
+			WithError(err).
+			Error("Error persiting task data necessary for next stages. Will kill the task for cleanup")
+		c.stopTask(ctx, taskDetails.taskARN, c.cfg.FargateConfig.Cluster)
 
-		return fmt.Errorf("error persisting task ARN for later stages: %w", err)
+		return fmt.Errorf("persisting task ARN for later stages: %w", err)
 	}
 
 	return nil
@@ -96,17 +105,18 @@ func (c *PrepareCommand) init(ctx *cli.Context) error {
 	c.awsFargate = c.newFargate(c.logger, c.cfg.FargateConfig.Region)
 	err := c.awsFargate.Init()
 	if err != nil {
-		return fmt.Errorf("error initializing Fargate adapter: %w", err)
+		return fmt.Errorf("initializing Fargate adapter: %w", err)
 	}
 
-	c.metadataManager = c.newMetadataManager(c.logger, c.cfg.TemporaryFilesDir)
+	c.metadataManager = c.newMetadataManager(c.logger, c.cfg.TaskMetadata.Directory)
 
 	return nil
 }
 
-func (c *PrepareCommand) prepareNewFargateTask(ctx *cli.Context) (string, string, error) {
+func (c *PrepareCommand) prepareNewFargateTask(ctx *cli.Context) (newFargateTaskDetails, error) {
 	c.logger.Info("Preparing Fargate task")
 
+	taskDetails := newFargateTaskDetails{}
 	taskDefinition := c.cfg.FargateConfig.TaskDefinition
 	connection := aws.ConnectionSettings{
 		Cluster:        c.cfg.FargateConfig.Cluster,
@@ -115,37 +125,61 @@ func (c *PrepareCommand) prepareNewFargateTask(ctx *cli.Context) (string, string
 		EnablePublicIP: c.cfg.FargateConfig.EnablePublicIP,
 	}
 
+	var err error
+
 	// Start the Fargate task
-	taskARN, err := c.awsFargate.RunTask(ctx.Ctx, taskDefinition, connection)
+	taskDetails.taskARN, err = c.awsFargate.RunTask(ctx.Ctx, taskDefinition, connection)
 	if err != nil {
-		return taskARN, "", fmt.Errorf("error starting Fargate task: %w", err)
+		return taskDetails, fmt.Errorf("starting Fargate task: %w", err)
 	}
 
 	// Wait the task to be in "running" state
-	err = c.awsFargate.WaitUntilTaskRunning(ctx.Ctx, taskARN, connection.Cluster)
+	err = c.awsFargate.WaitUntilTaskRunning(ctx.Ctx, taskDetails.taskARN, connection.Cluster)
 	if err != nil {
-		return taskARN, "", fmt.Errorf("error waiting Fargate be in running state: %w", err)
+		return taskDetails, fmt.Errorf("waiting Fargate be in running state: %w", err)
 	}
 
 	// Get the container IP
-	ip, err := c.awsFargate.GetContainerIP(ctx.Ctx, taskARN, connection.Cluster, connection.EnablePublicIP)
+	taskDetails.ipAddress, err = c.awsFargate.GetContainerIP(
+		ctx.Ctx,
+		taskDetails.taskARN,
+		connection.Cluster,
+		connection.EnablePublicIP,
+	)
 	if err != nil {
-		return taskARN, ip, fmt.Errorf("error fetching the container IP: %w", err)
+		return taskDetails, fmt.Errorf("fetching the container IP: %w", err)
 	}
 
-	return taskARN, ip, nil
+	return taskDetails, nil
+}
+
+func (c *PrepareCommand) stopTask(ctx *cli.Context, taskARN string, cluster string) {
+	c.logger.
+		WithField("taskARN", taskARN).
+		Info("Stopping Fargate task")
+
+	err := c.awsFargate.StopTask(ctx.Ctx, taskARN, cluster)
+	if err != nil {
+		c.logger.
+			WithField("taskARN", taskARN).
+			WithError(err).
+			Error("Error during stop task")
+	}
 }
 
 func (c *PrepareCommand) persistDataForLaterStages(taskARN string, containerIP string) error {
-	c.logger.Info("Persisting data that will be used by other commands")
+	c.logger.
+		WithField("taskARN", taskARN).
+		Info("Persisting data that will be used by other commands")
 
 	data := task.Data{
 		TaskARN:     taskARN,
 		ContainerIP: containerIP,
 	}
+
 	err := c.metadataManager.Persist(data)
 	if err != nil {
-		return fmt.Errorf("error persisting data for next stages: %w", err)
+		return fmt.Errorf("persisting data for next stages: %w", err)
 	}
 
 	return nil

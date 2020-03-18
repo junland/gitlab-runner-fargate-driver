@@ -12,8 +12,8 @@ type Global struct {
 	LogFile   string
 	LogFormat string
 
-	TemporaryFilesDir string
-	FargateConfig     FargateConfig
+	FargateConfig FargateConfig
+	TaskMetadata  TaskMetadata
 }
 
 type FargateConfig struct {
@@ -23,6 +23,10 @@ type FargateConfig struct {
 	SecurityGroup  string
 	TaskDefinition string
 	EnablePublicIP bool
+}
+
+type TaskMetadata struct {
+	Directory string
 }
 
 func LoadFromFile(file string) (Global, error) {

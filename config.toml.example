@@ -2,8 +2,6 @@ LogLevel = "info"
 LogFile = "fargate.log"
 LogFormat = "text"
 
-TemporaryFilesDir = "/tmp/"
-
 [FargateConfig]
     Cluster = "cluster-name"
     Region = "us-east-1"
@@ -11,3 +9,6 @@ TemporaryFilesDir = "/tmp/"
     SecurityGroup = "sg-XYZ"
     TaskDefinition = "my-task-definition:1"
     EnablePublicIP = true
+
+[TaskMetadata]
+    Directory = "/fargate-driver/"
