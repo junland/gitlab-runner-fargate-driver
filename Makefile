@@ -122,19 +122,19 @@ else
 	# No CI_REGISTRY value, skipping image push
 endif
 
+latest_stable_tag := $(shell git -c versionsort.prereleaseSuffix="-rc" tag -l "v*.*.*" --sort=-v:refname | awk '!/rc/' | head -n 1)
+
 .PHONY: release_s3
 release_s3: CI_COMMIT_REF_NAME ?= $(BRANCH)
 release_s3: CI_COMMIT_SHA ?= $(REVISION)
 release_s3: S3_BUCKET ?=
-release_s3: latest_stable_tag := $(shell git -c versionsort.prereleaseSuffix="-rc" tag -l "v*.*.*" --sort=-v:refname | awk '!/rc/' | head -n 1)
 release_s3:
 	@$(MAKE) index_file
 ifneq ($(S3_BUCKET),)
-	# Syncing with "s3://$(S3_BUCKET)/$(CI_COMMIT_REF_NAME)"
 	@$(MAKE) sync_s3_release S3_URL="s3://$(S3_BUCKET)/$(CI_COMMIT_REF_NAME)"
-	@if [ $$(git describe --exact-match --match $(latest_stable_tag) >/dev/null 2>&1) ]; then \
-		@$(MAKE) sync_s3_release S3_URL="s3://$(S3_BUCKET)/latest"; \
-    fi
+ifeq ($(shell git describe --exact-match --match $(latest_stable_tag) >/dev/null 2>&1; echo $$?), 0)
+	@$(MAKE) sync_s3_release S3_URL="s3://$(S3_BUCKET)/latest";
+endif
 	@$(MAKE) release_gitlab
 endif
 
