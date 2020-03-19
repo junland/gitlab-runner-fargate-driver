@@ -12,3 +12,7 @@ LogFormat = "text"
 
 [TaskMetadata]
     Directory = "/fargate-driver/"
+
+[SSHConfig]
+    Username = "root"
+    PrivateKeyPath = "/home/myuser/.ssh/myprivatekey"

@@ -14,6 +14,7 @@ type Global struct {
 
 	FargateConfig FargateConfig
 	TaskMetadata  TaskMetadata
+	SSHConfig     SSHConfig
 }
 
 type FargateConfig struct {
@@ -27,6 +28,11 @@ type FargateConfig struct {
 
 type TaskMetadata struct {
 	Directory string
+}
+
+type SSHConfig struct {
+	Username       string
+	PrivateKeyPath string
 }
 
 func LoadFromFile(file string) (Global, error) {
