@@ -189,15 +189,15 @@ check_modules:
 
 $(mockery):
 	# Installing mockery
-	@go install github.com/vektra/mockery/cmd/mockery
+	@go get github.com/vektra/mockery/cmd/mockery
 
 $(goJunitReport):
 	# Installing go-junit-report
-	@go install github.com/jstemmer/go-junit-report
+	@go get github.com/jstemmer/go-junit-report
 
 $(gox):
 	# Installing gox
-	@go install github.com/mitchellh/gox
+	@go get github.com/mitchellh/gox
 
 $(releaseIndexGen):
 	# Installing release-index-gen
