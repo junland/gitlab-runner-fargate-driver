@@ -1,13 +1,13 @@
 # AWS Fargate driver for Custom Executor
 
 **Caution:**
-The `fargate` driver is still in **BETA** and stability or backward
+The `AWS Fargate` driver is still in **BETA** and stability or backward
 compatibility is not guaranteed.
 
-The `fargate` is a [custom
+The `AWS Fargate` is a [custom
 executor](https://docs.gitlab.com/runner/executors/custom.html) driver, which
 is able to provision ECS containers on AWS to run a job and then delete them.
-`fargate` will not install any [prerequisite
+`AWS Fargate` driver will not install any [prerequisite
 software](https://docs.gitlab.com/runner/executors/custom.html#prerequisite-software-for-running-a-job)
 required for the custom executor.
 
@@ -24,15 +24,18 @@ Runner](https://docs.gitlab.com/runner/install/) 12.4 or higher, then:
 
    ```sh
    # Linux amd64
-   sudo curl -L --output /etc/gitlab-runner/fargate/fargate https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com/master/fargate-linux-amd64
+   sudo curl -L --output /etc/gitlab-runner/fargate/fargate https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com/latest/fargate-linux-amd64
 
    # Windows with Powershell
    $ProgressPreference = 'SilentlyContinue'
-   Invoke-WebRequest https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com/master/fargate-windows-amd64.exe -OutFile C:\GitLab-Runner\fargate\fargate.exe -UseBasicParsing
+   Invoke-WebRequest https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com/latest/fargate-windows-amd64.exe -OutFile C:\GitLab-Runner\fargate\fargate.exe -UseBasicParsing
    ```
 
    The full list of available binaries can be found in
    <https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com/master/index.html>
+
+   To install a specific version, replace `latest` in the above urls by a stable
+   or RC release listed on the [Releases](https://gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/-/releases) page. 
 
 1. On Linux/Unix give execute permissions to the driver:
 
@@ -42,7 +45,7 @@ Runner](https://docs.gitlab.com/runner/install/) 12.4 or higher, then:
 
 ## Commands
 
-The `fargate` binary contains a set of commands that the GitLab Runner custom
+The `AWS Fargate` binary contains a set of commands that the GitLab Runner custom
 executor will call for each
 [stage](https://docs.gitlab.com/runner/executors/custom.html#stages).
 
@@ -60,8 +63,7 @@ fargate <command> --help
 
 ### Commands overview
 
-Below is a detailed description of what each command means and how to
-use it.
+Below is a detailed description of what each command means and how to use it.
 
 #### `fargate custom`
 
@@ -107,7 +109,9 @@ $ BUILD_FAILURE_EXIT_CODE=1 SYSTEM_FAILURE_EXIT_CODE=2 ./fargate custom config
 
 This command should be configured with `[runners.custom].config_exec`
 and `[runners.custom].config_args` as part of the [configuration for the custom
-executor](https://docs.gitlab.com/runner/executors/custom.html#configuration)
+executor](https://docs.gitlab.com/runner/executors/custom.html#configuration).
+Please refer to the [example
+configuration](#configure-gitlab-runner) for details.
 
 ##### `fargate custom prepare`
 
@@ -118,7 +122,9 @@ file is created with the task's information demanded by the other steps.
 
 This command should be configured with `[runners.custom].prepare_exec`
 and `[runners.custom].prepare_args` as part of the [configuration for the custom
-executor](https://docs.gitlab.com/runner/executors/custom.html#configuration)
+executor](https://docs.gitlab.com/runner/executors/custom.html#configuration).
+Please refer to the [example
+configuration](#configure-gitlab-runner) for details.
 
 ##### `fargate custom run`
 
@@ -131,6 +137,8 @@ run stage.
 This command should be configured with `[runners.custom].run_exec` and
 `[runners.custom].run_args` as part of the [configuration for the custom
 executor](https://docs.gitlab.com/runner/executors/custom.html#configuration).
+Please refer to the [example
+configuration](#configure-gitlab-runner) for details.
 
 ##### `fargate custom cleanup`
 
@@ -142,6 +150,8 @@ remove the temporary configuration file.
 This command should be configured with `[runners.custom].cleanup_exec`
 and `[runners.custom].cleanup_args` as part of the [configuration for the custom
 executor](https://docs.gitlab.com/runner/executors/custom.html#configuration).
+Please refer to the [example
+configuration](#configure-gitlab-runner) for details.
 
 ## Configuration
 
@@ -196,7 +206,7 @@ TemporaryFilesDir = "/etc/gitlab-runner/tmp/"
 
 ## Example
 
-Below will show an example of how to use the `fargate` driver and configure
+Below will show an example of how to use the `AWS Fargate` driver and configure
 [GitLab Runner](https://docs.gitlab.com/runner/) to use it with the
 [custom executor](https://docs.gitlab.com/runner/executors/custom.html).
 
@@ -256,9 +266,9 @@ check_interval = 0
     cleanup_args = ["--config", "/etc/gitlab-runner/fargate/config.toml", "custom", "cleanup"]
 ```
 
-### Configure fargate
+### Configure AWS Fargate driver
 
-Below is the configuration for the `fargate`:
+Below is the driver configuration:
 
 ```toml
 LogLevel = "info"
