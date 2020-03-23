@@ -8,6 +8,7 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/cli"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/runner"
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/task"
 )
 
 // errWriteConfig will be used to wrap an internal error
@@ -67,7 +68,7 @@ func (c *ConfigCommand) CustomExecute(ctx *cli.Context) error {
 
 	c.logger.Info("Executing the command")
 
-	hostname := "" // We don't have this information in Fargate driver
+	hostname := c.createUniqueIdentifierForHostname()
 
 	err := runner.GetAdapter().WriteCustomExecutorConfig(os.Stdout, hostname)
 	if err != nil {
@@ -82,4 +83,15 @@ func (c *ConfigCommand) init(ctx *cli.Context) {
 	c.logger = ctx.
 		Logger().
 		WithField("command", "config_exec")
+}
+
+func (c *ConfigCommand) createUniqueIdentifierForHostname() string {
+	runnerAdapter := runner.GetAdapter()
+	runnerData := task.RunnerData{
+		ShortToken: runnerAdapter.ShortToken(),
+		ProjectURL: runnerAdapter.ProjectURL(),
+		PipelineID: runnerAdapter.PipelineID(),
+		JobID:      runnerAdapter.JobID(),
+	}
+	return task.GenerateFilename(runnerData)
 }

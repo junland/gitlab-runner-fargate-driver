@@ -32,13 +32,13 @@ func TestGenerateFilename(t *testing.T) {
 
 	for tn, tt := range tests {
 		t.Run(tn, func(t *testing.T) {
-			runnerData := runnerData{
+			runnerData := RunnerData{
 				ShortToken: tt.shortToken,
 				ProjectURL: tt.projectURL,
 				PipelineID: tt.pipelineID,
 				JobID:      tt.jobID,
 			}
-			filename := generateFilename(runnerData)
+			filename := GenerateFilename(runnerData)
 
 			assert.Equal(t, tt.expectedFilename, filename, "wrong identifier calculated")
 		})
