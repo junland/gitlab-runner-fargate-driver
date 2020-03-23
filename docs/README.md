@@ -104,7 +104,7 @@ For example, running it locally in bash will output the following:
 
 ```sh
 $ BUILD_FAILURE_EXIT_CODE=1 SYSTEM_FAILURE_EXIT_CODE=2 ./fargate custom config
-{"driver":{"name":"fargate","version":"dev (HEAD)"},"hostname":"af887dd954fe0a4b876b233db448953b3d9955a6"}
+{"driver":{"name":"fargate","version":"dev (HEAD)"},"hostname":""}
 ```
 
 This command should be configured with `[runners.custom].config_exec`
@@ -162,14 +162,11 @@ configuration](#configure-gitlab-runner) for details.
 | `LogLevel` | The logging level. Available levels are: `debug`, `info`, `warn`, `error`, `fatal`, or `panic`. Note that this setting is overridden if a different level is set by the `--debug` or `--log-level` command line arguments. |
 | `LogFormat` | The format of the logs. The supported formats are: `text` or `json`. Note that this setting is overridden if a different level is set by the `--log-format` command line argument. |
 | `LogFile` | The path to the file to direct logs to. If empty the logs will be redirected to STDOUT. |
-|`TemporaryFilesDir` | The path where temporary files used to manage the CI/CD workflow should be created. |
 
 ```toml
 LogLevel = "debug"
 LogFile = "fargate.log"
 LogFormat = "text"
-
-TemporaryFilesDir = "/etc/gitlab-runner/tmp/"
 ```
 
 ### The `[FargateConfig]` section
@@ -193,15 +190,28 @@ TemporaryFilesDir = "/etc/gitlab-runner/tmp/"
   EnablePublicIP = true
 ```
 
+### The `[TaskMetadata]` section
+
+| Settings | Type | Required | Description |
+|----------|------|----------|-------------|
+| `Directory` | string | ✓ | The directory where the application will store metadata related to those Fargate Tasks started by the driver. Metadata are created during the "prepare" stage and removed during the "cleanup" stage |
+
+```toml
+[TaskMetadata]
+  Directory = "/etc/gitlab-runner/metadata"
+```
+
 ### The `[SSHConfig]` section
 
 | Settings | Type | Required | Description |
 |----------|------|----------|-------------|
-| `PrivateKeyFile` | string | ✓ | The private key to be used to connect to the task container via SSH. |
+| `Username` | string | ✓ | The username to be used to connect to the task container via SSH. |
+| `PrivateKeyPath` | string | ✓ | The private key to be used to connect to the task container via SSH. |
 
 ```toml
 [SSHConfig]
-  PrivateKeyFile = "~/.ssh/id_rsa"
+  Username = "root"
+  PrivateKeyPath = "/home/user/.ssh/id_rsa"
 ```
 
 ## Example
@@ -274,8 +284,6 @@ Below is the driver configuration:
 LogLevel = "info"
 LogFormat = "text"
 
-TemporaryFilesDir = "/etc/gitlab-runner/tmp/"
-
 [FargateConfig]
   Cluster = "fargate"
   Region = "us-east-1"
@@ -284,6 +292,10 @@ TemporaryFilesDir = "/etc/gitlab-runner/tmp/"
   TaskDefinition = "fargateExecutor:1"
   EnablePublicIP = false
 
+[TaskMetadata]
+  Directory = "/etc/gitlab-runner/metadata"
+
 [SSHConfig]
-  PrivateKeyFile = "~/.ssh/id_rsa"
+  Username = "root"
+  PrivateKeyPath = "/home/user/.ssh/id_rsa"
 ```
