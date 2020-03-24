@@ -1,7 +1,5 @@
 .release:
   stage: release
-  tags:
-  - release
 
 .release_development:
   only:
