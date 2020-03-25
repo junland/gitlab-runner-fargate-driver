@@ -1,41 +1,35 @@
 # AWS Fargate driver for Custom Executor
 
 **Caution:**
-The `AWS Fargate` driver is still in **BETA** and stability or backward
+The AWS Fargate driver is still in **BETA** and stability or backward
 compatibility is not guaranteed.
 
-The `AWS Fargate` is a [custom
-executor](https://docs.gitlab.com/runner/executors/custom.html) driver, which
-is able to provision ECS containers on AWS to run a job and then delete them.
-`AWS Fargate` driver will not install any [prerequisite
-software](https://docs.gitlab.com/runner/executors/custom.html#prerequisite-software-for-running-a-job)
-required for the custom executor.
+The AWS Fargate [custom
+executor](https://docs.gitlab.com/runner/executors/custom.html) driver is able
+to provision ECS containers on AWS to run a job and then delete them.
+AWS Fargate driver does not have any [prerequisite
+software](https://docs.gitlab.com/runner/executors/custom.html#prerequisite-software-for-running-a-job).
 
-Before getting started it's important that you understand how the [custom
-executor](https://docs.gitlab.com/runner/executors/custom.html) works to
-understand how the driver should work.
+Before getting started it's important that you understand how the custom
+executor works to understand how the driver should work.
 
 ## Installation
 
 For installation, make sure you are using [GitLab
 Runner](https://docs.gitlab.com/runner/install/) 12.4 or higher, then:
 
-1. Download one of the binaries for your system, for example:
+1. Download one of the binaries for your system:
 
    ```sh
    # Linux amd64
    sudo curl -L --output /etc/gitlab-runner/fargate/fargate https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com/latest/fargate-linux-amd64
-
-   # Windows with Powershell
-   $ProgressPreference = 'SilentlyContinue'
-   Invoke-WebRequest https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com/latest/fargate-windows-amd64.exe -OutFile C:\GitLab-Runner\fargate\fargate.exe -UseBasicParsing
    ```
 
-   The full list of available binaries can be found in
-   <https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com/master/index.html>
+   The full list of available binaries can be found at
+   <https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com/latest/index.html>
 
-   To install a specific version, replace `latest` in the above urls by a stable
-   or RC release listed on the [Releases](https://gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/-/releases) page. 
+   To install a specific version, replace `latest` in the above urls with a
+   [stable or RC release](https://gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/-/releases). 
 
 1. On Linux/Unix give execute permissions to the driver:
 
@@ -45,7 +39,7 @@ Runner](https://docs.gitlab.com/runner/install/) 12.4 or higher, then:
 
 ## Commands
 
-The `AWS Fargate` binary contains a set of commands that the GitLab Runner custom
+The AWS Fargate binary contains a set of commands that the GitLab Runner custom
 executor will call for each
 [stage](https://docs.gitlab.com/runner/executors/custom.html#stages).
 
@@ -159,8 +153,8 @@ configuration](#configure-gitlab-runner) for details.
 
 | Setting | Description |
 |---------|-------------|
-| `LogLevel` | The logging level. Available levels are: `debug`, `info`, `warn`, `error`, `fatal`, or `panic`. Note that this setting is overridden if a different level is set by the `--debug` or `--log-level` command line arguments. |
-| `LogFormat` | The format of the logs. The supported formats are: `text` or `json`. Note that this setting is overridden if a different level is set by the `--log-format` command line argument. |
+| `LogLevel` | The logging level. Available levels are: `debug`, `info`, `warn`, `error`, `fatal`, or `panic`. This setting is overridden if a different level is set by the `--debug` or `--log-level` command line arguments. |
+| `LogFormat` | The format of the logs. The supported formats are `text` or `json`. This setting is overridden if a different level is set by the `--log-format` command line argument. |
 | `LogFile` | The path to the file to direct logs to. If empty the logs will be redirected to STDOUT. |
 
 ```toml
@@ -173,12 +167,12 @@ LogFormat = "text"
 
 | Settings | Type | Required | Description |
 |----------|------|----------|-------------|
-| `Cluster` | string | ✓ | The AWS cluster name where the tasks should be started. |
-| `Region` | string | ✓ | The AWS region to send requests to. |
-| `Subnet` | string | ✓ | The AWS subnet ID where the task should be created. |
-| `SecurityGroup` | string | ✓ | The AWS security group ID where the task should be created. |
-| `TaskDefinition` | string | ✓ | The family and revision (family:revision) or full ARN of the task definition to be used for starting the task. Note that this setting is overriden if a different value is provided by the `task-def` command line arguments. |
-| `EnablePublicIP` | bool | ✓ | This flag dictates whether the Fargate task should be created providing an external IP. |
+| `Cluster` | string | Yes | The AWS cluster name where the tasks should be started. |
+| `Region` | string | Yes | The AWS region to send requests to. |
+| `Subnet` | string | Yes | The AWS subnet ID where the task should be created. |
+| `SecurityGroup` | string | Yes | The AWS security group ID where the task should be created. |
+| `TaskDefinition` | string | Yes | The family and revision (family:revision) or full ARN of the task definition to be used for starting the task. Note that this setting is overriden if a different value is provided by the `task-def` command line arguments. |
+| `EnablePublicIP` | bool | Yes | This flag dictates whether the Fargate task should be created providing an external IP. |
 
 ```toml
 [FargateConfig]
@@ -194,7 +188,7 @@ LogFormat = "text"
 
 | Settings | Type | Required | Description |
 |----------|------|----------|-------------|
-| `Directory` | string | ✓ | The directory where the application will store metadata related to those Fargate Tasks started by the driver. Metadata are created during the "prepare" stage and removed during the "cleanup" stage |
+| `Directory` | string | Yes | The directory where the application will store metadata related to Fargate Tasks started by the driver. Metadata is created during the "prepare" stage and removed during the "cleanup" stage. |
 
 ```toml
 [TaskMetadata]
@@ -205,8 +199,8 @@ LogFormat = "text"
 
 | Settings | Type | Required | Description |
 |----------|------|----------|-------------|
-| `Username` | string | ✓ | The username to be used to connect to the task container via SSH. |
-| `PrivateKeyPath` | string | ✓ | The private key to be used to connect to the task container via SSH. |
+| `Username` | string | Yes | The username to connect to the task container via SSH. |
+| `PrivateKeyPath` | string | Yes | The private key to connect to the task container via SSH. |
 
 ```toml
 [SSHConfig]
@@ -216,12 +210,12 @@ LogFormat = "text"
 
 ## Example
 
-Below will show an example of how to use the `AWS Fargate` driver and configure
+Below is an example of how to use the AWS Fargate driver, and how to configure
 [GitLab Runner](https://docs.gitlab.com/runner/) to use it with the
 [custom executor](https://docs.gitlab.com/runner/executors/custom.html).
 
-Our example is considering Ubuntu Linux as the operating system but
-configuration should be similar in other OS.
+This example uses Ubuntu Linux as the operating system but configuration should
+be similar in other OSs.
 
 ### Prerequisites
 
@@ -235,7 +229,7 @@ in your infrastructure:
 
 ### File structure
 
-All of our configuration and binaries will be installed under
+All of our configuration and binaries will be installed in
 `/etc/gitlab-runner/`:
 
 ```plaintext
