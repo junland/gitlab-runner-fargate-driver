@@ -2,6 +2,7 @@ export VERSION ?= $(shell (scripts/version.sh 2>/dev/null || echo "dev") | sed -
 export REVISION ?= $(shell git rev-parse --short HEAD || echo "unknown")
 export BRANCH ?= $(shell git show-ref | grep "$(REVISION)" | grep -v HEAD | awk '{print $$2}' | sed 's|refs/remotes/origin/||' | sed 's|refs/heads/||' | sort | head -n 1)
 export BUILT ?= $(shell date -u +%Y-%m-%dT%H:%M:%S%z)
+export LATEST_STABLE_TAG := $(shell git -c versionsort.prereleaseSuffix="-rc" tag -l "v*.*.*" --sort=-v:refname | awk '!/rc/' | head -n 1)
 export CGO_ENABLED ?= 0
 export GOPATH ?= ".go/"
 export BUILD_PLATFORMS ?= -osarch 'linux/amd64 linux/386'
@@ -132,15 +133,13 @@ endif
 release_s3: CI_COMMIT_REF_NAME ?= $(BRANCH)
 release_s3: CI_COMMIT_SHA ?= $(REVISION)
 release_s3: S3_BUCKET ?=
-release_s3: latest_stable_tag := $(shell git -c versionsort.prereleaseSuffix="-rc" tag -l "v*.*.*" --sort=-v:refname | awk '!/rc/' | head -n 1)
 release_s3:
 	@$(MAKE) index_file
 ifneq ($(S3_BUCKET),)
-	# Syncing with "s3://$(S3_BUCKET)/$(CI_COMMIT_REF_NAME)"
 	@$(MAKE) sync_s3_release S3_URL="s3://$(S3_BUCKET)/$(CI_COMMIT_REF_NAME)"
-	@if [ $$(git describe --exact-match --match $(latest_stable_tag) >/dev/null 2>&1) ]; then \
-		@$(MAKE) sync_s3_release S3_URL="s3://$(S3_BUCKET)/latest"; \
-    fi
+ifeq ($(shell git describe --exact-match --match $(LATEST_STABLE_TAG) >/dev/null 2>&1; echo $$?), 0)
+	@$(MAKE) sync_s3_release S3_URL="s3://$(S3_BUCKET)/latest";
+endif
 	@$(MAKE) release_gitlab
 endif
 
