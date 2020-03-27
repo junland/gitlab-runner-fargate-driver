@@ -99,13 +99,11 @@ mocks: $(mockery)
 .PHONY: check_mocks
 check_mocks:
 	# Checking if mocks are up-to-date
-	# Saving the list of committed mocks
-	@git status -sb > /tmp/mocks-$${CI_JOB_ID}-before
 	@$(MAKE) mocks
-	# Saving the list of created mocks
-	@git status -sb > /tmp/mocks-$${CI_JOB_ID}-after
 	# Checking the difference
-	@diff -U0 /tmp/mocks-$${CI_JOB_ID}-before /tmp/mocks-$${CI_JOB_ID}-after
+	@git --no-pager diff --exit-code -- ./helpers/service/mocks \
+		$(shell git ls-files | grep 'mock_' | grep -v 'vendor/') && \
+		echo "Mocks up-to-date!"
 
 .PHONY: prepare_ci_image
 prepare_ci_image: CI_IMAGE ?= fargate-ci-image
