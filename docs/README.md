@@ -6,12 +6,9 @@ compatibility is not guaranteed.
 
 The AWS Fargate [custom
 executor](https://docs.gitlab.com/runner/executors/custom.html) driver is able
-to provision ECS containers on AWS to run a job and then delete them.
-AWS Fargate driver does not have any [prerequisite
+to provision ECS containers on AWS to run a job and then delete them. It does
+not have any [prerequisite
 software](https://docs.gitlab.com/runner/executors/custom.html#prerequisite-software-for-running-a-job).
-
-Before getting started it's important that you understand how the custom
-executor works to understand how the driver should work.
 
 ## Installation
 
@@ -29,7 +26,7 @@ Runner](https://docs.gitlab.com/runner/install/) 12.4 or higher, then:
    <https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com/latest/index.html>
 
    To install a specific version, replace `latest` in the above urls with a
-   [stable or RC release](https://gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/-/releases). 
+   [stable or RC release](https://gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/-/releases).
 
 1. On Linux/Unix give execute permissions to the driver:
 
@@ -63,27 +60,8 @@ Below is a detailed description of what each command means and how to use it.
 
 All the sub commands under `fargate custom` map to [custom executor
 stages](https://docs.gitlab.com/runner/executors/custom.html#stages).
-Running just `fargate custom` gives us the following output:
-
-```sh
-NAME:
-   fargate custom - These commands implement the four stages interface of the Custom Executor.
-
-You can find more information about it at
-https://docs.gitlab.com/runner/executors/custom.html#stages
-
-USAGE:
-   fargate custom command [command options] [arguments...]
-
-COMMANDS:
-   config, co   Provide some configuration details for Custom Executor
-   prepare, p   Prepare the environment for Custom Executor
-   run, r       Run the script from Custom Executor
-   cleanup, cl  Cleanup the environment for Custom Executor
-
-OPTIONS:
-   --help, -h  show help
-```
+Running `fargate custom` provides you more information about the command line
+options.
 
 The main user of this command and it's subcommands will be the GitLab Runner
 for each [stage](https://docs.gitlab.com/runner/executors/custom.html#stages).
@@ -151,11 +129,11 @@ configuration](#configure-gitlab-runner) for details.
 
 ### The global section
 
-| Setting | Description |
-|---------|-------------|
-| `LogLevel` | The logging level. Available levels are: `debug`, `info`, `warn`, `error`, `fatal`, or `panic`. This setting is overridden if a different level is set by the `--debug` or `--log-level` command line arguments. |
-| `LogFormat` | The format of the logs. The supported formats are `text` or `json`. This setting is overridden if a different level is set by the `--log-format` command line argument. |
-| `LogFile` | The path to the file to direct logs to. If empty the logs will be redirected to STDOUT. |
+| Setting     | Description                                                                                                                                                                                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LogLevel`  | The logging level. Available levels are: `debug`, `info`, `warn`, `error`, `fatal`, or `panic`. This setting is overridden if a different level is set by the `--debug` or `--log-level` command line arguments. |
+| `LogFormat` | The format of the logs. The supported formats are `text` or `json`. This setting is overridden if a different level is set by the `--log-format` command line argument.                                          |
+| `LogFile`   | The path to the file to direct logs to. If empty the logs will be redirected to STDOUT.                                                                                                                          |
 
 ```toml
 LogLevel = "debug"
@@ -165,14 +143,14 @@ LogFormat = "text"
 
 ### The `[FargateConfig]` section
 
-| Settings | Type | Required | Description |
-|----------|------|----------|-------------|
-| `Cluster` | string | Yes | The AWS cluster name where the tasks should be started. |
-| `Region` | string | Yes | The AWS region to send requests to. |
-| `Subnet` | string | Yes | The AWS subnet ID where the task should be created. |
-| `SecurityGroup` | string | Yes | The AWS security group ID where the task should be created. |
-| `TaskDefinition` | string | Yes | The family and revision (family:revision) or full ARN of the task definition to be used for starting the task. Note that this setting is overriden if a different value is provided by the `task-def` command line arguments. |
-| `EnablePublicIP` | bool | Yes | This flag dictates whether the Fargate task should be created providing an external IP. |
+| Settings         | Type   | Required | Description                                                                                                                                                                                                                   |
+| ---------------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Cluster`        | string | Yes      | The AWS cluster name where the tasks should be started.                                                                                                                                                                       |
+| `Region`         | string | Yes      | The AWS region to send requests to.                                                                                                                                                                                           |
+| `Subnet`         | string | Yes      | The AWS subnet ID where the task should be created.                                                                                                                                                                           |
+| `SecurityGroup`  | string | Yes      | The AWS security group ID where the task should be created.                                                                                                                                                                   |
+| `TaskDefinition` | string | Yes      | The family and revision (family:revision) or full ARN of the task definition to be used for starting the task. Note that this setting is overriden if a different value is provided by the `task-def` command line arguments. |
+| `EnablePublicIP` | bool   | Yes      | This flag dictates whether the Fargate task should be created providing an external IP.                                                                                                                                       |
 
 ```toml
 [FargateConfig]
@@ -186,9 +164,9 @@ LogFormat = "text"
 
 ### The `[TaskMetadata]` section
 
-| Settings | Type | Required | Description |
-|----------|------|----------|-------------|
-| `Directory` | string | Yes | The directory where the application will store metadata related to Fargate Tasks started by the driver. Metadata is created during the "prepare" stage and removed during the "cleanup" stage. |
+| Settings    | Type   | Required | Description                                                                                                                                                                                    |
+| ----------- | ------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Directory` | string | Yes      | The directory where the application will store metadata related to Fargate Tasks started by the driver. Metadata is created during the "prepare" stage and removed during the "cleanup" stage. |
 
 ```toml
 [TaskMetadata]
@@ -197,10 +175,10 @@ LogFormat = "text"
 
 ### The `[SSHConfig]` section
 
-| Settings | Type | Required | Description |
-|----------|------|----------|-------------|
-| `Username` | string | Yes | The username to connect to the task container via SSH. |
-| `PrivateKeyPath` | string | Yes | The private key to connect to the task container via SSH. |
+| Settings         | Type   | Required | Description                                               |
+| ---------------- | ------ | -------- | --------------------------------------------------------- |
+| `Username`       | string | Yes      | The username to connect to the task container via SSH.    |
+| `PrivateKeyPath` | string | Yes      | The private key to connect to the task container via SSH. |
 
 ```toml
 [SSHConfig]
