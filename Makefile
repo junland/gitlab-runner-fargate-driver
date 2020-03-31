@@ -48,38 +48,11 @@ tests: $(testsDir) $(goJunitReport)
 tests_race: $(testsDir) $(goJunitReport)
 	@./scripts/tests.sh race
 
-.PHONY: codequality
-# Using codeclimate linters forks, because the official releases are built on top of old versions of Go,
-# which generates errors, e.g. when sing new error handling implemented in stdlib `errors` package in Go 1.13.
-# We've prepared updates and pushed patches to the upstream, but until they will be merged and released
-# the only way is to use the forks.
-codequality: CODECLIMATE_VERSION ?= 0.85.5
-codequality: REPORT_FILE ?= gl-code-quality-report.json
-codequality:
-	# Pulling gocyclo analyzer
-	@docker pull registry.gitlab.com/tmaczukin/codeclimate-gocyclo:tm-go1.12.5-alpine3.9-1 > /dev/null
-	@docker tag registry.gitlab.com/tmaczukin/codeclimate-gocyclo:tm-go1.12.5-alpine3.9-1 codeclimate/codeclimate-gocyclo > /dev/null
-	# Pulling gofmt analyzer
-	@docker pull registry.gitlab.com/tmaczukin/codeclimate-gofmt:tm-go1.12.5-alpine3.9-2 > /dev/null
-	@docker tag registry.gitlab.com/tmaczukin/codeclimate-gofmt:tm-go1.12.5-alpine3.9-2 codeclimate/codeclimate-gofmt > /dev/null
-	# Pulling govet analyzer
-	@docker pull registry.gitlab.com/tmaczukin/codeclimate-govet:tm-go1.12.5-alpine3.9-2 > /dev/null
-	@docker tag registry.gitlab.com/tmaczukin/codeclimate-govet:tm-go1.12.5-alpine3.9-2 codeclimate/codeclimate-govet > /dev/null
-	# Pulling golint analyzer
-	@docker pull registry.gitlab.com/tmaczukin/codeclimate-golint:tm-go1.12.5-alpine3.9-2 > /dev/null
-	@docker tag registry.gitlab.com/tmaczukin/codeclimate-golint:tm-go1.12.5-alpine3.9-2 codeclimate/codeclimate-golint > /dev/null
-	# Starting codeclimate
-	@docker run --rm --env CODECLIMATE_CODE="$$(pwd)" \
-		--volume "$$(pwd)":/code \
-		--volume /var/run/docker.sock:/var/run/docker.sock \
-		--volume /tmp/cc:/tmp/cc \
-		codeclimate/codeclimate:$(CODECLIMATE_VERSION) \
-		analyze -f json --dev | tee $(REPORT_FILE)
-	# Checking if offenses are reported
-	@if [ "$$(cat $(REPORT_FILE))" != "[]" ] ; then \
-	  jq -C . $(REPORT_FILE); \
-	  exit 1 ;\
-	fi
+.PHONY: lint
+lint: OUT_FORMAT ?= colored-line-number
+lint: LINT_FLAGS ?=
+lint:
+	@golangci-lint run ./... --out-format $(OUT_FORMAT) $(LINT_FLAGS)
 
 $(testsDir):
 	# Preparing tests output directory
