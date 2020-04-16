@@ -1,6 +1,8 @@
 // Package executors provides abstractions for executing shell scripts remotely
 package executors
 
+const DefaultPort = 22
+
 // Executor is the interface to provide operations related to script execution
 type Executor interface {
 	// Execute connects to a host, runs the script and disconnects
