@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/aws"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/config"
@@ -18,13 +17,20 @@ import (
 )
 
 type prepareCommandTestCase struct {
+	context        context.Context
+	fargateConfig  config.FargateConfig
+	metadataConfig config.TaskMetadata
+	taskARN        string
+	containerIP    string
+
 	fargateInitError        error
 	fargateRunTaskError     error
 	fargateWaitTaskError    error
 	fargateContainerIPError error
 	fargateStopTaskError    error
 	persistDataError        error
-	expectedError           error
+
+	expectedError error
 }
 
 func TestNewPrepareCommand(t *testing.T) {
@@ -34,7 +40,22 @@ func TestNewPrepareCommand(t *testing.T) {
 	assert.NotNil(t, cmd.Handler, "Handler should be created")
 }
 
-func TestCustomExecutePrepare(t *testing.T) {
+func TestPrepareCommand_CustomExecute(t *testing.T) {
+	testContext, _ := context.WithCancel(context.Background())
+	testFargateConfig := config.FargateConfig{
+		Cluster:        "cluster",
+		Region:         "region",
+		Subnet:         "subnet",
+		SecurityGroup:  "security-group",
+		TaskDefinition: "task-definition",
+		EnablePublicIP: true,
+	}
+	testMetadataConfig := config.TaskMetadata{
+		Directory: "directory",
+	}
+	testTaskARN := "task-arn"
+	testContainerIP := "1.2.3.4"
+
 	testError := errors.New("simulated error")
 	testErrorStopTask := errors.New("simulated error 2")
 
@@ -74,6 +95,12 @@ func TestCustomExecutePrepare(t *testing.T) {
 
 	for tn, tt := range tests {
 		t.Run(tn, func(t *testing.T) {
+			tt.context = testContext
+			tt.fargateConfig = testFargateConfig
+			tt.metadataConfig = testMetadataConfig
+			tt.taskARN = testTaskARN
+			tt.containerIP = testContainerIP
+
 			mockAwsFargate := new(aws.MockFargate)
 			defer mockAwsFargate.AssertExpectations(t)
 
@@ -84,7 +111,6 @@ func TestCustomExecutePrepare(t *testing.T) {
 			setExpectationsForMetadataManager(mockMetadataManager, tt)
 
 			prepare := new(PrepareCommand)
-
 			prepare.newFargate = func(logger logging.Logger, awsRegion string) aws.Fargate {
 				return mockAwsFargate
 			}
@@ -92,7 +118,7 @@ func TestCustomExecutePrepare(t *testing.T) {
 				return mockMetadataManager
 			}
 
-			err := prepare.CustomExecute(createContextForTests())
+			err := prepare.CustomExecute(createCliContextForTests(tt))
 
 			if tt.expectedError != nil {
 				assertions.ErrorIs(t, err, tt.expectedError)
@@ -113,77 +139,88 @@ func setExpectationsForFargate(mock *aws.MockFargate, testParams prepareCommandT
 
 	// Run task API will be called only if the Fargate was properly initialized
 	shouldCallRunTask := testParams.fargateInitError == nil
-	setExpectationForFargateRunTask(mock, shouldCallRunTask, testParams.fargateRunTaskError)
+	setExpectationForFargateRunTask(mock, shouldCallRunTask, testParams)
 
 	// Wait Task API will be called if previous calls succeeded
 	shouldCallWaitTask := shouldCallRunTask && testParams.fargateRunTaskError == nil
-	setExpectationForFargateWaitTask(mock, shouldCallWaitTask, testParams.fargateWaitTaskError)
+	setExpectationForFargateWaitTask(mock, shouldCallWaitTask, testParams)
 
 	// Get Container API will be called if previous calls succeeded
 	shouldCallGetIP := shouldCallWaitTask && testParams.fargateWaitTaskError == nil
-	setExpectationForFargateGetIP(mock, shouldCallGetIP, testParams.fargateContainerIPError)
+	setExpectationForFargateGetIP(mock, shouldCallGetIP, testParams)
 
-	// Wait Task API will be called if any error occurred after the task was started
+	// Stop Task API will be called if any error occurred after the task was started
 	shouldCallStopTask := testParams.fargateRunTaskError != nil ||
-		testParams.fargateWaitTaskError != nil || testParams.fargateContainerIPError != nil ||
+		testParams.fargateWaitTaskError != nil ||
+		testParams.fargateContainerIPError != nil ||
 		testParams.persistDataError != nil
-	setExpectationForFargateStopTask(mock, shouldCallStopTask, testParams.fargateStopTaskError)
+	setExpectationForFargateStopTask(mock, shouldCallStopTask, testParams)
 }
 
-func setExpectationForFargateRunTask(mockAwsFargate *aws.MockFargate, shouldCall bool, errorToReturn error) {
+func setExpectationForFargateRunTask(mockAwsFargate *aws.MockFargate, shouldCall bool, testParams prepareCommandTestCase) {
 	if !shouldCall {
 		return
 	}
 
-	mockAwsFargate.On("RunTask",
-		mock.AnythingOfType("*context.emptyCtx"),
-		mock.AnythingOfType("string"),
-		mock.AnythingOfType("ConnectionSettings"),
+	expectedConnectionSettings := aws.ConnectionSettings{
+		Cluster:        testParams.fargateConfig.Cluster,
+		Subnet:         testParams.fargateConfig.Subnet,
+		SecurityGroup:  testParams.fargateConfig.SecurityGroup,
+		EnablePublicIP: testParams.fargateConfig.EnablePublicIP,
+	}
+
+	mockAwsFargate.On(
+		"RunTask",
+		testParams.context,
+		testParams.fargateConfig.TaskDefinition,
+		expectedConnectionSettings,
 	).
-		Return("task-arn", errorToReturn).
+		Return(testParams.taskARN, testParams.fargateRunTaskError).
 		Once()
 }
 
-func setExpectationForFargateWaitTask(mockAwsFargate *aws.MockFargate, shouldCall bool, errorToReturn error) {
+func setExpectationForFargateWaitTask(mockAwsFargate *aws.MockFargate, shouldCall bool, testParams prepareCommandTestCase) {
 	if !shouldCall {
 		return
 	}
 
-	mockAwsFargate.On("WaitUntilTaskRunning",
-		mock.AnythingOfType("*context.emptyCtx"),
-		mock.AnythingOfType("string"),
-		mock.AnythingOfType("string"),
+	mockAwsFargate.On(
+		"WaitUntilTaskRunning",
+		testParams.context,
+		testParams.taskARN,
+		testParams.fargateConfig.Cluster,
 	).
-		Return(errorToReturn).
+		Return(testParams.fargateWaitTaskError).
 		Once()
 }
 
-func setExpectationForFargateGetIP(mockAwsFargate *aws.MockFargate, shouldCall bool, errorToReturn error) {
+func setExpectationForFargateGetIP(mockAwsFargate *aws.MockFargate, shouldCall bool, testParams prepareCommandTestCase) {
 	if !shouldCall {
 		return
 	}
 
 	mockAwsFargate.On("GetContainerIP",
-		mock.AnythingOfType("*context.emptyCtx"),
-		mock.AnythingOfType("string"),
-		mock.AnythingOfType("string"),
-		mock.AnythingOfType("bool"),
+		testParams.context,
+		testParams.taskARN,
+		testParams.fargateConfig.Cluster,
+		testParams.fargateConfig.EnablePublicIP,
 	).
-		Return("10.10.10.1", errorToReturn).
+		Return(testParams.containerIP, testParams.fargateContainerIPError).
 		Once()
 }
 
-func setExpectationForFargateStopTask(mockAwsFargate *aws.MockFargate, shouldCall bool, errorToReturn error) {
+func setExpectationForFargateStopTask(mockAwsFargate *aws.MockFargate, shouldCall bool, testParams prepareCommandTestCase) {
 	if !shouldCall {
 		return
 	}
 
-	mockAwsFargate.On("StopTask",
-		mock.AnythingOfType("*context.emptyCtx"),
-		mock.AnythingOfType("string"),
-		mock.AnythingOfType("string"),
+	mockAwsFargate.On(
+		"StopTask",
+		testParams.context,
+		testParams.taskARN,
+		testParams.fargateConfig.Cluster,
 	).
-		Return(errorToReturn).
+		Return(testParams.fargateStopTaskError).
 		Once()
 }
 
@@ -197,22 +234,26 @@ func setExpectationsForMetadataManager(mockManager *task.MockMetadataManager, te
 		return
 	}
 
-	mockManager.On("Persist",
-		mock.AnythingOfType("task.Data"),
-	).
+	expectedData := task.Data{
+		TaskARN:     testParams.taskARN,
+		ContainerIP: testParams.containerIP,
+	}
+
+	mockManager.On("Persist", expectedData).
 		Return(testParams.persistDataError).
 		Once()
 }
 
-func createContextForTests() *cli.Context {
-	ctx := new(cli.Context)
-	ctx.SetConfig(config.Global{
-		FargateConfig: config.FargateConfig{},
-		TaskMetadata:  config.TaskMetadata{},
+func createCliContextForTests(testParams prepareCommandTestCase) *cli.Context {
+	cliCtx := new(cli.Context)
+	cliCtx.SetConfig(config.Global{
+		FargateConfig: testParams.fargateConfig,
+		TaskMetadata:  testParams.metadataConfig,
 	})
-	ctx.SetLogger(createTestLogger())
-	ctx.Ctx = context.Background()
-	return ctx
+	cliCtx.SetLogger(createTestLogger())
+	cliCtx.Ctx = testParams.context
+
+	return cliCtx
 }
 
 func createTestLogger() logging.Logger {
