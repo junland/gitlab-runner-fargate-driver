@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	urfaveCli "github.com/urfave/cli"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/config"
@@ -20,12 +20,22 @@ import (
 )
 
 type runCommandTestCase struct {
+	metadataConfig          config.TaskMetadata
+	sshUsername             string
+	sshPrivateKey           string
+	sshPrivateKeyContent    []byte
+	sshPort                 *int
 	setCommandLineArguments bool
-	readScriptError         error
-	readPrivateKeyError     error
-	obtainTaskDataError     error
-	executeScriptError      error
-	expectedError           error
+	scriptPath              string
+	scriptContent           []byte
+	task                    task.Data
+
+	readScriptError     error
+	readPrivateKeyError error
+	obtainTaskDataError error
+	executeScriptError  error
+
+	expectedError error
 }
 
 func TestNewRunCommand(t *testing.T) {
@@ -35,10 +45,27 @@ func TestNewRunCommand(t *testing.T) {
 }
 
 func TestCustomExecuteRun(t *testing.T) {
+	testSSHPort := 1234
+	testSSHUsername := "user"
+	testSSHPrivateKey := "/home/myuser/.ssh/myprivatekey"
+	testSSHPrivateKeyContent := []byte("ssh private key content")
+	testMetadataConfig := config.TaskMetadata{
+		Directory: "/fargate-driver/",
+	}
+	testScriptPath := "/path/to/script"
+	testScriptContent := []byte("test script")
+	testTask := task.Data{
+		TaskARN:     "task-arn",
+		ContainerIP: "1.2.3.4",
+	}
 	testError := errors.New("simulated error")
 
 	tests := map[string]runCommandTestCase{
 		"Execute run with success": {
+			setCommandLineArguments: true,
+		},
+		"Custom SSH port set": {
+			sshPort:                 func(i int) *int { return &i }(testSSHPort),
 			setCommandLineArguments: true,
 		},
 		"Error required parameters not informed": {
@@ -69,6 +96,14 @@ func TestCustomExecuteRun(t *testing.T) {
 
 	for tn, tt := range tests {
 		t.Run(tn, func(t *testing.T) {
+			tt.sshUsername = testSSHUsername
+			tt.sshPrivateKey = testSSHPrivateKey
+			tt.sshPrivateKeyContent = testSSHPrivateKeyContent
+			tt.metadataConfig = testMetadataConfig
+			tt.scriptPath = testScriptPath
+			tt.scriptContent = testScriptContent
+			tt.task = testTask
+
 			mockMetadataManager := new(task.MockMetadataManager)
 			defer mockMetadataManager.AssertExpectations(t)
 
@@ -80,19 +115,19 @@ func TestCustomExecuteRun(t *testing.T) {
 
 			// Should call read script if app was properly invoked with required parameters
 			shouldCallReadScript := tt.setCommandLineArguments
-			setExpectationForReadFiles(mockFS, shouldCallReadScript, tt.readScriptError)
+			setExpectationForReadScriptFile(mockFS, shouldCallReadScript, tt)
 
 			// Should call read private key if no problem was detected reading the script file
 			shouldCallReadKey := shouldCallReadScript && tt.readScriptError == nil
-			setExpectationForReadFiles(mockFS, shouldCallReadKey, tt.readPrivateKeyError)
+			setExpectationForReadKeyFile(mockFS, shouldCallReadKey, tt)
 
 			// Should call metadata manager if no error occured during reading the script and private key
 			shouldCallReadMetadata := shouldCallReadKey && tt.readPrivateKeyError == nil
-			setExpectationForReadMetadata(mockMetadataManager, shouldCallReadMetadata, tt.obtainTaskDataError)
+			setExpectationForReadMetadata(mockMetadataManager, shouldCallReadMetadata, tt)
 
 			// Should call executor if no error ocurred on any of the previous calls
 			shouldCallExecuteScript := shouldCallReadMetadata && tt.obtainTaskDataError == nil
-			setExpectationForExecuteScript(mockExecutor, shouldCallExecuteScript, tt.executeScriptError)
+			setExpectationForExecuteScript(mockExecutor, shouldCallExecuteScript, tt)
 
 			run := new(RunCommand)
 			run.newMetadataManager = func(logger logging.Logger, directory string) task.MetadataManager {
@@ -105,7 +140,7 @@ func TestCustomExecuteRun(t *testing.T) {
 				return mockFS
 			}
 
-			err := run.CustomExecute(createContextForRunCmdTests(tt.setCommandLineArguments))
+			err := run.CustomExecute(createContextForRunCmdTests(t, tt))
 
 			if tt.expectedError != nil {
 				assertions.ErrorIs(t, err, tt.expectedError)
@@ -120,58 +155,82 @@ func TestCustomExecuteRun(t *testing.T) {
 	}
 }
 
-func setExpectationForReadFiles(mockFS *fs.MockFS, shouldCall bool, errorToReturn error) {
+func setExpectationForReadScriptFile(mockFS *fs.MockFS, shouldCall bool, testParams runCommandTestCase) {
 	if !shouldCall {
 		return
 	}
 
-	mockFS.On("ReadFile",
-		mock.AnythingOfType("string"),
-	).
-		Return([]byte("echo 1"), errorToReturn).
+	mockFS.On("ReadFile", testParams.scriptPath).
+		Return(testParams.scriptContent, testParams.readScriptError).
 		Once()
 }
 
-func setExpectationForReadMetadata(mockManager *task.MockMetadataManager, shouldCall bool, errorToReturn error) {
+func setExpectationForReadKeyFile(mockFS *fs.MockFS, shouldCall bool, testParams runCommandTestCase) {
+	if !shouldCall {
+		return
+	}
+
+	mockFS.On("ReadFile", testParams.sshPrivateKey).
+		Return(testParams.sshPrivateKeyContent, testParams.readPrivateKeyError).
+		Once()
+}
+
+func setExpectationForReadMetadata(mockManager *task.MockMetadataManager, shouldCall bool, testParams runCommandTestCase) {
 	if !shouldCall {
 		return
 	}
 
 	mockManager.On("Get").
-		Return(task.Data{}, errorToReturn).
+		Return(testParams.task, testParams.obtainTaskDataError).
 		Once()
 }
 
-func setExpectationForExecuteScript(mockExecutor *executors.MockExecutor, shouldCall bool, errorToReturn error) {
+func setExpectationForExecuteScript(mockExecutor *executors.MockExecutor, shouldCall bool, testParams runCommandTestCase) {
 	if !shouldCall {
 		return
 	}
 
-	mockExecutor.On("Execute",
-		mock.AnythingOfType("executors.ConnectionSettings"),
-		mock.AnythingOfType("[]uint8"),
-	).
-		Return(errorToReturn).
+	expectedConnectionSettings := executors.ConnectionSettings{
+		Hostname:   testParams.task.ContainerIP,
+		Port:       executors.DefaultPort,
+		Username:   testParams.sshUsername,
+		PrivateKey: testParams.sshPrivateKeyContent,
+	}
+
+	if testParams.sshPort != nil {
+		expectedConnectionSettings.Port = *testParams.sshPort
+	}
+
+	mockExecutor.On("Execute", expectedConnectionSettings, testParams.scriptContent).
+		Return(testParams.executeScriptError).
 		Once()
 }
 
-func createContextForRunCmdTests(setCommandLineArguments bool) *cli.Context {
+func createContextForRunCmdTests(t *testing.T, testParams runCommandTestCase) *cli.Context {
+	sshConfig := config.SSH{
+		Username:       testParams.sshUsername,
+		PrivateKeyPath: testParams.sshPrivateKey,
+	}
+
+	if testParams.sshPort != nil {
+		sshConfig.Port = *testParams.sshPort
+	}
+
 	context := cli.Context{}
 	context.SetConfig(config.Global{
-		SSHConfig: config.SSHConfig{
-			Username:       "root",
-			PrivateKeyPath: "/home/myuser/.ssh/myprivatekey",
-		},
-		TaskMetadata: config.TaskMetadata{Directory: "/fargate-driver/"},
+		SSH:          sshConfig,
+		TaskMetadata: testParams.metadataConfig,
 	})
 	context.SetLogger(test.NewNullLogger())
+
 	flagSet := flag.NewFlagSet("myflags", flag.ExitOnError)
-	if setCommandLineArguments {
+	if testParams.setCommandLineArguments {
 		// Programmatically add the required command line arguments
-		flagSet.String("path_to_script", "/home/myuser/script.sh", "a bash script to execute")
-		flagSet.String("stage_name", "prepare_exec", "name of the job stage")
-		flagSet.Parse([]string{"path_to_script", "stage_name"})
+		err := flagSet.Parse([]string{testParams.scriptPath, "prepare_exec"})
+		require.NoError(t, err)
 	}
+
 	context.Cli = urfaveCli.NewContext(nil, flagSet, nil)
+
 	return &context
 }

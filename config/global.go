@@ -14,7 +14,7 @@ type Global struct {
 
 	FargateConfig FargateConfig
 	TaskMetadata  TaskMetadata
-	SSHConfig     SSHConfig
+	SSH           SSH
 }
 
 type FargateConfig struct {
@@ -30,8 +30,9 @@ type TaskMetadata struct {
 	Directory string
 }
 
-type SSHConfig struct {
+type SSH struct {
 	Username       string
+	Port           int
 	PrivateKeyPath string
 }
 

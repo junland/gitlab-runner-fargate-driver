@@ -13,7 +13,7 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/task"
 )
 
-// ErrMissingRequiredArguments is returned mandatory arguments are not set
+// ErrMissingRequiredArguments is returned when mandatory arguments are not set
 var ErrMissingRequiredArguments = errors.New("missing required arguments")
 
 // NewRunCommand constructs the command line abstraction for the "run" stage
@@ -90,9 +90,9 @@ func (c *RunCommand) CustomExecute(ctx *cli.Context) error {
 		return fmt.Errorf("reading the script content: %w", err)
 	}
 
-	privateKey, err := c.readFileContent(c.cfg.SSHConfig.PrivateKeyPath)
+	privateKey, err := c.readFileContent(c.cfg.SSH.PrivateKeyPath)
 	if err != nil {
-		return fmt.Errorf("reading the private key: %w", err)
+		return fmt.Errorf("reading the SSH private key: %w", err)
 	}
 
 	taskData, err := c.obtainTaskData()
@@ -100,7 +100,7 @@ func (c *RunCommand) CustomExecute(ctx *cli.Context) error {
 		return fmt.Errorf("obtaining information about the running task: %w", err)
 	}
 
-	err = c.executeScriptOnTaskContainer(taskData, c.cfg.SSHConfig.Username, privateKey, script)
+	err = c.executeScriptOnTaskContainer(taskData, c.cfg.SSH, privateKey, script)
 	if err != nil {
 		return fmt.Errorf("executing the script on the remote host: %w", err)
 	}
@@ -123,7 +123,9 @@ func (c *RunCommand) init(ctx *cli.Context) {
 }
 
 func (c *RunCommand) readFileContent(filePath string) ([]byte, error) {
-	c.logger.Info("Reading file content")
+	c.logger.
+		WithField("file", filePath).
+		Info("Reading file content")
 
 	content, err := c.fs.ReadFile(filePath)
 	if err != nil {
@@ -144,17 +146,23 @@ func (c *RunCommand) obtainTaskData() (task.Data, error) {
 	return fargateTaskData, nil
 }
 
-func (c *RunCommand) executeScriptOnTaskContainer(taskData task.Data, user string, privKey []byte, script []byte) error {
+func (c *RunCommand) executeScriptOnTaskContainer(taskData task.Data, sshConfig config.SSH, privateKey []byte, script []byte) error {
 	c.logger.
 		WithField("taskARN", taskData.TaskARN).
 		Info("Executing script in the task container")
 
+	port := sshConfig.Port
+	if port < 1 {
+		port = executors.DefaultPort
+	}
+
 	settings := executors.ConnectionSettings{
 		Hostname:   taskData.ContainerIP,
-		Port:       22,
-		Username:   user,
-		PrivateKey: privKey,
+		Port:       port,
+		Username:   sshConfig.Username,
+		PrivateKey: privateKey,
 	}
+
 	err := c.sshExecutor.Execute(settings, script)
 	if err != nil {
 		return fmt.Errorf("executing script on container with IP %q: %w", taskData.ContainerIP, err)
