@@ -10,11 +10,6 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/task"
 )
 
-type newFargateTaskDetails struct {
-	taskARN   string
-	ipAddress string
-}
-
 // NewPrepareCommand constructs the command line abstraction for the "prepare" stage
 func NewPrepareCommand() cli.Command {
 	cmd := new(PrepareCommand)
@@ -71,26 +66,26 @@ func (c *PrepareCommand) CustomExecute(ctx *cli.Context) error {
 
 	taskDetails, err := c.prepareNewFargateTask(ctx)
 	if err != nil {
-		if taskDetails.taskARN != "" {
+		if taskDetails.TaskARN != "" {
 			c.logger.
-				WithField("taskARN", taskDetails.taskARN).
+				WithField("taskARN", taskDetails.TaskARN).
 				WithError(err).
 				Error("Error during task initialization. Will kill the task for cleanup")
-			c.stopTask(ctx, taskDetails.taskARN, c.cfg.FargateConfig.Cluster)
+			c.stopTask(ctx, taskDetails.TaskARN, c.cfg.FargateConfig.Cluster)
 		}
 
 		return fmt.Errorf("preparing new Fargate task: %w", err)
 	}
 
-	err = c.persistDataForLaterStages(taskDetails.taskARN, taskDetails.ipAddress)
+	err = c.persistDataForLaterStages(taskDetails)
 	if err != nil {
 		c.logger.
-			WithField("taskARN", taskDetails.taskARN).
+			WithField("taskARN", taskDetails.TaskARN).
 			WithError(err).
-			Error("Error persiting task data necessary for next stages. Will kill the task for cleanup")
-		c.stopTask(ctx, taskDetails.taskARN, c.cfg.FargateConfig.Cluster)
+			Error("Error persisting task data necessary for next stages. Will kill the task for cleanup")
+		c.stopTask(ctx, taskDetails.TaskARN, c.cfg.FargateConfig.Cluster)
 
-		return fmt.Errorf("persisting task ARN for later stages: %w", err)
+		return fmt.Errorf("persisting task data for later stages: %w", err)
 	}
 
 	return nil
@@ -113,10 +108,9 @@ func (c *PrepareCommand) init(ctx *cli.Context) error {
 	return nil
 }
 
-func (c *PrepareCommand) prepareNewFargateTask(ctx *cli.Context) (newFargateTaskDetails, error) {
+func (c *PrepareCommand) prepareNewFargateTask(ctx *cli.Context) (task.Data, error) {
 	c.logger.Info("Preparing Fargate task")
 
-	taskDetails := newFargateTaskDetails{}
 	taskDefinition := c.cfg.FargateConfig.TaskDefinition
 	connection := aws.ConnectionSettings{
 		Cluster:        c.cfg.FargateConfig.Cluster,
@@ -126,23 +120,24 @@ func (c *PrepareCommand) prepareNewFargateTask(ctx *cli.Context) (newFargateTask
 	}
 
 	var err error
+	var taskDetails task.Data
 
 	// Start the Fargate task
-	taskDetails.taskARN, err = c.awsFargate.RunTask(ctx.Ctx, taskDefinition, connection)
+	taskDetails.TaskARN, err = c.awsFargate.RunTask(ctx.Ctx, taskDefinition, connection)
 	if err != nil {
 		return taskDetails, fmt.Errorf("starting Fargate task: %w", err)
 	}
 
 	// Wait the task to be in "running" state
-	err = c.awsFargate.WaitUntilTaskRunning(ctx.Ctx, taskDetails.taskARN, connection.Cluster)
+	err = c.awsFargate.WaitUntilTaskRunning(ctx.Ctx, taskDetails.TaskARN, connection.Cluster)
 	if err != nil {
-		return taskDetails, fmt.Errorf("waiting Fargate be in running state: %w", err)
+		return taskDetails, fmt.Errorf("waiting for Fargate task to be in running state: %w", err)
 	}
 
 	// Get the container IP
-	taskDetails.ipAddress, err = c.awsFargate.GetContainerIP(
+	taskDetails.ContainerIP, err = c.awsFargate.GetContainerIP(
 		ctx.Ctx,
-		taskDetails.taskARN,
+		taskDetails.TaskARN,
 		connection.Cluster,
 		connection.EnablePublicIP,
 	)
@@ -167,19 +162,14 @@ func (c *PrepareCommand) stopTask(ctx *cli.Context, taskARN string, cluster stri
 	}
 }
 
-func (c *PrepareCommand) persistDataForLaterStages(taskARN string, containerIP string) error {
+func (c *PrepareCommand) persistDataForLaterStages(taskDetails task.Data) error {
 	c.logger.
-		WithField("taskARN", taskARN).
+		WithField("taskARN", taskDetails.TaskARN).
 		Info("Persisting data that will be used by other commands")
 
-	data := task.Data{
-		TaskARN:     taskARN,
-		ContainerIP: containerIP,
-	}
-
-	err := c.metadataManager.Persist(data)
+	err := c.metadataManager.Persist(taskDetails)
 	if err != nil {
-		return fmt.Errorf("persisting data for next stages: %w", err)
+		return fmt.Errorf("persisting metadata: %w", err)
 	}
 
 	return nil
