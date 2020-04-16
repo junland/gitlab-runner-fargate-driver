@@ -1,3 +1,14 @@
 LogLevel = "info"
 LogFile = "fargate.log"
 LogFormat = "text"
+
+[FargateConfig]
+    Cluster = "cluster-name"
+    Region = "us-east-1"
+    Subnet = "subnet-XYZ"
+    SecurityGroup = "sg-XYZ"
+    TaskDefinition = "my-task-definition:1"
+    EnablePublicIP = true
+
+[TaskMetadata]
+    Directory = "/fargate-driver/"

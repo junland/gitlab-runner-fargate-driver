@@ -11,6 +11,22 @@ type Global struct {
 	LogLevel  string
 	LogFile   string
 	LogFormat string
+
+	FargateConfig FargateConfig
+	TaskMetadata  TaskMetadata
+}
+
+type FargateConfig struct {
+	Cluster        string
+	Region         string
+	Subnet         string
+	SecurityGroup  string
+	TaskDefinition string
+	EnablePublicIP bool
+}
+
+type TaskMetadata struct {
+	Directory string
 }
 
 func LoadFromFile(file string) (Global, error) {
