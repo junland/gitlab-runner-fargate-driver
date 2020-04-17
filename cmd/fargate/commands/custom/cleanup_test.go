@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/aws"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/config"
@@ -18,11 +17,16 @@ import (
 )
 
 type cleanupCommandTestCase struct {
+	context       context.Context
+	fargateConfig config.FargateConfig
+	taskData      task.Data
+
 	fargateInitError     error
 	obtainTaskDataError  error
 	fargateStopTaskError error
 	clearMetadataError   error
-	expectedError        error
+
+	expectedError error
 }
 
 func TestNewCleanupCommand(t *testing.T) {
@@ -33,6 +37,13 @@ func TestNewCleanupCommand(t *testing.T) {
 }
 
 func TestCustomExecuteCleanup(t *testing.T) {
+	testContext, _ := context.WithCancel(context.Background())
+	testFargateConfig := config.FargateConfig{
+		Cluster: "cluster",
+	}
+	testTaskData := task.Data{
+		TaskARN: "task-arn",
+	}
 	testError := errors.New("simulated error")
 
 	tests := map[string]cleanupCommandTestCase{
@@ -57,6 +68,10 @@ func TestCustomExecuteCleanup(t *testing.T) {
 
 	for tn, tt := range tests {
 		t.Run(tn, func(t *testing.T) {
+			tt.context = testContext
+			tt.fargateConfig = testFargateConfig
+			tt.taskData = testTaskData
+
 			mockAwsFargate := new(aws.MockFargate)
 			defer mockAwsFargate.AssertExpectations(t)
 
@@ -69,15 +84,15 @@ func TestCustomExecuteCleanup(t *testing.T) {
 
 			// Should call get task data if initialization was successful
 			shouldCallGetTaskData := tt.fargateInitError == nil
-			setExpectationForGetTaskData(mockMetadataManager, shouldCallGetTaskData, tt.obtainTaskDataError)
+			setExpectationForGetTaskData(mockMetadataManager, shouldCallGetTaskData, tt)
 
 			// Should call stop task if init and get task data were successful
 			shouldCallStopTask := shouldCallGetTaskData && tt.obtainTaskDataError == nil
-			setExpectationForStopTask(mockAwsFargate, shouldCallStopTask, tt.fargateStopTaskError)
+			setExpectationForStopTask(mockAwsFargate, shouldCallStopTask, tt)
 
 			// Should call clear metadata if all process worked as expected
 			shouldCallClearMetadata := shouldCallStopTask && tt.fargateStopTaskError == nil
-			setExpectationForClearMetadata(mockMetadataManager, shouldCallClearMetadata, tt.clearMetadataError)
+			setExpectationForClearMetadata(mockMetadataManager, shouldCallClearMetadata, tt)
 
 			cleanup := new(CleanupCommand)
 			cleanup.newFargate = func(logger logging.Logger, awsRegion string) aws.Fargate {
@@ -87,7 +102,7 @@ func TestCustomExecuteCleanup(t *testing.T) {
 				return mockMetadataManager
 			}
 
-			err := cleanup.CustomExecute(createContextForCleanupCmdTests())
+			err := cleanup.CustomExecute(createContextForCleanupCmdTests(tt))
 
 			if tt.expectedError != nil {
 				assertions.ErrorIs(t, err, tt.expectedError)
@@ -101,47 +116,49 @@ func TestCustomExecuteCleanup(t *testing.T) {
 	}
 }
 
-func setExpectationForGetTaskData(mockManager *task.MockMetadataManager, shouldCall bool, errorToReturn error) {
+func setExpectationForGetTaskData(mockManager *task.MockMetadataManager, shouldCall bool, testParams cleanupCommandTestCase) {
 	if !shouldCall {
 		return
 	}
 
 	mockManager.On("Get").
-		Return(task.Data{}, errorToReturn).
+		Return(testParams.taskData, testParams.obtainTaskDataError).
 		Once()
 }
 
-func setExpectationForStopTask(mockAwsFargate *aws.MockFargate, shouldCall bool, errorToReturn error) {
+func setExpectationForStopTask(mockAwsFargate *aws.MockFargate, shouldCall bool, testParams cleanupCommandTestCase) {
 	if !shouldCall {
 		return
 	}
 
-	mockAwsFargate.On("StopTask",
-		mock.AnythingOfType("*context.emptyCtx"),
-		mock.AnythingOfType("string"),
-		mock.AnythingOfType("string"),
+	mockAwsFargate.On(
+		"StopTask",
+		testParams.context,
+		testParams.taskData.TaskARN,
+		testParams.fargateConfig.Cluster,
 	).
-		Return(errorToReturn).
+		Return(testParams.fargateStopTaskError).
 		Once()
 }
 
-func setExpectationForClearMetadata(mockManager *task.MockMetadataManager, shouldCall bool, errorToReturn error) {
+func setExpectationForClearMetadata(mockManager *task.MockMetadataManager, shouldCall bool, testParams cleanupCommandTestCase) {
 	if !shouldCall {
 		return
 	}
 
 	mockManager.On("Clear").
-		Return(errorToReturn).
+		Return(testParams.clearMetadataError).
 		Once()
 }
 
-func createContextForCleanupCmdTests() *cli.Context {
+func createContextForCleanupCmdTests(testParams cleanupCommandTestCase) *cli.Context {
 	ctx := new(cli.Context)
+	ctx.Ctx = testParams.context
 	ctx.SetConfig(config.Global{
-		FargateConfig: config.FargateConfig{},
+		FargateConfig: testParams.fargateConfig,
 		TaskMetadata:  config.TaskMetadata{},
 	})
 	ctx.SetLogger(test.NewNullLogger())
-	ctx.Ctx = context.Background()
+
 	return ctx
 }

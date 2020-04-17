@@ -70,17 +70,14 @@ func (c *CleanupCommand) CustomExecute(ctx *cli.Context) error {
 		return fmt.Errorf("obtaining information about the running task: %w", err)
 	}
 
-	c.logger.
-		WithField("taskARN", taskData.TaskARN).
-		Info("Stopping Fargate task")
+	logger := c.logger.WithField("taskARN", taskData.TaskARN)
+	logger.Info("Stopping Fargate task")
 	err = c.awsFargate.StopTask(ctx.Ctx, taskData.TaskARN, c.cfg.FargateConfig.Cluster)
 	if err != nil {
 		return fmt.Errorf("stopping Fargate Task %q: %w", taskData.TaskARN, err)
 	}
 
-	c.logger.
-		WithField("taskARN", taskData.TaskARN).
-		Info("Clear metadata related to the stopped Fargate Task")
+	logger.Info("Clear metadata related to the stopped Fargate Task")
 	err = c.metadataManager.Clear()
 	if err != nil {
 		return fmt.Errorf("deleting metadata related to the stopped Fargate Task %q: %w", taskData.TaskARN, err)
@@ -91,8 +88,7 @@ func (c *CleanupCommand) CustomExecute(ctx *cli.Context) error {
 
 func (c *CleanupCommand) init(ctx *cli.Context) error {
 	c.cfg = ctx.Config()
-	c.logger = ctx.
-		Logger().
+	c.logger = ctx.Logger().
 		WithField("command", "cleanup_exec")
 
 	c.awsFargate = c.newFargate(c.logger, c.cfg.FargateConfig.Region)
