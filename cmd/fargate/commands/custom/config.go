@@ -2,6 +2,7 @@ package custom
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/config"
@@ -34,6 +35,8 @@ func NewConfigCommand() cli.Command {
 	cmd := new(ConfigCommand)
 	cmd.abstractCustomCommand.customCommand = cmd
 
+	cmd.output = os.Stdout
+
 	return cli.Command{
 		Handler: cmd,
 		Config: cli.Config{
@@ -54,12 +57,17 @@ https://docs.gitlab.com/runner/executors/custom.html#config.`,
 	}
 }
 
+type writer interface {
+	io.Writer
+}
+
 // ConfigCommand provides data and operations related to the "config" stage
 type ConfigCommand struct {
 	abstractCustomCommand
 
 	cfg    config.Global
 	logger logging.Logger
+	output writer
 }
 
 // CustomExecute is the "core" of the implementation for the "config" stage
@@ -70,7 +78,7 @@ func (c *ConfigCommand) CustomExecute(ctx *cli.Context) error {
 
 	hostname := c.createUniqueIdentifierForHostname()
 
-	err := runner.GetAdapter().WriteCustomExecutorConfig(os.Stdout, hostname)
+	err := runner.GetAdapter().WriteCustomExecutorConfig(c.output, hostname)
 	if err != nil {
 		return &errWriteConfig{inner: err}
 	}
@@ -80,8 +88,7 @@ func (c *ConfigCommand) CustomExecute(ctx *cli.Context) error {
 
 func (c *ConfigCommand) init(ctx *cli.Context) {
 	c.cfg = ctx.Config()
-	c.logger = ctx.
-		Logger().
+	c.logger = ctx.Logger().
 		WithField("command", "config_exec")
 }
 
