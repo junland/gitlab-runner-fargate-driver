@@ -123,7 +123,7 @@ LogFile = "fargate.log"
 LogFormat = "text"
 ```
 
-### The `[FargateConfig]` section
+### The `[Fargate]` section
 
 | Settings         | Type   | Required | Description                                                                                                                                                                                                                   |
 | ---------------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -135,7 +135,7 @@ LogFormat = "text"
 | `EnablePublicIP` | bool   | Yes      | This flag dictates whether the Fargate task should be created providing an external IP.                                                                                                                                       |
 
 ```toml
-[FargateConfig]
+[Fargate]
   Cluster = "cluster-name"
   Region = "us-east-1"
   Subnet = "subnet-XYZ"
@@ -155,7 +155,7 @@ LogFormat = "text"
   Directory = "/etc/gitlab-runner/metadata"
 ```
 
-### The `[SSHConfig]` section
+### The `[SSH]` section
 
 | Settings         | Type   | Required | Description                                               |
 | ---------------- | ------ | -------- | --------------------------------------------------------- |
@@ -163,7 +163,7 @@ LogFormat = "text"
 | `PrivateKeyPath` | string | Yes      | The private key to connect to the task container via SSH. |
 
 ```toml
-[SSHConfig]
+[SSH]
   Username = "root"
   PrivateKeyPath = "/home/user/.ssh/id_rsa"
 ```
@@ -238,7 +238,7 @@ Below is the driver configuration:
 LogLevel = "info"
 LogFormat = "text"
 
-[FargateConfig]
+[Fargate]
   Cluster = "fargate"
   Region = "us-east-1"
   Subnet = "subnet-xxxxxxxx"
@@ -249,7 +249,7 @@ LogFormat = "text"
 [TaskMetadata]
   Directory = "/etc/gitlab-runner/metadata"
 
-[SSHConfig]
+[SSH]
   Username = "root"
   PrivateKeyPath = "/home/user/.ssh/id_rsa"
 ```
