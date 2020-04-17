@@ -1,11 +1,14 @@
 package custom
 
 import (
+	"context"
 	"errors"
 	"flag"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	urfaveCli "github.com/urfave/cli"
 
@@ -19,7 +22,12 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/task"
 )
 
+type testContextKey int
+
+const testCtxKey testContextKey = iota
+
 type runCommandTestCase struct {
+	context                 context.Context
 	metadataConfig          config.TaskMetadata
 	sshUsername             string
 	sshPrivateKey           string
@@ -45,6 +53,7 @@ func TestNewRunCommand(t *testing.T) {
 }
 
 func TestCustomExecuteRun(t *testing.T) {
+	testContext := context.WithValue(context.Background(), testCtxKey, "test-value")
 	testSSHPort := 1234
 	testSSHUsername := "user"
 	testSSHPrivateKey := "/home/myuser/.ssh/myprivatekey"
@@ -96,6 +105,7 @@ func TestCustomExecuteRun(t *testing.T) {
 
 	for tn, tt := range tests {
 		t.Run(tn, func(t *testing.T) {
+			tt.context = testContext
 			tt.sshUsername = testSSHUsername
 			tt.sshPrivateKey = testSSHPrivateKey
 			tt.sshPrivateKeyContent = testSSHPrivateKeyContent
@@ -127,7 +137,7 @@ func TestCustomExecuteRun(t *testing.T) {
 
 			// Should call executor if no error ocurred on any of the previous calls
 			shouldCallExecuteScript := shouldCallReadMetadata && tt.obtainTaskDataError == nil
-			setExpectationForExecuteScript(mockExecutor, shouldCallExecuteScript, tt)
+			setExpectationForExecuteScript(t, mockExecutor, shouldCallExecuteScript, tt)
 
 			run := new(RunCommand)
 			run.newMetadataManager = func(logger logging.Logger, directory string) task.MetadataManager {
@@ -185,7 +195,7 @@ func setExpectationForReadMetadata(mockManager *task.MockMetadataManager, should
 		Once()
 }
 
-func setExpectationForExecuteScript(mockExecutor *executors.MockExecutor, shouldCall bool, testParams runCommandTestCase) {
+func setExpectationForExecuteScript(t *testing.T, mockExecutor *executors.MockExecutor, shouldCall bool, testParams runCommandTestCase) {
 	if !shouldCall {
 		return
 	}
@@ -201,7 +211,19 @@ func setExpectationForExecuteScript(mockExecutor *executors.MockExecutor, should
 		expectedConnectionSettings.Port = *testParams.sshPort
 	}
 
-	mockExecutor.On("Execute", expectedConnectionSettings, testParams.scriptContent).
+	contextMatcher := mock.MatchedBy(func(ctx context.Context) bool {
+		if reflect.TypeOf(ctx).String() != "*context.cancelCtx" {
+			return false
+		}
+
+		if ctx.Value(testCtxKey) != testParams.context.Value(testCtxKey) {
+			return false
+		}
+
+		return true
+	})
+
+	mockExecutor.On("Execute", contextMatcher, expectedConnectionSettings, testParams.scriptContent).
 		Return(testParams.executeScriptError).
 		Once()
 }
@@ -216,12 +238,12 @@ func createContextForRunCmdTests(t *testing.T, testParams runCommandTestCase) *c
 		sshConfig.Port = *testParams.sshPort
 	}
 
-	context := cli.Context{}
-	context.SetConfig(config.Global{
+	ctx := cli.Context{}
+	ctx.SetConfig(config.Global{
 		SSH:          sshConfig,
 		TaskMetadata: testParams.metadataConfig,
 	})
-	context.SetLogger(test.NewNullLogger())
+	ctx.SetLogger(test.NewNullLogger())
 
 	flagSet := flag.NewFlagSet("myflags", flag.ExitOnError)
 	if testParams.setCommandLineArguments {
@@ -230,7 +252,8 @@ func createContextForRunCmdTests(t *testing.T, testParams runCommandTestCase) *c
 		require.NoError(t, err)
 	}
 
-	context.Cli = urfaveCli.NewContext(nil, flagSet, nil)
+	ctx.Cli = urfaveCli.NewContext(nil, flagSet, nil)
+	ctx.Ctx = testParams.context
 
-	return &context
+	return &ctx
 }
