@@ -1,6 +1,7 @@
 package custom
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -100,7 +101,7 @@ func (c *RunCommand) CustomExecute(ctx *cli.Context) error {
 		return fmt.Errorf("obtaining information about the running task: %w", err)
 	}
 
-	err = c.executeScriptOnTaskContainer(taskData, c.cfg.SSH, privateKey, script)
+	err = c.executeScriptOnTaskContainer(ctx.Ctx, taskData, c.cfg.SSH, privateKey, script)
 	if err != nil {
 		return fmt.Errorf("executing the script on the remote host: %w", err)
 	}
@@ -146,7 +147,7 @@ func (c *RunCommand) obtainTaskData() (task.Data, error) {
 	return fargateTaskData, nil
 }
 
-func (c *RunCommand) executeScriptOnTaskContainer(taskData task.Data, sshConfig config.SSH, privateKey []byte, script []byte) error {
+func (c *RunCommand) executeScriptOnTaskContainer(ctx context.Context, taskData task.Data, sshConfig config.SSH, privateKey []byte, script []byte) error {
 	c.logger.
 		WithField("taskARN", taskData.TaskARN).
 		Info("Executing script in the task container")
@@ -163,7 +164,10 @@ func (c *RunCommand) executeScriptOnTaskContainer(taskData task.Data, sshConfig 
 		PrivateKey: privateKey,
 	}
 
-	err := c.sshExecutor.Execute(settings, script)
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	err := c.sshExecutor.Execute(runCtx, settings, script)
 	if err != nil {
 		return fmt.Errorf("executing script on container with IP %q: %w", taskData.ContainerIP, err)
 	}
