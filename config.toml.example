@@ -2,7 +2,7 @@ LogLevel = "info"
 LogFile = "fargate.log"
 LogFormat = "text"
 
-[FargateConfig]
+[Fargate]
     Cluster = "cluster-name"
     Region = "us-east-1"
     Subnet = "subnet-XYZ"
