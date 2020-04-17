@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -39,6 +40,7 @@ func newConnectClientFn(cli client.Client, err error) connectClientFn {
 }
 
 func TestExecute(t *testing.T) {
+	testContext := context.Background()
 	testScript := "echo 1"
 
 	testError := errors.New("simulated error")
@@ -56,7 +58,7 @@ func TestExecute(t *testing.T) {
 			validPrivateKey: true,
 			connectClient: func() (connectClientFn, func(*testing.T)) {
 				sess := new(session.MockSession)
-				sess.On("ExecuteScript", testScript).
+				sess.On("ExecuteScript", testContext, testScript).
 					Return(nil).
 					Once()
 				sess.On("Close").
@@ -116,7 +118,7 @@ func TestExecute(t *testing.T) {
 			validPrivateKey: true,
 			connectClient: func() (connectClientFn, func(*testing.T)) {
 				sess := new(session.MockSession)
-				sess.On("ExecuteScript", testScript).
+				sess.On("ExecuteScript", testContext, testScript).
 					Return(testErrorScript).
 					Once()
 				sess.On("Close").
@@ -150,7 +152,7 @@ func TestExecute(t *testing.T) {
 			validPrivateKey: true,
 			connectClient: func() (connectClientFn, func(*testing.T)) {
 				sess := new(session.MockSession)
-				sess.On("ExecuteScript", testScript).
+				sess.On("ExecuteScript", testContext, testScript).
 					Return(nil).
 					Once()
 				sess.On("Close").
@@ -177,7 +179,7 @@ func TestExecute(t *testing.T) {
 			validPrivateKey: true,
 			connectClient: func() (connectClientFn, func(*testing.T)) {
 				sess := new(session.MockSession)
-				sess.On("ExecuteScript", testScript).
+				sess.On("ExecuteScript", testContext, testScript).
 					Return(testErrorScript).
 					Once()
 				sess.On("Close").
@@ -217,7 +219,7 @@ func TestExecute(t *testing.T) {
 				PrivateKey: createFakePrivateKeyForTests(tt.validPrivateKey),
 			}
 
-			err := executor.Execute(connection, []byte(testScript))
+			err := executor.Execute(testContext, connection, []byte(testScript))
 
 			if tt.expectedError != nil {
 				assertions.ErrorIs(t, err, tt.expectedError)
