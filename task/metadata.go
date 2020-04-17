@@ -49,13 +49,13 @@ func NewMetadataManager(logger logging.Logger, filesDir string) MetadataManager 
 	manager.directory = filesDir
 
 	runnerAdapter := runner.GetAdapter()
-	runnerData := runnerData{
+	runnerData := RunnerData{
 		ShortToken: runnerAdapter.ShortToken(),
 		ProjectURL: runnerAdapter.ProjectURL(),
 		PipelineID: runnerAdapter.PipelineID(),
 		JobID:      runnerAdapter.JobID(),
 	}
-	manager.filename = generateFilename(runnerData)
+	manager.filename = GenerateFilename(runnerData)
 
 	return manager
 }
