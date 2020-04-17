@@ -18,7 +18,7 @@ import (
 
 type cleanupCommandTestCase struct {
 	context       context.Context
-	fargateConfig config.FargateConfig
+	fargateConfig config.Fargate
 	taskData      task.Data
 
 	fargateInitError     error
@@ -38,7 +38,7 @@ func TestNewCleanupCommand(t *testing.T) {
 
 func TestCustomExecuteCleanup(t *testing.T) {
 	testContext, _ := context.WithCancel(context.Background())
-	testFargateConfig := config.FargateConfig{
+	testFargateConfig := config.Fargate{
 		Cluster: "cluster",
 	}
 	testTaskData := task.Data{
@@ -155,8 +155,8 @@ func createContextForCleanupCmdTests(testParams cleanupCommandTestCase) *cli.Con
 	ctx := new(cli.Context)
 	ctx.Ctx = testParams.context
 	ctx.SetConfig(config.Global{
-		FargateConfig: testParams.fargateConfig,
-		TaskMetadata:  config.TaskMetadata{},
+		Fargate:      testParams.fargateConfig,
+		TaskMetadata: config.TaskMetadata{},
 	})
 	ctx.SetLogger(test.NewNullLogger())
 
