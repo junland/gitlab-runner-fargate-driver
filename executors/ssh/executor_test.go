@@ -1,16 +1,22 @@
 package ssh
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
+	"net/http"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ssh"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/executors"
@@ -251,4 +257,88 @@ func encodePrivateKeyToPEM(privateKey *rsa.PrivateKey) []byte {
 	}
 
 	return pem.EncodeToMemory(&privBlock)
+}
+
+func TestSSHIntegration(t *testing.T) {
+	sshServiceHost := "ssh"
+	sshInfoService := fmt.Sprintf("http://%s:8888/", sshServiceHost)
+
+	resp, err := http.Get(sshInfoService)
+	if err != nil {
+		t.Skipf("Couldn't access SSH service: %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	var sshInfo struct {
+		Port           int
+		Username       string
+		HostPrivateKey string
+		HostPublicKey  string
+		UserPrivateKey string
+		UserPublicKey  string
+	}
+
+	decoder := json.NewDecoder(resp.Body)
+	err = decoder.Decode(&sshInfo)
+	require.NoError(t, err)
+
+	settings := executors.ConnectionSettings{
+		Hostname:   sshServiceHost,
+		Port:       sshInfo.Port,
+		Username:   sshInfo.Username,
+		PrivateKey: []byte(sshInfo.UserPrivateKey),
+	}
+
+	tests := map[string]struct {
+		ctx          func() context.Context
+		assertOutput func(t *testing.T, output string)
+	}{
+		"context finished before command": {
+			ctx: func() context.Context {
+				ctx, _ := context.WithTimeout(context.Background(), 2*time.Second)
+				return ctx
+			},
+			assertOutput: func(t *testing.T, output string) {
+				t.Log(output)
+				assert.NotContains(t, output, "Exiting!")
+			},
+		},
+		"context finished after command": {
+			ctx: func() context.Context {
+				return context.Background()
+			},
+			assertOutput: func(t *testing.T, output string) {
+				t.Log(output)
+				assert.Contains(t, output, "Exiting!")
+			},
+		},
+	}
+
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			e, ok := NewExecutor(logging.New()).(*executor)
+			require.True(t, ok)
+
+			out := new(bytes.Buffer)
+			e.stdout = out
+			e.stderr = out
+
+			script := `
+#!/usr/bin/env bash
+
+trap 'echo "Exiting!"' EXIT
+
+for i in $(seq 1 4); do
+  echo -n .
+  sleep 1
+done
+`
+
+			err := e.Execute(tt.ctx(), settings, []byte(script))
+
+			assert.NoError(t, err)
+			tt.assertOutput(t, out.String())
+		})
+	}
 }

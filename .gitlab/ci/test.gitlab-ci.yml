@@ -3,6 +3,9 @@ tests:
   - .gitlab_org_runners
   - .merge_request_pipelines
   stage: test
+  services:
+  - name: ${SSH_SERVICE_IMAGE}
+    alias: ssh
   script:
   - make tests
   coverage: /^total:\s+\(statements\)\s+\d+.\d+\%/
