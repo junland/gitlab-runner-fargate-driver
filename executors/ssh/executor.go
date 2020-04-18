@@ -40,6 +40,9 @@ type executor struct {
 	logger logging.Logger
 
 	connectClient func(network string, addr string, config *ssh.ClientConfig) (client.Client, error)
+
+	stdout io.Writer
+	stderr io.Writer
 }
 
 // NewExecutor is the constructor for an instance of the executor interface
@@ -48,6 +51,9 @@ func NewExecutor(logger logging.Logger) executors.Executor {
 	executor.logger = logger
 
 	executor.connectClient = client.NewConnectClient
+
+	executor.stdout = os.Stdout
+	executor.stderr = os.Stderr
 
 	return executor
 }
@@ -68,7 +74,7 @@ func (s *executor) Execute(ctx context.Context, connection executors.ConnectionS
 		}
 	}()
 
-	err = s.executeScript(ctx, script, os.Stdout, os.Stderr)
+	err = s.executeScript(ctx, script, s.stdout, s.stderr)
 	if err != nil {
 		return fmt.Errorf("executing script: %w", err)
 	}

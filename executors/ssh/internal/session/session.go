@@ -35,7 +35,7 @@ func (s *defaultSession) ExecuteScript(ctx context.Context, script string) error
 			return fmt.Errorf("executing SSH command: %w", err)
 		}
 	case <-ctx.Done():
-		err := s.internal.Signal(ssh.SIGTERM)
+		err := s.internal.Signal(ssh.SIGINT)
 		if err != nil {
 			return fmt.Errorf("killing SSH command: %w", err)
 		}
