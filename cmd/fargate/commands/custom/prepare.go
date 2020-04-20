@@ -71,7 +71,7 @@ func (c *PrepareCommand) CustomExecute(ctx *cli.Context) error {
 				WithField("taskARN", taskDetails.TaskARN).
 				WithError(err).
 				Error("Error during task initialization. Will kill the task for cleanup")
-			c.stopTask(ctx, taskDetails.TaskARN, c.cfg.FargateConfig.Cluster)
+			c.stopTask(ctx, taskDetails.TaskARN, c.cfg.Fargate.Cluster)
 		}
 
 		return fmt.Errorf("preparing new Fargate task: %w", err)
@@ -83,7 +83,7 @@ func (c *PrepareCommand) CustomExecute(ctx *cli.Context) error {
 			WithField("taskARN", taskDetails.TaskARN).
 			WithError(err).
 			Error("Error persisting task data necessary for next stages. Will kill the task for cleanup")
-		c.stopTask(ctx, taskDetails.TaskARN, c.cfg.FargateConfig.Cluster)
+		c.stopTask(ctx, taskDetails.TaskARN, c.cfg.Fargate.Cluster)
 
 		return fmt.Errorf("persisting task data for later stages: %w", err)
 	}
@@ -97,7 +97,7 @@ func (c *PrepareCommand) init(ctx *cli.Context) error {
 		Logger().
 		WithField("command", "prepare_exec")
 
-	c.awsFargate = c.newFargate(c.logger, c.cfg.FargateConfig.Region)
+	c.awsFargate = c.newFargate(c.logger, c.cfg.Fargate.Region)
 	err := c.awsFargate.Init()
 	if err != nil {
 		return fmt.Errorf("initializing Fargate adapter: %w", err)
@@ -111,12 +111,12 @@ func (c *PrepareCommand) init(ctx *cli.Context) error {
 func (c *PrepareCommand) prepareNewFargateTask(ctx *cli.Context) (task.Data, error) {
 	c.logger.Info("Preparing Fargate task")
 
-	taskDefinition := c.cfg.FargateConfig.TaskDefinition
+	taskDefinition := c.cfg.Fargate.TaskDefinition
 	connection := aws.ConnectionSettings{
-		Cluster:        c.cfg.FargateConfig.Cluster,
-		Subnet:         c.cfg.FargateConfig.Subnet,
-		SecurityGroup:  c.cfg.FargateConfig.SecurityGroup,
-		EnablePublicIP: c.cfg.FargateConfig.EnablePublicIP,
+		Cluster:        c.cfg.Fargate.Cluster,
+		Subnet:         c.cfg.Fargate.Subnet,
+		SecurityGroup:  c.cfg.Fargate.SecurityGroup,
+		EnablePublicIP: c.cfg.Fargate.EnablePublicIP,
 	}
 
 	var err error

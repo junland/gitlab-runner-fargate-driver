@@ -18,7 +18,7 @@ import (
 
 type prepareCommandTestCase struct {
 	context        context.Context
-	fargateConfig  config.FargateConfig
+	fargateConfig  config.Fargate
 	metadataConfig config.TaskMetadata
 	taskARN        string
 	containerIP    string
@@ -42,7 +42,7 @@ func TestNewPrepareCommand(t *testing.T) {
 
 func TestPrepareCommand_CustomExecute(t *testing.T) {
 	testContext, _ := context.WithCancel(context.Background())
-	testFargateConfig := config.FargateConfig{
+	testFargateConfig := config.Fargate{
 		Cluster:        "cluster",
 		Region:         "region",
 		Subnet:         "subnet",
@@ -247,8 +247,8 @@ func setExpectationsForMetadataManager(mockManager *task.MockMetadataManager, te
 func createCliContextForTests(testParams prepareCommandTestCase) *cli.Context {
 	cliCtx := new(cli.Context)
 	cliCtx.SetConfig(config.Global{
-		FargateConfig: testParams.fargateConfig,
-		TaskMetadata:  testParams.metadataConfig,
+		Fargate:      testParams.fargateConfig,
+		TaskMetadata: testParams.metadataConfig,
 	})
 	cliCtx.SetLogger(createTestLogger())
 	cliCtx.Ctx = testParams.context
