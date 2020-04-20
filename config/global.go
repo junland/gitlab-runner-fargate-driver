@@ -12,12 +12,12 @@ type Global struct {
 	LogFile   string
 	LogFormat string
 
-	FargateConfig FargateConfig
-	TaskMetadata  TaskMetadata
-	SSH           SSH
+	Fargate      Fargate
+	TaskMetadata TaskMetadata
+	SSH          SSH
 }
 
-type FargateConfig struct {
+type Fargate struct {
 	Cluster        string
 	Region         string
 	Subnet         string
