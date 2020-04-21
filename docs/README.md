@@ -258,5 +258,4 @@ LogFormat = "text"
 
 AWS Fargate does not support privileged mode - see "privileged" on [this AWS list of unsupported parameters](https://docs.aws.amazon.com/AmazonECS/latest/userguide/fargate-task-defs.html).
 
-GitLab Runner, however, supports Kaniko for building containers without privileged mode.  More information can be found in [Building images with kaniko and GitLab CI/CD](https://docs.gitlab.com/ee/ci/docker/using_kaniko.html)
-
+However, GitLab Runner supports Kaniko for [building containers without privileged mode](https://docs.gitlab.com/ee/ci/docker/using_kaniko.html).
