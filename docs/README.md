@@ -253,3 +253,9 @@ LogFormat = "text"
   Username = "root"
   PrivateKeyPath = "/home/user/.ssh/id_rsa"
 ```
+
+## Docker Container Builds (Docker in Docker)
+
+AWS Fargate does not support privileged mode - see "privileged" on [this AWS list of unsupported parameters](https://docs.aws.amazon.com/AmazonECS/latest/userguide/fargate-task-defs.html).
+
+However, GitLab Runner supports Kaniko for [building containers without privileged mode](https://docs.gitlab.com/ee/ci/docker/using_kaniko.html).
