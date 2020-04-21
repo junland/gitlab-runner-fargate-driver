@@ -87,7 +87,7 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 			persistARNError: testError,
 			expectedError:   testError,
 		},
-		"Error during persisting data and stop task": {
+		"Error during persisting ARN and stop task": {
 			persistARNError:      testError,
 			fargateStopTaskError: testErrorStopTask,
 			expectedError:        testError,
@@ -240,7 +240,6 @@ func setExpectationsForMetadataManager(mockManager *task.MockMetadataManager, te
 	}
 
 	expectedDataFirstCall := task.Data{TaskARN: testParams.taskARN}
-
 	mockManager.On("Persist", expectedDataFirstCall).
 		Return(testParams.persistARNError).
 		Once()
@@ -255,7 +254,6 @@ func setExpectationsForMetadataManager(mockManager *task.MockMetadataManager, te
 		TaskARN:     testParams.taskARN,
 		ContainerIP: testParams.containerIP,
 	}
-
 	mockManager.On("Persist", expectedDataSecondCall).
 		Return(testParams.persistIPError).
 		Once()

@@ -70,9 +70,8 @@ func (c *PrepareCommand) CustomExecute(ctx *cli.Context) error {
 		return fmt.Errorf("starting new Fargate task: %w", err)
 	}
 
-	taskDetails := task.Data{TaskARN: taskARN}
-
 	// Persist Task ARN to be used by other commands (run / cleanup)
+	taskDetails := task.Data{TaskARN: taskARN}
 	err = c.persistDataForLaterStages(taskDetails)
 	if err != nil {
 		c.killFargateTaskOnError(ctx, taskARN, err, "Error persisting task ARN. Will kill the task for cleanup")
@@ -85,9 +84,8 @@ func (c *PrepareCommand) CustomExecute(ctx *cli.Context) error {
 		return fmt.Errorf("waiting Fargate task to be ready: %w", err)
 	}
 
-	taskDetails.ContainerIP = containerIP
-
 	// Update metadata with the container IP to be used by the "run" command
+	taskDetails.ContainerIP = containerIP
 	err = c.persistDataForLaterStages(taskDetails)
 	if err != nil {
 		c.killFargateTaskOnError(ctx, taskARN, err, "Error persisting container IP. Will kill the task for cleanup")
@@ -127,7 +125,7 @@ func (c *PrepareCommand) startNewFargateTask(ctx *cli.Context) (string, error) {
 
 	taskARN, err := c.awsFargate.RunTask(ctx.Ctx, taskDefinition, connection)
 	if err != nil {
-		return taskARN, fmt.Errorf("starting Fargate task: %w", err)
+		return taskARN, fmt.Errorf("running new task on Fargate: %w", err)
 	}
 
 	return taskARN, nil
