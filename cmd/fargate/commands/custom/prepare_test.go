@@ -28,7 +28,8 @@ type prepareCommandTestCase struct {
 	fargateWaitTaskError    error
 	fargateContainerIPError error
 	fargateStopTaskError    error
-	persistDataError        error
+	persistARNError         error
+	persistIPError          error
 
 	expectedError error
 }
@@ -82,14 +83,18 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 			fargateContainerIPError: testError,
 			expectedError:           testError,
 		},
-		"Error during persisting data": {
-			persistDataError: testError,
-			expectedError:    testError,
+		"Error during persisting task ARN": {
+			persistARNError: testError,
+			expectedError:   testError,
 		},
 		"Error during persisting data and stop task": {
-			persistDataError:     testError,
+			persistARNError:      testError,
 			fargateStopTaskError: testErrorStopTask,
 			expectedError:        testError,
+		},
+		"Error during persisting container IP": {
+			persistIPError: testError,
+			expectedError:  testError,
 		},
 	}
 
@@ -142,7 +147,8 @@ func setExpectationsForFargate(mock *aws.MockFargate, testParams prepareCommandT
 	setExpectationForFargateRunTask(mock, shouldCallRunTask, testParams)
 
 	// Wait Task API will be called if previous calls succeeded
-	shouldCallWaitTask := shouldCallRunTask && testParams.fargateRunTaskError == nil
+	shouldCallWaitTask := shouldCallRunTask && testParams.fargateRunTaskError == nil &&
+		testParams.persistARNError == nil
 	setExpectationForFargateWaitTask(mock, shouldCallWaitTask, testParams)
 
 	// Get Container API will be called if previous calls succeeded
@@ -153,7 +159,8 @@ func setExpectationsForFargate(mock *aws.MockFargate, testParams prepareCommandT
 	shouldCallStopTask := testParams.fargateRunTaskError != nil ||
 		testParams.fargateWaitTaskError != nil ||
 		testParams.fargateContainerIPError != nil ||
-		testParams.persistDataError != nil
+		testParams.persistARNError != nil ||
+		testParams.persistIPError != nil
 	setExpectationForFargateStopTask(mock, shouldCallStopTask, testParams)
 }
 
@@ -226,21 +233,31 @@ func setExpectationForFargateStopTask(mockAwsFargate *aws.MockFargate, shouldCal
 
 func setExpectationsForMetadataManager(mockManager *task.MockMetadataManager, testParams prepareCommandTestCase) {
 	// Data will be persisted if the task is properly in running state and its IP was fetched
-	shouldPersistData := testParams.fargateInitError == nil &&
-		testParams.fargateRunTaskError == nil &&
-		testParams.fargateWaitTaskError == nil &&
-		testParams.fargateContainerIPError == nil
-	if !shouldPersistData {
+	shouldPersistARN := testParams.fargateInitError == nil &&
+		testParams.fargateRunTaskError == nil
+	if !shouldPersistARN {
 		return
 	}
 
-	expectedData := task.Data{
+	expectedDataFirstCall := task.Data{TaskARN: testParams.taskARN}
+
+	mockManager.On("Persist", expectedDataFirstCall).
+		Return(testParams.persistARNError).
+		Once()
+
+	shouldPersistIP := shouldPersistARN && testParams.persistARNError == nil &&
+		testParams.fargateWaitTaskError == nil && testParams.fargateContainerIPError == nil
+	if !shouldPersistIP {
+		return
+	}
+
+	expectedDataSecondCall := task.Data{
 		TaskARN:     testParams.taskARN,
 		ContainerIP: testParams.containerIP,
 	}
 
-	mockManager.On("Persist", expectedData).
-		Return(testParams.persistDataError).
+	mockManager.On("Persist", expectedDataSecondCall).
+		Return(testParams.persistIPError).
 		Once()
 }
 
