@@ -1,6 +1,5 @@
 .compile: &compile
   extends:
-  - .gitlab_org_runners
   - .merge_request_pipelines
   stage: compile
   script:
