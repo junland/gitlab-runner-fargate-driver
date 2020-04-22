@@ -121,11 +121,11 @@ func TestCustomExecuteRun(t *testing.T) {
 			shouldCallReadKey := shouldCallReadScript && tt.readScriptError == nil
 			setExpectationForReadKeyFile(mockFS, shouldCallReadKey, tt)
 
-			// Should call metadata manager if no error occured during reading the script and private key
+			// Should call metadata manager if no error occurred during reading the script and private key
 			shouldCallReadMetadata := shouldCallReadKey && tt.readPrivateKeyError == nil
 			setExpectationForReadMetadata(mockMetadataManager, shouldCallReadMetadata, tt)
 
-			// Should call executor if no error ocurred on any of the previous calls
+			// Should call executor if no error occurred on any of the previous calls
 			shouldCallExecuteScript := shouldCallReadMetadata && tt.obtainTaskDataError == nil
 			setExpectationForExecuteScript(mockExecutor, shouldCallExecuteScript, tt)
 
