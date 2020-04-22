@@ -37,7 +37,9 @@ func TestNewCleanupCommand(t *testing.T) {
 }
 
 func TestCustomExecuteCleanup(t *testing.T) {
-	testContext, _ := context.WithCancel(context.Background())
+	testContext, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testFargateConfig := config.Fargate{
 		Cluster: "cluster",
 	}
