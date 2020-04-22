@@ -66,7 +66,7 @@ func (c *PrepareCommand) CustomExecute(ctx *cli.Context) error {
 
 	taskARN, err := c.startNewFargateTask(ctx)
 	if err != nil {
-		c.killFargateTaskOnError(ctx, taskARN, err, "Error starting Fargate task. Will kill the task for cleanup")
+		c.stopFargateTaskOnError(ctx, taskARN, err, "Error when starting a new Fargate task. Will stop the task for cleanup")
 		return fmt.Errorf("starting new Fargate task: %w", err)
 	}
 
@@ -74,13 +74,13 @@ func (c *PrepareCommand) CustomExecute(ctx *cli.Context) error {
 	taskDetails := task.Data{TaskARN: taskARN}
 	err = c.persistDataForLaterStages(taskDetails)
 	if err != nil {
-		c.killFargateTaskOnError(ctx, taskARN, err, "Error persisting task ARN. Will kill the task for cleanup")
+		c.stopFargateTaskOnError(ctx, taskARN, err, "Error when persisting the task ARN. Will stop the task for cleanup")
 		return fmt.Errorf("persisting task ARN for later stages: %w", err)
 	}
 
 	containerIP, err := c.waitFargateTaskReady(ctx, taskARN)
 	if err != nil {
-		c.killFargateTaskOnError(ctx, taskARN, err, "Error during task initialization. Will kill the task for cleanup")
+		c.stopFargateTaskOnError(ctx, taskARN, err, "Error when waiting for task initialization. Will stop the task for cleanup")
 		return fmt.Errorf("waiting Fargate task to be ready: %w", err)
 	}
 
@@ -88,7 +88,7 @@ func (c *PrepareCommand) CustomExecute(ctx *cli.Context) error {
 	taskDetails.ContainerIP = containerIP
 	err = c.persistDataForLaterStages(taskDetails)
 	if err != nil {
-		c.killFargateTaskOnError(ctx, taskARN, err, "Error persisting container IP. Will kill the task for cleanup")
+		c.stopFargateTaskOnError(ctx, taskARN, err, "Error persisting container IP. Will stop the task for cleanup")
 		return fmt.Errorf("persisting container IP for later stages: %w", err)
 	}
 
@@ -131,20 +131,19 @@ func (c *PrepareCommand) startNewFargateTask(ctx *cli.Context) (string, error) {
 	return taskARN, nil
 }
 
-func (c *PrepareCommand) killFargateTaskOnError(ctx *cli.Context, taskARN string, err error, logMessage string) {
-	if taskARN != "" {
-		c.logger.
-			WithField("taskARN", taskARN).
-			WithError(err).
-			Error(logMessage)
+func (c *PrepareCommand) stopFargateTaskOnError(ctx *cli.Context, taskARN string, err error, logMessage string) {
+	if taskARN == "" {
+		return
+	}
 
-		stopErr := c.awsFargate.StopTask(ctx.Ctx, taskARN, c.cfg.Fargate.Cluster)
-		if stopErr != nil {
-			c.logger.
-				WithField("taskARN", taskARN).
-				WithError(stopErr).
-				Error("Error during stop task")
-		}
+	logger := c.logger.WithField("taskARN", taskARN)
+	logger.WithError(err).
+		Error(logMessage)
+
+	stopErr := c.awsFargate.StopTask(ctx.Ctx, taskARN, c.cfg.Fargate.Cluster)
+	if stopErr != nil {
+		logger.WithError(stopErr).
+			Error("Error during stop task")
 	}
 }
 
@@ -162,11 +161,13 @@ func (c *PrepareCommand) persistDataForLaterStages(taskDetails task.Data) error 
 }
 
 func (c *PrepareCommand) waitFargateTaskReady(ctx *cli.Context, taskARN string) (string, error) {
-	c.logger.Info("Waiting Fargate task to be ready")
+	c.logger.
+		WithField("taskARN", taskARN).
+		Info("Waiting Fargate task to be ready")
 
 	var containerIP string
 
-	// Wait the task to be in "running" state
+	// Wait for the task to be in "running" state
 	err := c.awsFargate.WaitUntilTaskRunning(ctx.Ctx, taskARN, c.cfg.Fargate.Cluster)
 	if err != nil {
 		return containerIP, fmt.Errorf("waiting for Fargate task to be in running state: %w", err)
