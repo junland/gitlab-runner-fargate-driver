@@ -49,7 +49,9 @@ func TestNewPrepareCommand(t *testing.T) {
 }
 
 func TestPrepareCommand_CustomExecute(t *testing.T) {
-	testContext, _ := context.WithCancel(context.Background())
+	testContext, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testFargateConfig := config.Fargate{
 		Cluster:        "cluster",
 		Region:         "region",
