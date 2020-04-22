@@ -73,3 +73,7 @@ issues:
       text: "G403: RSA keys should be at least 2048 bits"
       linters:
         - gosec
+    - path: "executors/ssh/executor_test.go"
+      text: "G107: Potential HTTP request made with variable url"
+      linters:
+        - gosec
