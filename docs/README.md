@@ -254,7 +254,7 @@ LogFormat = "text"
   PrivateKeyPath = "/home/user/.ssh/id_rsa"
 ```
 
-## Docker Container Builds (Docker in Docker)
+## Privileged mode with Docker in Docker
 
 AWS Fargate does not support privileged mode - see "privileged" on [this AWS list of unsupported parameters](https://docs.aws.amazon.com/AmazonECS/latest/userguide/fargate-task-defs.html).
 
