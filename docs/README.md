@@ -130,7 +130,7 @@ LogFormat = "text"
 | `Region`         | string | Yes      | The AWS region to send requests to.                                                                                                                                                                                           |
 | `Subnet`         | string | Yes      | The AWS subnet ID where the task should be created.                                                                                                                                                                           |
 | `SecurityGroup`  | string | Yes      | The AWS security group ID where the task should be created.                                                                                                                                                                   |
-| `TaskDefinition` | string | Yes      | The family and revision (family:revision) or full ARN of the task definition to be used for starting the task. Note that this setting is overriden if a different value is provided by the `task-def` command line arguments. |
+| `TaskDefinition` | string | Yes      | The family and revision (family:revision) or full ARN of the task definition to be used for starting the task. Note that this setting is overriden if a different value is provided by the `task-def` command line argument or by the `CUSTOM_ENV_TASK_DEFINITION` environment variable. |
 | `EnablePublicIP` | bool   | Yes      | This flag dictates whether the Fargate task should be created providing an external IP.                                                                                                                                       |
 
 ```toml
