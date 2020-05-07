@@ -1,8 +1,7 @@
 # AWS Fargate driver for Custom Executor
 
-**Caution:**
-The AWS Fargate driver is still in **BETA** and stability or backward
-compatibility is not guaranteed.
+**Note:** please refer to the article [Autoscaling GitLab CI on AWS Fargate](https://docs.gitlab.com/runner/configuration/runner_autoscale_aws_fargate/index.html)
+for detailed steps of configuring GitLab Runner with AWS Fargate.
 
 The AWS Fargate [custom
 executor](https://docs.gitlab.com/runner/executors/custom.html) driver is able
