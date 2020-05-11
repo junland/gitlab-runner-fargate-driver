@@ -8,7 +8,8 @@ export GOPATH ?= ".go/"
 export BUILD_PLATFORMS ?= -osarch 'linux/amd64 linux/386'
 
 export goJunitReport ?= $(GOPATH)/bin/go-junit-report
-mockery ?= $(GOPATH)/bin/mockery
+MOCKERY_VERSION = 1.1.0
+MOCKERY = .tmp/mockery-$(MOCKERY_VERSION)/mockery
 gox ?= $(GOPATH)/bin/gox
 
 RELEASE_INDEX_GEN_VERSION ?= master
@@ -64,11 +65,11 @@ fmt:
 	@go fmt $(PKGs) | awk '{if (NF > 0) {if (NR == 1) print "Please run go fmt for:"; print "- "$$1}} END {if (NF > 0) {if (NR > 0) exit 1}}'
 
 .PHONY: mocks
-mocks: $(mockery)
+mocks: $(MOCKERY)
 	# Removing existing mocks
 	@find * -name "mock_*.go" -delete
 	# Generating new mocks
-	@$(mockery) -recursive -all -inpkg -dir ./
+	@$(MOCKERY) -recursive -all -inpkg -dir ./
 
 .PHONY: check_mocks
 check_mocks:
@@ -169,9 +170,13 @@ check_modules:
 	@git diff go.sum > /tmp/gosum-$${CI_JOB_ID}-after
 	@diff -U0 /tmp/gosum-$${CI_JOB_ID}-before /tmp/gosum-$${CI_JOB_ID}-after
 
-$(mockery):
-	# Installing mockery
-	@go get github.com/vektra/mockery/cmd/mockery
+$(MOCKERY): OS_TYPE ?= $(shell uname -s)
+$(MOCKERY): DOWNLOAD_URL = "https://github.com/vektra/mockery/releases/download/v$(MOCKERY_VERSION)/mockery_$(MOCKERY_VERSION)_$(OS_TYPE)_x86_64.tar.gz"
+$(MOCKERY):
+	# Installing $(DOWNLOAD_URL) as $(MOCKERY)
+	@mkdir -p $(shell dirname $(MOCKERY))
+	@curl -sL "$(DOWNLOAD_URL)" | tar xz -C "$(shell dirname $(MOCKERY))"
+	@chmod +x "$(MOCKERY)"
 
 $(goJunitReport):
 	# Installing go-junit-report
