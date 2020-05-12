@@ -1,14 +1,13 @@
 # AWS Fargate driver for Custom Executor
 
-**Caution:**
-The AWS Fargate driver is still in **BETA** and stability or backward
-compatibility is not guaranteed.
-
 The AWS Fargate [custom
 executor](https://docs.gitlab.com/runner/executors/custom.html) driver is able
 to provision ECS containers on AWS to run a job and then delete them. It does
 not have any [prerequisite
 software](https://docs.gitlab.com/runner/executors/custom.html#prerequisite-software-for-running-a-job).
+
+See [Autoscaling GitLab CI on AWS Fargate](https://docs.gitlab.com/runner/configuration/runner_autoscale_aws_fargate/index.html)
+for detailed steps for configuring GitLab Runner with AWS Fargate.
 
 ## Installation
 
