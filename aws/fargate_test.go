@@ -19,14 +19,19 @@ import (
 )
 
 func TestRunTask(t *testing.T) {
+	testContext, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testError := errors.New("simulated error")
 	taskARN := "my-task-arn"
 	logger := createTestLogger()
 	testEnvVar := map[string]string{"MY_ENV_VAR": "testing"}
+	platformVersionToOverride := "1.4.0"
 
 	tests := map[string]struct {
 		initializeAdapter bool
 		environmentVars   map[string]string
+		platformVersion   string
 		awsError          error
 		expectedARN       string
 		expectedError     error
@@ -34,6 +39,7 @@ func TestRunTask(t *testing.T) {
 		"Fargate API returning success without overriding env variables": {
 			initializeAdapter: true,
 			environmentVars:   nil,
+			platformVersion:   "",
 			awsError:          nil,
 			expectedARN:       taskARN,
 			expectedError:     nil,
@@ -41,6 +47,15 @@ func TestRunTask(t *testing.T) {
 		"Fargate API returning success when overriding env variables": {
 			initializeAdapter: true,
 			environmentVars:   testEnvVar,
+			platformVersion:   "",
+			awsError:          nil,
+			expectedARN:       taskARN,
+			expectedError:     nil,
+		},
+		"Fargate API returning success overriding platform version": {
+			initializeAdapter: true,
+			environmentVars:   nil,
+			platformVersion:   platformVersionToOverride,
 			awsError:          nil,
 			expectedARN:       taskARN,
 			expectedError:     nil,
@@ -48,6 +63,7 @@ func TestRunTask(t *testing.T) {
 		"Fargate API returning error": {
 			initializeAdapter: true,
 			environmentVars:   nil,
+			platformVersion:   "",
 			awsError:          testError,
 			expectedARN:       "",
 			expectedError:     testError,
@@ -55,6 +71,7 @@ func TestRunTask(t *testing.T) {
 		"Fargate adapter not initialized error": {
 			initializeAdapter: false,
 			environmentVars:   nil,
+			platformVersion:   "",
 			awsError:          nil,
 			expectedARN:       "",
 			expectedError:     ErrNotInitialized,
@@ -71,11 +88,22 @@ func TestRunTask(t *testing.T) {
 
 			fargate := NewFargate(logger, "us-east-1")
 
+			connectionSettings := ConnectionSettings{
+				Subnet:         "subnet-name",
+				SecurityGroup:  "security-group-name",
+				EnablePublicIP: true,
+			}
+			taskSettings := TaskSettings{
+				Cluster:         "cluster-name",
+				TaskDefinition:  "task-def",
+				PlatformVersion: tt.platformVersion,
+			}
+
 			if tt.initializeAdapter {
 				mockECS.On(
 					"RunTaskWithContext",
-					mock.AnythingOfType("*context.emptyCtx"),
-					mock.AnythingOfType("*ecs.RunTaskInput"),
+					testContext,
+					getExpectedECSRunTaskInput(connectionSettings, taskSettings),
 				).
 					Return(
 						&ecs.RunTaskOutput{
@@ -92,13 +120,7 @@ func TestRunTask(t *testing.T) {
 				fargate.(*awsFargate).ec2Svc = mockEC2
 			}
 
-			connection := ConnectionSettings{
-				Cluster:        "cluster-name",
-				Subnet:         "subnet-name",
-				SecurityGroup:  "security-group-name",
-				EnablePublicIP: true,
-			}
-			arn, err := fargate.RunTask(context.Background(), "param1", connection, tt.environmentVars)
+			arn, err := fargate.RunTask(testContext, taskSettings, connectionSettings)
 
 			if tt.expectedError != nil {
 				assertions.ErrorIs(t, err, tt.expectedError)
@@ -113,6 +135,31 @@ func TestRunTask(t *testing.T) {
 
 func createTestLogger() logging.Logger {
 	return test.NewNullLogger()
+}
+
+func getExpectedECSRunTaskInput(connectionSettings ConnectionSettings, taskSettings TaskSettings) *ecs.RunTaskInput {
+	publicIP := "DISABLED"
+	if connectionSettings.EnablePublicIP {
+		publicIP = "ENABLED"
+	}
+
+	expectedPlatformVersion := "LATEST"
+	if taskSettings.PlatformVersion != "" {
+		expectedPlatformVersion = taskSettings.PlatformVersion
+	}
+
+	return &ecs.RunTaskInput{
+		TaskDefinition: &taskSettings.TaskDefinition,
+		Cluster:        &taskSettings.Cluster,
+		NetworkConfiguration: &ecs.NetworkConfiguration{
+			AwsvpcConfiguration: &ecs.AwsVpcConfiguration{
+				SecurityGroups: []*string{&connectionSettings.SecurityGroup},
+				Subnets:        []*string{&connectionSettings.Subnet},
+				AssignPublicIp: &publicIP,
+			},
+		},
+		PlatformVersion: &expectedPlatformVersion,
+	}
 }
 
 func TestNewFargate(t *testing.T) {
