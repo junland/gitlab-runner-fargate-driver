@@ -18,12 +18,13 @@ type Global struct {
 }
 
 type Fargate struct {
-	Cluster        string
-	Region         string
-	Subnet         string
-	SecurityGroup  string
-	TaskDefinition string
-	EnablePublicIP bool
+	Cluster         string
+	Region          string
+	Subnet          string
+	SecurityGroup   string
+	TaskDefinition  string
+	EnablePublicIP  bool
+	PlatformVersion string
 }
 
 type TaskMetadata struct {

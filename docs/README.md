@@ -131,8 +131,8 @@ LogFormat = "text"
 | `Subnet`         | string | Yes      | The AWS subnet ID where the task should be created.                                                                                                                                                                           |
 | `SecurityGroup`  | string | Yes      | The AWS security group ID where the task should be created.                                                                                                                                                                   |
 | `TaskDefinition` | string | Yes      | The family and revision (family:revision) or full ARN of the task definition to be used for starting the task. Note that this setting is overriden if a different value is provided by the `task-def` command line argument or by the `CUSTOM_ENV_FARGATE_TASK_DEFINITION` environment variable. |
-| `EnablePublicIP` | bool   | Yes      | This flag dictates whether the Fargate task should be created providing an external IP.                                                                                                                                       |
-
+| `EnablePublicIP` | bool   | Yes      | This flag dictates whether the Fargate task should be created providing an external IP.|
+| `PlatformVersion` | string   | No      | Fargate Platform Version. If not specified Fargate task will be created with `LATEST` version. List of [available versions](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/platform_versions.html).|
 ```toml
 [Fargate]
   Cluster = "cluster-name"
@@ -141,6 +141,7 @@ LogFormat = "text"
   SecurityGroup = "sg-XYZ"
   TaskDefinition = "my-task-definition:1"
   EnablePublicIP = true
+  PlatformVersion = "1.4.0"
 ```
 
 ### The `[TaskMetadata]` section

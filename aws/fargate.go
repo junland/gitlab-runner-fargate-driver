@@ -43,10 +43,11 @@ type Fargate interface {
 
 // ConnectionSettings centralizes attributes related to the cluster configuration
 type ConnectionSettings struct {
-	Cluster        string
-	Subnet         string
-	SecurityGroup  string
-	EnablePublicIP bool
+	Cluster         string
+	Subnet          string
+	SecurityGroup   string
+	EnablePublicIP  bool
+	PlatformVersion string
 }
 
 type ecsClient interface {
@@ -112,6 +113,12 @@ func (a *awsFargate) RunTask(ctx context.Context, taskDefinition string, connect
 	if connection.EnablePublicIP {
 		publicIP = "ENABLED"
 	}
+
+	platformVersion := "LATEST"
+	if connection.PlatformVersion != "" {
+		platformVersion = connection.PlatformVersion
+	}
+
 	taskInput := ecs.RunTaskInput{
 		TaskDefinition: &taskDefinition,
 		Cluster:        &connection.Cluster,
@@ -123,6 +130,7 @@ func (a *awsFargate) RunTask(ctx context.Context, taskDefinition string, connect
 			},
 		},
 		Overrides: a.processEnvVariablesToInject(envVars),
+		PlatformVersion: &platformVersion,
 	}
 
 	taskOutput, err := a.ecsSvc.RunTaskWithContext(ctx, &taskInput)

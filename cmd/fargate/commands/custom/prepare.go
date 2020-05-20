@@ -117,10 +117,11 @@ func (c *PrepareCommand) startNewFargateTask(ctx *cli.Context) (string, error) {
 
 	taskDefinition := c.cfg.Fargate.TaskDefinition
 	connection := aws.ConnectionSettings{
-		Cluster:        c.cfg.Fargate.Cluster,
-		Subnet:         c.cfg.Fargate.Subnet,
-		SecurityGroup:  c.cfg.Fargate.SecurityGroup,
-		EnablePublicIP: c.cfg.Fargate.EnablePublicIP,
+		Cluster:         c.cfg.Fargate.Cluster,
+		Subnet:          c.cfg.Fargate.Subnet,
+		SecurityGroup:   c.cfg.Fargate.SecurityGroup,
+		EnablePublicIP:  c.cfg.Fargate.EnablePublicIP,
+		PlatformVersion: c.cfg.Fargate.PlatformVersion,
 	}
 
 	taskARN, err := c.awsFargate.RunTask(ctx.Ctx, taskDefinition, connection, nil)
