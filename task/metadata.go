@@ -29,6 +29,7 @@ type MetadataManager interface {
 type Data struct {
 	TaskARN     string
 	ContainerIP string
+	PrivateKey  []byte
 }
 
 type fsMetadataManager struct {
