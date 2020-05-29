@@ -255,6 +255,5 @@ LogFormat = "text"
 
 ## Privileged mode with Docker in Docker
 
-AWS Fargate does not support privileged mode, as [the `privileged` parameter is unsupported](https://docs.aws.amazon.com/AmazonECS/latest/userguide/fargate-task-defs.html).
-
-However, GitLab Runner supports Kaniko for [building containers without privileged mode](https://docs.gitlab.com/ee/ci/docker/using_kaniko.html).
+AWS Fargate does not support privileged mode, as [the `privileged` parameter is
+unsupported](https://docs.aws.amazon.com/AmazonECS/latest/userguide/fargate-task-defs.html).
