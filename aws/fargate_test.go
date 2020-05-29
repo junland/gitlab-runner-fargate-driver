@@ -22,27 +22,39 @@ func TestRunTask(t *testing.T) {
 	testError := errors.New("simulated error")
 	taskARN := "my-task-arn"
 	logger := createTestLogger()
+	testEnvVar := map[string]string{"MY_ENV_VAR": "testing"}
 
 	tests := map[string]struct {
 		initializeAdapter bool
+		environmentVars   map[string]string
 		awsError          error
 		expectedARN       string
 		expectedError     error
 	}{
-		"Fargate API returning success": {
+		"Fargate API returning success without overriding env variables": {
 			initializeAdapter: true,
+			environmentVars:   nil,
+			awsError:          nil,
+			expectedARN:       taskARN,
+			expectedError:     nil,
+		},
+		"Fargate API returning success when overriding env variables": {
+			initializeAdapter: true,
+			environmentVars:   testEnvVar,
 			awsError:          nil,
 			expectedARN:       taskARN,
 			expectedError:     nil,
 		},
 		"Fargate API returning error": {
 			initializeAdapter: true,
+			environmentVars:   nil,
 			awsError:          testError,
 			expectedARN:       "",
 			expectedError:     testError,
 		},
 		"Fargate adapter not initialized error": {
 			initializeAdapter: false,
+			environmentVars:   nil,
 			awsError:          nil,
 			expectedARN:       "",
 			expectedError:     ErrNotInitialized,
@@ -86,7 +98,7 @@ func TestRunTask(t *testing.T) {
 				SecurityGroup:  "security-group-name",
 				EnablePublicIP: true,
 			}
-			arn, err := fargate.RunTask(context.Background(), "param1", connection)
+			arn, err := fargate.RunTask(context.Background(), "param1", connection, tt.environmentVars)
 
 			if tt.expectedError != nil {
 				assertions.ErrorIs(t, err, tt.expectedError)

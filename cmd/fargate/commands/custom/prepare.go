@@ -123,7 +123,7 @@ func (c *PrepareCommand) startNewFargateTask(ctx *cli.Context) (string, error) {
 		EnablePublicIP: c.cfg.Fargate.EnablePublicIP,
 	}
 
-	taskARN, err := c.awsFargate.RunTask(ctx.Ctx, taskDefinition, connection)
+	taskARN, err := c.awsFargate.RunTask(ctx.Ctx, taskDefinition, connection, nil)
 	if err != nil {
 		return taskARN, fmt.Errorf("running new task on Fargate: %w", err)
 	}

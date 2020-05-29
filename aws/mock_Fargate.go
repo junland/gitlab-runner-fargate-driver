@@ -48,20 +48,20 @@ func (_m *MockFargate) Init() error {
 	return r0
 }
 
-// RunTask provides a mock function with given fields: ctx, taskDefinition, connection
-func (_m *MockFargate) RunTask(ctx context.Context, taskDefinition string, connection ConnectionSettings) (string, error) {
-	ret := _m.Called(ctx, taskDefinition, connection)
+// RunTask provides a mock function with given fields: ctx, taskDefinition, connection, envVars
+func (_m *MockFargate) RunTask(ctx context.Context, taskDefinition string, connection ConnectionSettings, envVars map[string]string) (string, error) {
+	ret := _m.Called(ctx, taskDefinition, connection, envVars)
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func(context.Context, string, ConnectionSettings) string); ok {
-		r0 = rf(ctx, taskDefinition, connection)
+	if rf, ok := ret.Get(0).(func(context.Context, string, ConnectionSettings, map[string]string) string); ok {
+		r0 = rf(ctx, taskDefinition, connection, envVars)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, ConnectionSettings) error); ok {
-		r1 = rf(ctx, taskDefinition, connection)
+	if rf, ok := ret.Get(1).(func(context.Context, string, ConnectionSettings, map[string]string) error); ok {
+		r1 = rf(ctx, taskDefinition, connection, envVars)
 	} else {
 		r1 = ret.Error(1)
 	}

@@ -211,6 +211,7 @@ func setExpectationForFargateRunTask(mockAwsFargate *aws.MockFargate, testParams
 		testParams.context,
 		testParams.fargateConfig.TaskDefinition,
 		expectedConnectionSettings,
+		map[string]string(nil),
 	).
 		Return(*testParams.taskARN, testParams.fargateRunTaskError).
 		Once()
