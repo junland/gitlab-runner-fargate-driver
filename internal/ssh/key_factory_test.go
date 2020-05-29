@@ -1,4 +1,4 @@
-package task
+package ssh
 
 import (
 	"crypto/rand"
@@ -15,10 +15,10 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging/test"
 )
 
-func TestNewSSHKeyFactory(t *testing.T) {
+func TestNewKeyFactory(t *testing.T) {
 	testLogger := test.NewNullLogger()
 
-	factory := NewSSHKeyFactory(testLogger)
+	factory := NewKeyFactory(testLogger)
 
 	assert.NotNil(t, factory)
 	assert.Equal(t, testLogger, factory.(*keyFactory).logger)
@@ -26,15 +26,15 @@ func TestNewSSHKeyFactory(t *testing.T) {
 	assert.NotNil(t, factory.(*keyFactory).newSSHPublicKey)
 }
 
-func TestMakeKeyPair(t *testing.T) {
+func TestKeyFactory_Create(t *testing.T) {
 	testError := errors.New("simulated error")
-	testErrorRSAInternal := new(errInvalidPrivateKey)
+	testErrorRSAInternal := new(ErrInvalidPrivateKey)
 	bitSize := 64
 
 	validKeyPair, err := rsa.GenerateKey(rand.Reader, bitSize)
 	require.NoError(t, err)
 
-	invalidKeyPair := &rsa.PrivateKey{}
+	invalidKeyPair := new(rsa.PrivateKey)
 
 	tests := map[string]struct {
 		mockedRSAKey   *rsa.PrivateKey
@@ -70,7 +70,7 @@ func TestMakeKeyPair(t *testing.T) {
 
 	for tn, tt := range tests {
 		t.Run(tn, func(t *testing.T) {
-			factory := NewSSHKeyFactory(test.NewNullLogger())
+			factory := NewKeyFactory(test.NewNullLogger())
 
 			factory.(*keyFactory).generateRSAKey = func(r io.Reader, b int) (*rsa.PrivateKey, error) {
 				return tt.mockedRSAKey, tt.rsaKeyError
@@ -82,7 +82,7 @@ func TestMakeKeyPair(t *testing.T) {
 				}
 			}
 
-			keyPair, err := factory.MakeKeyPair(bitSize)
+			keyPair, err := factory.Create(bitSize)
 
 			if tt.expectedError != nil {
 				assertions.ErrorIs(t, err, tt.expectedError)
@@ -91,8 +91,9 @@ func TestMakeKeyPair(t *testing.T) {
 			}
 
 			assert.NoError(t, err)
-			assert.NotNil(t, keyPair.PublicKey)
-			assert.NotNil(t, keyPair.PrivateKey)
+			require.NotNil(t, keyPair)
+			assert.NotEmpty(t, keyPair.PublicKey)
+			assert.NotEmpty(t, keyPair.PrivateKey)
 		})
 	}
 }

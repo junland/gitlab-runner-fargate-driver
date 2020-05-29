@@ -1,4 +1,4 @@
-package task
+package ssh
 
 import (
 	"crypto/rand"
@@ -13,27 +13,31 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
 )
 
-// errInvalidPrivateKey will be used to wrap a RSA internal error
-type errInvalidPrivateKey struct {
+const (
+	rsaPrivateKeyType = "RSA PRIVATE KEY"
+)
+
+// ErrInvalidPrivateKey will be used to wrap a RSA internal error
+type ErrInvalidPrivateKey struct {
 	inner error
 }
 
-func (e *errInvalidPrivateKey) Error() string {
+func (e *ErrInvalidPrivateKey) Error() string {
 	return fmt.Sprintf("invalid private key: %v", e.inner)
 }
 
-func (e *errInvalidPrivateKey) Unwrap() error {
+func (e *ErrInvalidPrivateKey) Unwrap() error {
 	return e.inner
 }
 
-func (e *errInvalidPrivateKey) Is(err error) bool {
-	_, ok := err.(*errInvalidPrivateKey)
+func (e *ErrInvalidPrivateKey) Is(err error) bool {
+	_, ok := err.(*ErrInvalidPrivateKey)
 	return ok
 }
 
-// SSHKeyFactory is a factory for Public and Private key pairs
-type SSHKeyFactory interface {
-	MakeKeyPair(bitSize int) (*KeyPair, error)
+// KeyFactory is a factory for Public and Private key pairs
+type KeyFactory interface {
+	Create(bitSize int) (*KeyPair, error)
 }
 
 // KeyPair centralizes the generated public and private keys
@@ -50,8 +54,8 @@ type keyFactory struct {
 	newSSHPublicKey func(key interface{}) (ssh.PublicKey, error)
 }
 
-// NewSSHKeyFactory instantiates a concrete instance of SSHKeyFactory
-func NewSSHKeyFactory(logger logging.Logger) SSHKeyFactory {
+// NewKeyFactory instantiates a concrete instance of KeyFactory
+func NewKeyFactory(logger logging.Logger) KeyFactory {
 	return &keyFactory{
 		logger:          logger,
 		generateRSAKey:  rsa.GenerateKey,
@@ -59,9 +63,9 @@ func NewSSHKeyFactory(logger logging.Logger) SSHKeyFactory {
 	}
 }
 
-// MakeKeyPair generates a RSA Public and Private key pair
-func (r *keyFactory) MakeKeyPair(bitSize int) (*KeyPair, error) {
-	r.logger.Debug("[MakeKeyPair] Will generate new key pair")
+// Create generates a RSA Public and Private key pair
+func (r *keyFactory) Create(bitSize int) (*KeyPair, error) {
+	r.logger.Debug("[Create] Will generate new key pair")
 
 	privateKey, err := r.generateRSAKey(rand.Reader, bitSize)
 	if err != nil {
@@ -70,7 +74,7 @@ func (r *keyFactory) MakeKeyPair(bitSize int) (*KeyPair, error) {
 
 	err = privateKey.Validate()
 	if err != nil {
-		return nil, &errInvalidPrivateKey{inner: err}
+		return nil, &ErrInvalidPrivateKey{inner: err}
 	}
 
 	privateKeyBytes := r.encodePrivateKeyToPEM(privateKey)
@@ -85,19 +89,19 @@ func (r *keyFactory) MakeKeyPair(bitSize int) (*KeyPair, error) {
 		PrivateKey: privateKeyBytes,
 	}
 
-	r.logger.Debug("[MakeKeyPair] Key pair generated with success")
+	r.logger.Debug("[Create] Key pair generated with success")
 
 	return keyPair, nil
 }
 
 func (r *keyFactory) encodePrivateKeyToPEM(privateKey *rsa.PrivateKey) []byte {
-	privBlock := pem.Block{
-		Type:    "RSA PRIVATE KEY",
+	block := pem.Block{
+		Type:    rsaPrivateKeyType,
 		Headers: nil,
 		Bytes:   x509.MarshalPKCS1PrivateKey(privateKey),
 	}
 
-	return pem.EncodeToMemory(&privBlock)
+	return pem.EncodeToMemory(&block)
 }
 
 func (r *keyFactory) getPublicKey(privateKey *rsa.PrivateKey) ([]byte, error) {
