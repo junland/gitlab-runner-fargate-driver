@@ -42,7 +42,13 @@ func createTestLogger() logging.Logger {
 func TestPersist(t *testing.T) {
 	initializeAdapterForTesting(t)
 
-	data := Data{
+	testData := Data{
+		TaskARN:     "task-arn",
+		ContainerIP: "192.168.0.1",
+		PrivateKey:  []byte("Testing"),
+	}
+
+	testDataWithoutPrivateKey := Data{
 		TaskARN:     "task-arn",
 		ContainerIP: "192.168.0.1",
 	}
@@ -50,21 +56,31 @@ func TestPersist(t *testing.T) {
 	testError := errors.New("simulated error")
 
 	tests := map[string]struct {
+		data           Data
 		encodingError  error
 		writeFileError error
 		expectedError  error
 	}{
 		"Persist with success": {
+			data:           testData,
+			encodingError:  nil,
+			writeFileError: nil,
+			expectedError:  nil,
+		},
+		"Persist with success when no private key (backward compatibility)": {
+			data:           testDataWithoutPrivateKey,
 			encodingError:  nil,
 			writeFileError: nil,
 			expectedError:  nil,
 		},
 		"Error on encoding JSON": {
+			data:           testData,
 			encodingError:  testError,
 			writeFileError: nil,
 			expectedError:  testError,
 		},
 		"Error on persisting file": {
+			data:           testData,
 			encodingError:  nil,
 			writeFileError: testError,
 			expectedError:  testError,
@@ -79,7 +95,7 @@ func TestPersist(t *testing.T) {
 			mockEncoder := new(encoding.MockEncoder)
 			defer mockEncoder.AssertExpectations(t)
 
-			mockEncoder.On("Encode", data, mock.AnythingOfType("*bytes.Buffer")).
+			mockEncoder.On("Encode", tt.data, mock.AnythingOfType("*bytes.Buffer")).
 				Return(tt.encodingError).
 				Once()
 
@@ -97,7 +113,7 @@ func TestPersist(t *testing.T) {
 			manager.(*fsMetadataManager).fs = mockFS
 			manager.(*fsMetadataManager).encoder = mockEncoder
 
-			err := manager.Persist(data)
+			err := manager.Persist(tt.data)
 
 			if tt.expectedError != nil {
 				assertions.ErrorIs(t, err, tt.expectedError)
