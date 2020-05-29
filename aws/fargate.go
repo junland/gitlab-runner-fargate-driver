@@ -154,7 +154,7 @@ func (a *awsFargate) processEnvVariablesToInject(envVars map[string]string) *ecs
 	}
 
 	// Convert environment variables map into KeyValuePair
-	var environmentVars []*ecs.KeyValuePair
+	environmentVars := make([]*ecs.KeyValuePair, len(envVars))
 	for key, value := range envVars {
 		envVar := ecs.KeyValuePair{
 			Name:  &key,
