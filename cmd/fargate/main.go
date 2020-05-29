@@ -26,7 +26,7 @@ type globalFlags struct {
 
 	ConfigFile string `long:"config" description:"Path to configuration file"`
 
-	TaskDefinition string `long:"task-def" description:"Task definition" env:"CUSTOM_ENV_TASK_DEFINITION"`
+	TaskDefinition string `long:"task-def" description:"Task definition" env:"CUSTOM_ENV_FARGATE_TASK_DEFINITION"`
 }
 
 var (

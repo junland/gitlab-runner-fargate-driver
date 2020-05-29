@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/config"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/cli"
@@ -30,17 +29,17 @@ func TestLoadCliArgsEnvVars(t *testing.T) {
 
 	for tn, tt := range tests {
 		originalGlobalValue := global.TaskDefinition
+		defer func() {
+			global.TaskDefinition = originalGlobalValue
+		}()
 		global.TaskDefinition = tt.overrideValue
-		defer func(originalValue string) {
-			global.TaskDefinition = originalValue
-		}(originalGlobalValue)
 
 		t.Run(tn, func(t *testing.T) {
 			testContext := createCliContextForTests(defaultTaskDefinition)
+			assert.Equal(t, defaultTaskDefinition, testContext.Config().Fargate.TaskDefinition)
 
 			err := loadCliArgsEnvVars(testContext)
-			require.NoError(t, err)
-
+			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedTaskDefinition, testContext.Config().Fargate.TaskDefinition)
 		})
 	}
@@ -51,5 +50,6 @@ func createCliContextForTests(taskDefinition string) *cli.Context {
 	cliCtx.SetConfig(config.Global{
 		Fargate: config.Fargate{TaskDefinition: taskDefinition},
 	})
+
 	return cliCtx
 }
