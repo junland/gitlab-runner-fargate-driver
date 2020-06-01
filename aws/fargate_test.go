@@ -143,9 +143,9 @@ func getExpectedECSRunTaskInput(connectionSettings ConnectionSettings, taskSetti
 		publicIP = "ENABLED"
 	}
 
-	expectedPlatformVersion := "LATEST"
+	var expectedPlatformVersion *string
 	if taskSettings.PlatformVersion != "" {
-		expectedPlatformVersion = taskSettings.PlatformVersion
+		expectedPlatformVersion = &taskSettings.PlatformVersion
 	}
 
 	return &ecs.RunTaskInput{
@@ -158,7 +158,7 @@ func getExpectedECSRunTaskInput(connectionSettings ConnectionSettings, taskSetti
 				AssignPublicIp: &publicIP,
 			},
 		},
-		PlatformVersion: &expectedPlatformVersion,
+		PlatformVersion: expectedPlatformVersion,
 	}
 }
 

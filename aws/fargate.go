@@ -120,9 +120,9 @@ func (a *awsFargate) RunTask(ctx context.Context, taskSettings TaskSettings, con
 		publicIP = "ENABLED"
 	}
 
-	platformVersion := "LATEST"
+	var platformVersion *string
 	if taskSettings.PlatformVersion != "" {
-		platformVersion = taskSettings.PlatformVersion
+		platformVersion = &taskSettings.PlatformVersion
 	}
 
 	taskInput := ecs.RunTaskInput{
@@ -136,7 +136,7 @@ func (a *awsFargate) RunTask(ctx context.Context, taskSettings TaskSettings, con
 			},
 		},
 		Overrides:       a.processEnvVariablesToInject(taskSettings.EnvironmentVariables),
-		PlatformVersion: &platformVersion,
+		PlatformVersion: platformVersion,
 	}
 
 	taskOutput, err := a.ecsSvc.RunTaskWithContext(ctx, &taskInput)
