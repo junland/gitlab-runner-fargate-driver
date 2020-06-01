@@ -36,7 +36,7 @@ func TestRunTask(t *testing.T) {
 		expectedARN       string
 		expectedError     error
 	}{
-		"Fargate API returning success without overriding env variables": {
+		"Fargate API returning success": {
 			initializeAdapter: true,
 			environmentVars:   nil,
 			platformVersion:   "",
