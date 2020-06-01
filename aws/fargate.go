@@ -149,11 +149,9 @@ func (a *awsFargate) errIfNotInitialized() error {
 
 func (a *awsFargate) processEnvVariablesToInject(envVars map[string]string) *ecs.TaskOverride {
 	if (envVars == nil) || (len(envVars) == 0) {
-		// If there is no environment variable to process, we don't need to create the ecs "override" structure
 		return nil
 	}
 
-	// Convert environment variables map into KeyValuePair
 	environmentVars := make([]*ecs.KeyValuePair, len(envVars))
 	for key, value := range envVars {
 		envVar := ecs.KeyValuePair{
@@ -163,7 +161,6 @@ func (a *awsFargate) processEnvVariablesToInject(envVars map[string]string) *ecs
 		environmentVars = append(environmentVars, &envVar)
 	}
 
-	// Create the struct to be used during the RunTask API call
 	taskOverride := &ecs.TaskOverride{
 		ContainerOverrides: []*ecs.ContainerOverride{
 			{
