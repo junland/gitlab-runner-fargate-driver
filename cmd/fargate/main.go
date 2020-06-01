@@ -25,6 +25,8 @@ type globalFlags struct {
 	LogFormat string `long:"log-format" description:"Format of log (text, json)"`
 
 	ConfigFile string `long:"config" description:"Path to configuration file"`
+
+	TaskDefinition string `long:"task-def" description:"Task definition" env:"CUSTOM_ENV_FARGATE_TASK_DEFINITION"`
 }
 
 var (
@@ -68,6 +70,7 @@ func setUpApplication(ctx context.Context, logger logging.Logger) *cli.App {
 		return nil
 	})
 	a.AddBeforeFunc(loadConfigurationFile)
+	a.AddBeforeFunc(loadCliArgsEnvVars)
 	a.AddBeforeFunc(updateLogLevel)
 	a.AddBeforeFunc(updateLogFormat)
 	a.AddBeforeFunc(setLoggingToFile)
@@ -102,6 +105,19 @@ func loadConfigurationFile(ctx *cli.Context) error {
 	}
 
 	ctx.SetConfig(cfg)
+
+	return nil
+}
+
+func loadCliArgsEnvVars(ctx *cli.Context) error {
+	if global.TaskDefinition == "" {
+		return nil
+	}
+
+	// Override the task definition from config.toml if received by command line or env variable
+	config := ctx.Config()
+	config.Fargate.TaskDefinition = global.TaskDefinition
+	ctx.SetConfig(config)
 
 	return nil
 }
