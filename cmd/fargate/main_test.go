@@ -28,13 +28,13 @@ func TestLoadCliArgsEnvVars(t *testing.T) {
 	}
 
 	for tn, tt := range tests {
-		originalGlobalValue := global.TaskDefinition
-		defer func() {
-			global.TaskDefinition = originalGlobalValue
-		}()
-		global.TaskDefinition = tt.overrideValue
-
 		t.Run(tn, func(t *testing.T) {
+			originalGlobalValue := global.TaskDefinition
+			defer func() {
+				global.TaskDefinition = originalGlobalValue
+			}()
+			global.TaskDefinition = tt.overrideValue
+
 			testContext := createCliContextForTests(defaultTaskDefinition)
 			assert.Equal(t, defaultTaskDefinition, testContext.Config().Fargate.TaskDefinition)
 
