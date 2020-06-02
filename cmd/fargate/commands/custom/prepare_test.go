@@ -13,6 +13,7 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/cli"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging/test"
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/ssh"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/task"
 )
 
@@ -22,7 +23,9 @@ type prepareCommandTestCase struct {
 	metadataConfig config.TaskMetadata
 	taskARN        *string
 	containerIP    string
+	keyPair        ssh.KeyPair
 
+	createKeyPairError      error
 	fargateInitError        error
 	fargateRunTaskError     error
 	fargateWaitTaskError    error
@@ -31,6 +34,7 @@ type prepareCommandTestCase struct {
 	persistARNError         error
 	persistIPError          error
 
+	shouldNotCallCreateKeyPair  bool
 	shouldNotCallRunTask        bool
 	shouldNotCallWaitTask       bool
 	shouldNotCallGetContainerIP bool
@@ -65,6 +69,10 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 	}
 	testTaskARN := "task-arn"
 	testContainerIP := "1.2.3.4"
+	testKeyPair := ssh.KeyPair{
+		PrivateKey: []byte("Private key"),
+		PublicKey:  []byte("Public key"),
+	}
 
 	testError := errors.New("simulated error")
 	testErrorStopTask := errors.New("simulated error 2")
@@ -74,6 +82,7 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 	tests := map[string]prepareCommandTestCase{
 		"Error during Fargate Init": {
 			fargateInitError:            testError,
+			shouldNotCallCreateKeyPair:  true,
 			shouldNotCallRunTask:        true,
 			shouldNotCallWaitTask:       true,
 			shouldNotCallGetContainerIP: true,
@@ -82,6 +91,17 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 			shouldNotPersistIP:          true,
 			expectedError:               testError,
 		},
+		"Error during create Public / Private Key Pair": {
+			createKeyPairError:          testError,
+			shouldNotCallRunTask:        true,
+			shouldNotCallWaitTask:       true,
+			shouldNotCallGetContainerIP: true,
+			shouldNotCallStopTask:       true,
+			shouldNotPersistARN:         true,
+			shouldNotPersistIP:          true,
+			expectedError:               testError,
+		},
+
 		"Error during Fargate Run Task": {
 			fargateRunTaskError:         testError,
 			shouldNotCallWaitTask:       true,
@@ -148,9 +168,13 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 			tt.fargateConfig = testFargateConfig
 			tt.metadataConfig = testMetadataConfig
 			tt.containerIP = testContainerIP
+			tt.keyPair = testKeyPair
 			if tt.taskARN == nil {
 				tt.taskARN = &testTaskARN
 			}
+
+			mockKeyFactory := new(ssh.MockKeyFactory)
+			defer mockKeyFactory.AssertExpectations(t)
 
 			mockAwsFargate := new(aws.MockFargate)
 			defer mockAwsFargate.AssertExpectations(t)
@@ -158,10 +182,14 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 			mockMetadataManager := new(task.MockMetadataManager)
 			defer mockMetadataManager.AssertExpectations(t)
 
+			setExpectationsForKeyFactory(mockKeyFactory, tt)
 			setExpectationsForFargate(mockAwsFargate, tt)
 			setExpectationsForMetadataManager(mockMetadataManager, tt)
 
 			prepare := new(PrepareCommand)
+			prepare.newKeyFactory = func(logger logging.Logger) ssh.KeyFactory {
+				return mockKeyFactory
+			}
 			prepare.newFargate = func(logger logging.Logger, awsRegion string) aws.Fargate {
 				return mockAwsFargate
 			}
@@ -181,6 +209,16 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 			assert.NotEmpty(t, prepare.metadataManager)
 		})
 	}
+}
+
+func setExpectationsForKeyFactory(mockKeyFactory *ssh.MockKeyFactory, testParams prepareCommandTestCase) {
+	if testParams.shouldNotCallCreateKeyPair {
+		return
+	}
+
+	mockKeyFactory.On("Create", defaultBitSize).
+		Return(&testParams.keyPair, testParams.createKeyPairError).
+		Once()
 }
 
 func setExpectationsForFargate(mock *aws.MockFargate, testParams prepareCommandTestCase) {
@@ -206,12 +244,16 @@ func setExpectationForFargateRunTask(mockAwsFargate *aws.MockFargate, testParams
 		EnablePublicIP: testParams.fargateConfig.EnablePublicIP,
 	}
 
+	expectedEnvVars := map[string]string{
+		"SSH_PUBLIC_KEY": string(testParams.keyPair.PublicKey),
+	}
+
 	mockAwsFargate.On(
 		"RunTask",
 		testParams.context,
 		testParams.fargateConfig.TaskDefinition,
 		expectedConnectionSettings,
-		map[string]string(nil),
+		expectedEnvVars,
 	).
 		Return(*testParams.taskARN, testParams.fargateRunTaskError).
 		Once()
@@ -272,7 +314,10 @@ func setExpectationsForPersistingTaskARN(mockManager *task.MockMetadataManager, 
 		return
 	}
 
-	expectedDataFirstCall := task.Data{TaskARN: *testParams.taskARN}
+	expectedDataFirstCall := task.Data{
+		TaskARN:    *testParams.taskARN,
+		PrivateKey: testParams.keyPair.PrivateKey,
+	}
 	mockManager.On("Persist", expectedDataFirstCall).
 		Return(testParams.persistARNError).
 		Once()
@@ -286,6 +331,7 @@ func setExpectationsForPersistingContainerIP(mockManager *task.MockMetadataManag
 	expectedDataSecondCall := task.Data{
 		TaskARN:     *testParams.taskARN,
 		ContainerIP: testParams.containerIP,
+		PrivateKey:  testParams.keyPair.PrivateKey,
 	}
 	mockManager.On("Persist", expectedDataSecondCall).
 		Return(testParams.persistIPError).
