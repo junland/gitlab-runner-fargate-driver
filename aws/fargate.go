@@ -152,13 +152,12 @@ func (a *awsFargate) processEnvVariablesToInject(envVars map[string]string) *ecs
 		return nil
 	}
 
-	count := 0
-	environmentVars := make([]*ecs.KeyValuePair, len(envVars))
+	environmentVars := make([]*ecs.KeyValuePair, 0)
 	for key, value := range envVars {
-		environmentVars[count] = &ecs.KeyValuePair{
+		environmentVars = append(environmentVars, &ecs.KeyValuePair{
 			Name:  &key,
 			Value: &value,
-		}
+		})
 	}
 
 	taskOverride := &ecs.TaskOverride{
