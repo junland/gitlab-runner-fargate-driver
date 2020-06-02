@@ -12,30 +12,32 @@ import (
 func TestLoadCliArgsEnvVars(t *testing.T) {
 	defaultTaskDefinition := "default-task-def:1"
 	overrideTaskDefinition := "another-task-def:1"
+	defaultPlatformVersion := "LATEST"
+	overridePlatformVersion := "1.4.0"
 
-	tests := map[string]struct {
-		overrideValue          string
-		expectedTaskDefinition string
+	taskDefinitionTests := map[string]struct {
+		taskDefinitionOverrideValue string
+		expectedTaskDefinition      string
 	}{
-		"Should not override if not received by command line or env variable": {
-			overrideValue:          "",
-			expectedTaskDefinition: defaultTaskDefinition,
+		"Should not override TaskDefinition if not received by command line or env variable": {
+			taskDefinitionOverrideValue: "",
+			expectedTaskDefinition:      defaultTaskDefinition,
 		},
-		"Should override if received by command line or env variable": {
-			overrideValue:          overrideTaskDefinition,
-			expectedTaskDefinition: overrideTaskDefinition,
+		"Should override TaskDefinition if received by command line or env variable": {
+			taskDefinitionOverrideValue: overrideTaskDefinition,
+			expectedTaskDefinition:      overrideTaskDefinition,
 		},
 	}
 
-	for tn, tt := range tests {
+	for tn, tt := range taskDefinitionTests {
 		t.Run(tn, func(t *testing.T) {
 			originalGlobalValue := global.TaskDefinition
 			defer func() {
 				global.TaskDefinition = originalGlobalValue
 			}()
-			global.TaskDefinition = tt.overrideValue
+			global.TaskDefinition = tt.taskDefinitionOverrideValue
 
-			testContext := createCliContextForTests(defaultTaskDefinition)
+			testContext := createCliContextForTaskDefinitionTests(defaultTaskDefinition)
 			assert.Equal(t, defaultTaskDefinition, testContext.Config().Fargate.TaskDefinition)
 
 			err := loadCliArgsEnvVars(testContext)
@@ -43,13 +45,53 @@ func TestLoadCliArgsEnvVars(t *testing.T) {
 			assert.Equal(t, tt.expectedTaskDefinition, testContext.Config().Fargate.TaskDefinition)
 		})
 	}
+
+	platformVersionTests := map[string]struct {
+		platformVersionOverrideValue string
+		expectedPlatformVersion      string
+	}{
+		"Should not override PlatformVersion if not received by command line or env variable": {
+			platformVersionOverrideValue: "",
+			expectedPlatformVersion:      defaultPlatformVersion,
+		},
+		"Should override PlatformVersion if received by command line or env variable": {
+			platformVersionOverrideValue: overridePlatformVersion,
+			expectedPlatformVersion:      overridePlatformVersion,
+		},
+	}
+
+	for tn, tt := range platformVersionTests {
+		t.Run(tn, func(t *testing.T) {
+			originalGlobalValue := global.PlatformVersion
+			defer func() {
+				global.PlatformVersion = originalGlobalValue
+			}()
+			global.PlatformVersion = tt.platformVersionOverrideValue
+
+			testContext := createCliContextForPlatformVersionTests(defaultPlatformVersion)
+			assert.Equal(t, defaultPlatformVersion, testContext.Config().Fargate.PlatformVersion)
+
+			err := loadCliArgsEnvVars(testContext)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedPlatformVersion, testContext.Config().Fargate.PlatformVersion)
+		})
+	}
 }
 
-func createCliContextForTests(taskDefinition string) *cli.Context {
+func createCliContextForTaskDefinitionTests(taskDefinition string) *cli.Context {
 	cliCtx := new(cli.Context)
 	cliCtx.SetConfig(config.Global{
 		Fargate: config.Fargate{TaskDefinition: taskDefinition},
 	})
 
+	return cliCtx
+}
+
+func createCliContextForPlatformVersionTests(platformVersion string) *cli.Context {
+	cliCtx := new(cli.Context)
+
+	cliCtx.SetConfig(config.Global{
+		Fargate: config.Fargate{PlatformVersion: platformVersion},
+	})
 	return cliCtx
 }

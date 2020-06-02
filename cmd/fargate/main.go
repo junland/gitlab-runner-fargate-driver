@@ -26,7 +26,8 @@ type globalFlags struct {
 
 	ConfigFile string `long:"config" description:"Path to configuration file"`
 
-	TaskDefinition string `long:"task-def" description:"Task definition" env:"CUSTOM_ENV_FARGATE_TASK_DEFINITION"`
+	TaskDefinition  string `long:"task-def" description:"Task definition" env:"CUSTOM_ENV_FARGATE_TASK_DEFINITION"`
+	PlatformVersion string `long:"platform-version" description:"Fargate platform version" env:"CUSTOM_ENV_FARGATE_PLATFORM_VERSION"`
 }
 
 var (
@@ -110,13 +111,21 @@ func loadConfigurationFile(ctx *cli.Context) error {
 }
 
 func loadCliArgsEnvVars(ctx *cli.Context) error {
-	if global.TaskDefinition == "" {
+	if global.TaskDefinition == "" && global.PlatformVersion == "" {
 		return nil
 	}
 
-	// Override the task definition from config.toml if received by command line or env variable
+	// Override parameters from config.toml if received by command line or env variable
 	config := ctx.Config()
-	config.Fargate.TaskDefinition = global.TaskDefinition
+
+	if global.TaskDefinition != "" {
+		config.Fargate.TaskDefinition = global.TaskDefinition
+	}
+
+	if global.PlatformVersion != "" {
+		config.Fargate.PlatformVersion = global.PlatformVersion
+	}
+
 	ctx.SetConfig(config)
 
 	return nil
