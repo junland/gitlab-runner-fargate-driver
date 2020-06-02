@@ -132,7 +132,7 @@ LogFormat = "text"
 | `SecurityGroup`  | string | Yes      | The AWS security group ID where the task should be created.                                                                                                                                                                   |
 | `TaskDefinition` | string | Yes      | The family and revision (family:revision) or full ARN of the task definition to be used for starting the task. Note that this setting is overriden if a different value is provided by the `task-def` command line argument or by the `CUSTOM_ENV_FARGATE_TASK_DEFINITION` environment variable. |
 | `EnablePublicIP` | bool   | Yes      | This flag dictates whether the Fargate task should be created providing an external IP.|
-| `PlatformVersion` | string   | No      | Fargate Platform Version. If not specified, the Fargate task will be created with `LATEST` version. See list of [available versions](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/platform_versions.html).|
+| `PlatformVersion` | string   | No      | Fargate Platform Version. If not specified, the Fargate task will be created with `LATEST` version. See list of [available versions](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/platform_versions.html). Note that this setting is overriden if a different value is provided by the `platform-version` command line argument or by the `CUSTOM_ENV_FARGATE_PLATFORM_VERSION` environment variable. |
 
 ```toml
 [Fargate]
