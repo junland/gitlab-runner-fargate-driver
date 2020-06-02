@@ -15,13 +15,17 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
 )
 
-// ErrNotInitialized is returned when the fargate methods are invoked without initialization
-var ErrNotInitialized = errors.New("fargate adapter is not initialized")
+var (
+	defaultContainerName = "ci-coordinator"
+
+	// ErrNotInitialized is returned when the fargate methods are invoked without initialization
+	ErrNotInitialized = errors.New("fargate adapter is not initialized")
+)
 
 // Fargate should be used to manage AWS Fargate Tasks (start, stop, etc)
 type Fargate interface {
 	// RunTask starts a new task in a pre configured Fargate
-	RunTask(ctx context.Context, taskDefinition string, connection ConnectionSettings) (string, error)
+	RunTask(ctx context.Context, taskDefinition string, connection ConnectionSettings, envVars map[string]string) (string, error)
 
 	// WaitUntilTaskRunning blocks the request until the task is in "running"
 	// state or failed to reach this state
@@ -96,7 +100,7 @@ func (a *awsFargate) Init() error {
 	return nil
 }
 
-func (a *awsFargate) RunTask(ctx context.Context, taskDefinition string, connection ConnectionSettings) (string, error) {
+func (a *awsFargate) RunTask(ctx context.Context, taskDefinition string, connection ConnectionSettings, envVars map[string]string) (string, error) {
 	err := a.errIfNotInitialized()
 	if err != nil {
 		return "", fmt.Errorf("could not start AWS Fargate Task: %w", err)
@@ -118,6 +122,7 @@ func (a *awsFargate) RunTask(ctx context.Context, taskDefinition string, connect
 				AssignPublicIp: &publicIP,
 			},
 		},
+		Overrides: a.processEnvVariablesToInject(envVars),
 	}
 
 	taskOutput, err := a.ecsSvc.RunTaskWithContext(ctx, &taskInput)
@@ -140,6 +145,33 @@ func (a *awsFargate) errIfNotInitialized() error {
 	}
 
 	return ErrNotInitialized
+}
+
+func (a *awsFargate) processEnvVariablesToInject(envVars map[string]string) *ecs.TaskOverride {
+	if (envVars == nil) || (len(envVars) == 0) {
+		return nil
+	}
+
+	environmentVars := make([]*ecs.KeyValuePair, 0)
+	for key, value := range envVars {
+		environmentVars = append(environmentVars, &ecs.KeyValuePair{
+			Name:  &key,
+			Value: &value,
+		})
+	}
+
+	taskOverride := &ecs.TaskOverride{
+		ContainerOverrides: []*ecs.ContainerOverride{
+			{
+				Name:        &defaultContainerName,
+				Environment: environmentVars,
+			},
+		},
+	}
+
+	a.logger.Debug("[processEnvVariablesToInject] Environment variables processed with success")
+
+	return taskOverride
 }
 
 func (a *awsFargate) WaitUntilTaskRunning(ctx context.Context, taskARN string, cluster string) error {
