@@ -111,10 +111,6 @@ func loadConfigurationFile(ctx *cli.Context) error {
 }
 
 func loadCliArgsEnvVars(ctx *cli.Context) error {
-	if global.TaskDefinition == "" && global.PlatformVersion == "" {
-		return nil
-	}
-
 	// Override parameters from config.toml if received by command line or env variable
 	config := ctx.Config()
 
