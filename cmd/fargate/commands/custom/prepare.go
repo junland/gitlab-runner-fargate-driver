@@ -115,7 +115,6 @@ func (c *PrepareCommand) init(ctx *cli.Context) error {
 func (c *PrepareCommand) startNewFargateTask(ctx *cli.Context) (string, error) {
 	c.logger.Info("Starting new Fargate task")
 
-	taskDefinition := c.cfg.Fargate.TaskDefinition
 	connection := aws.ConnectionSettings{
 		Subnet:         c.cfg.Fargate.Subnet,
 		SecurityGroup:  c.cfg.Fargate.SecurityGroup,

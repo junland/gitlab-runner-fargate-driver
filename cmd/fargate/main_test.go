@@ -51,7 +51,7 @@ func TestLoadCliArgsEnvVars(t *testing.T) {
 			}()
 			global.PlatformVersion = tt.platformVersionOverrideValue
 
-			testContext := createCliContext(originalTaskDefinition, originalPlatformVersion)
+			testContext := createCliContextForTests(originalTaskDefinition, originalPlatformVersion)
 			assert.Equal(t, originalTaskDefinition, testContext.Config().Fargate.TaskDefinition)
 			assert.Equal(t, originalPlatformVersion, testContext.Config().Fargate.PlatformVersion)
 
@@ -63,7 +63,7 @@ func TestLoadCliArgsEnvVars(t *testing.T) {
 	}
 }
 
-func createCliContext(taskDefinition string, platformVersion string) *cli.Context {
+func createCliContextForTests(taskDefinition string, platformVersion string) *cli.Context {
 	cliCtx := new(cli.Context)
 	cliCtx.SetConfig(config.Global{
 		Fargate: config.Fargate{

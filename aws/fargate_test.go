@@ -94,9 +94,10 @@ func TestRunTask(t *testing.T) {
 				EnablePublicIP: true,
 			}
 			taskSettings := TaskSettings{
-				Cluster:         "cluster-name",
-				TaskDefinition:  "task-def",
-				PlatformVersion: tt.platformVersion,
+				Cluster:              "cluster-name",
+				TaskDefinition:       "task-def",
+				PlatformVersion:      tt.platformVersion,
+				EnvironmentVariables: tt.environmentVars,
 			}
 
 			if tt.initializeAdapter {
@@ -148,6 +149,26 @@ func getExpectedECSRunTaskInput(connectionSettings ConnectionSettings, taskSetti
 		expectedPlatformVersion = &taskSettings.PlatformVersion
 	}
 
+	var expectedOverride *ecs.TaskOverride
+	if len(taskSettings.EnvironmentVariables) > 0 {
+		environmentVars := make([]*ecs.KeyValuePair, 0)
+		for key, value := range taskSettings.EnvironmentVariables {
+			environmentVars = append(environmentVars, &ecs.KeyValuePair{
+				Name:  &key,
+				Value: &value,
+			})
+		}
+
+		expectedOverride = &ecs.TaskOverride{
+			ContainerOverrides: []*ecs.ContainerOverride{
+				{
+					Name:        &defaultContainerName,
+					Environment: environmentVars,
+				},
+			},
+		}
+	}
+
 	return &ecs.RunTaskInput{
 		TaskDefinition: &taskSettings.TaskDefinition,
 		Cluster:        &taskSettings.Cluster,
@@ -158,6 +179,7 @@ func getExpectedECSRunTaskInput(connectionSettings ConnectionSettings, taskSetti
 				AssignPublicIp: &publicIP,
 			},
 		},
+		Overrides:       expectedOverride,
 		PlatformVersion: expectedPlatformVersion,
 	}
 }
