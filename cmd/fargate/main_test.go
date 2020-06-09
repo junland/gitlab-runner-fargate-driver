@@ -36,6 +36,12 @@ func TestLoadCliArgsEnvVars(t *testing.T) {
 			expectedTaskDefinition:       originalTaskDefinition,
 			expectedPlatformVersion:      overrideValueForPlatformVersion,
 		},
+		"Should override platform version and task definition if received by command line or env variable": {
+			taskDefinitionOverrideValue:  overrideValueForTaskDefinition,
+			platformVersionOverrideValue: overrideValueForPlatformVersion,
+			expectedTaskDefinition:       overrideValueForTaskDefinition,
+			expectedPlatformVersion:      overrideValueForPlatformVersion,
+		},
 	}
 
 	for tn, tt := range tests {
