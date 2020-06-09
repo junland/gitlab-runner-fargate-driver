@@ -44,20 +44,11 @@ func TestLoadCliArgsEnvVars(t *testing.T) {
 			originalPlatVersionGlobalValue := global.PlatformVersion
 			global.TaskDefinition = tt.taskDefinitionOverrideValue
 			global.PlatformVersion = tt.platformVersionOverrideValue
-			defer func() {
-				global.TaskDefinition = originalTaskDefGlobalValue
-				global.PlatformVersion = originalPlatVersionGlobalValue
-			}()
-			defer func() {
-				global.TaskDefinition = originalTaskDefGlobalValue
-			}()
-			global.TaskDefinition = tt.taskDefinitionOverrideValue
 
-			originalPlatVersionGlobalValue := global.PlatformVersion
 			defer func() {
+				global.TaskDefinition = originalTaskDefGlobalValue
 				global.PlatformVersion = originalPlatVersionGlobalValue
 			}()
-			global.PlatformVersion = tt.platformVersionOverrideValue
 
 			testContext := createCliContextForTests(originalTaskDefinition, originalPlatformVersion)
 			assert.Equal(t, originalTaskDefinition, testContext.Config().Fargate.TaskDefinition)
