@@ -22,12 +22,9 @@ func TestLoadCliArgsEnvVars(t *testing.T) {
 		expectedPlatformVersion      string
 	}{
 		"Should keep original values if nothing received by command line or env variable": {
-		"Should keep original values if nothing received by command line or env variable": {
 			taskDefinitionOverrideValue: "",
 			expectedTaskDefinition:      originalTaskDefinition,
 			expectedPlatformVersion:     originalPlatformVersion,
-		},
-			expectedPlatformVersion: originalPlatformVersion,
 		},
 		"Should override task definition if received by command line or env variable": {
 			taskDefinitionOverrideValue: overrideValueForTaskDefinition,
