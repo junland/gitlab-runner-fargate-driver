@@ -26,7 +26,6 @@ func TestRunTask(t *testing.T) {
 	taskARN := "my-task-arn"
 	logger := createTestLogger()
 	testEnvVar := map[string]string{"MY_ENV_VAR": "testing"}
-	platformVersionToOverride := "1.4.0"
 
 	tests := map[string]struct {
 		initializeAdapter bool
@@ -55,7 +54,7 @@ func TestRunTask(t *testing.T) {
 		"Fargate API returning success overriding platform version": {
 			initializeAdapter: true,
 			environmentVars:   nil,
-			platformVersion:   platformVersionToOverride,
+			platformVersion:   "1.4.0",
 			awsError:          nil,
 			expectedARN:       taskARN,
 			expectedError:     nil,
