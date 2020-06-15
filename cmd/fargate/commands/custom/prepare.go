@@ -68,7 +68,7 @@ func (c *PrepareCommand) CustomExecute(ctx *cli.Context) error {
 
 	keyPair, err := c.keyFactory.Create(defaultBitSize)
 	if err != nil {
-		return fmt.Errorf("generating public / private keys: %w", err)
+		return fmt.Errorf("generating public/private keys: %w", err)
 	}
 
 	taskARN, err := c.startNewFargateTask(ctx, keyPair.PublicKey)
