@@ -32,9 +32,8 @@ type TaskMetadata struct {
 }
 
 type SSH struct {
-	Username       string
-	Port           int
-	PrivateKeyPath string
+	Username string
+	Port     int
 }
 
 func LoadFromFile(file string) (Global, error) {

@@ -7,20 +7,20 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/config"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/cli"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/ssh"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/task"
 )
+
+const defaultBitSize = 4096
 
 // NewPrepareCommand constructs the command line abstraction for the "prepare" stage
 func NewPrepareCommand() cli.Command {
 	cmd := new(PrepareCommand)
 	cmd.abstractCustomCommand.customCommand = cmd
 
-	cmd.newFargate = func(logger logging.Logger, awsRegion string) aws.Fargate {
-		return aws.NewFargate(logger, awsRegion)
-	}
-	cmd.newMetadataManager = func(logger logging.Logger, directory string) task.MetadataManager {
-		return task.NewMetadataManager(logger, directory)
-	}
+	cmd.newFargate = aws.NewFargate
+	cmd.newMetadataManager = task.NewMetadataManager
+	cmd.newKeyFactory = ssh.NewKeyFactory
 
 	return cli.Command{
 		Handler: cmd,
@@ -49,10 +49,12 @@ type PrepareCommand struct {
 
 	awsFargate      aws.Fargate
 	metadataManager task.MetadataManager
+	keyFactory      ssh.KeyFactory
 
 	// Wrapping constructors to make easier mocking in the unit tests
 	newFargate         func(logger logging.Logger, awsRegion string) aws.Fargate
 	newMetadataManager func(logger logging.Logger, directory string) task.MetadataManager
+	newKeyFactory      func(logger logging.Logger) ssh.KeyFactory
 }
 
 // CustomExecute is the "core" of the implementation for the "prepare" stage
@@ -64,14 +66,19 @@ func (c *PrepareCommand) CustomExecute(ctx *cli.Context) error {
 
 	c.logger.Info("Executing the command")
 
-	taskARN, err := c.startNewFargateTask(ctx)
+	keyPair, err := c.keyFactory.Create(defaultBitSize)
+	if err != nil {
+		return fmt.Errorf("generating public/private keys: %w", err)
+	}
+
+	taskARN, err := c.startNewFargateTask(ctx, keyPair.PublicKey)
 	if err != nil {
 		c.stopFargateTaskOnError(ctx, taskARN, err, "Error when starting a new Fargate task. Will stop the task for cleanup")
 		return fmt.Errorf("starting new Fargate task: %w", err)
 	}
 
 	// Persist Task ARN to be used by other commands (run / cleanup)
-	taskDetails := task.Data{TaskARN: taskARN}
+	taskDetails := task.Data{TaskARN: taskARN, PrivateKey: keyPair.PrivateKey}
 	err = c.persistDataForLaterStages(taskDetails)
 	if err != nil {
 		c.stopFargateTaskOnError(ctx, taskARN, err, "Error when persisting the task ARN. Will stop the task for cleanup")
@@ -109,10 +116,12 @@ func (c *PrepareCommand) init(ctx *cli.Context) error {
 
 	c.metadataManager = c.newMetadataManager(c.logger, c.cfg.TaskMetadata.Directory)
 
+	c.keyFactory = c.newKeyFactory(c.logger)
+
 	return nil
 }
 
-func (c *PrepareCommand) startNewFargateTask(ctx *cli.Context) (string, error) {
+func (c *PrepareCommand) startNewFargateTask(ctx *cli.Context, publicKey []byte) (string, error) {
 	c.logger.Info("Starting new Fargate task")
 
 	connection := aws.ConnectionSettings{
@@ -124,6 +133,9 @@ func (c *PrepareCommand) startNewFargateTask(ctx *cli.Context) (string, error) {
 		Cluster:         c.cfg.Fargate.Cluster,
 		TaskDefinition:  c.cfg.Fargate.TaskDefinition,
 		PlatformVersion: c.cfg.Fargate.PlatformVersion,
+		EnvironmentVariables: map[string]string{
+			"SSH_PUBLIC_KEY": string(publicKey),
+		},
 	}
 
 	taskARN, err := c.awsFargate.RunTask(ctx.Ctx, taskSettings, connection)

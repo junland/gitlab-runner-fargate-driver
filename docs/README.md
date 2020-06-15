@@ -161,12 +161,10 @@ LogFormat = "text"
 | Settings         | Type   | Required | Description                                               |
 | ---------------- | ------ | -------- | --------------------------------------------------------- |
 | `Username`       | string | Yes      | The username to connect to the task container via SSH.    |
-| `PrivateKeyPath` | string | Yes      | The private key to connect to the task container via SSH. |
 
 ```toml
 [SSH]
   Username = "root"
-  PrivateKeyPath = "/home/user/.ssh/id_rsa"
 ```
 
 ## Example
@@ -252,7 +250,6 @@ LogFormat = "text"
 
 [SSH]
   Username = "root"
-  PrivateKeyPath = "/home/user/.ssh/id_rsa"
 ```
 
 ## Privileged mode with Docker in Docker

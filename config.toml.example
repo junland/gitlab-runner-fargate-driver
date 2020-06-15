@@ -17,4 +17,3 @@ LogFormat = "text"
 [SSH]
     Username = "root"
     Port = 22
-    PrivateKeyPath = "/home/myuser/.ssh/myprivatekey"
