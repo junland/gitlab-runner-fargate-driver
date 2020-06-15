@@ -30,8 +30,6 @@ type runCommandTestCase struct {
 	context                 context.Context
 	metadataConfig          config.TaskMetadata
 	sshUsername             string
-	sshPrivateKey           string
-	sshPrivateKeyContent    []byte
 	sshPort                 *int
 	setCommandLineArguments bool
 	scriptPath              string
@@ -39,7 +37,6 @@ type runCommandTestCase struct {
 	task                    task.Data
 
 	readScriptError     error
-	readPrivateKeyError error
 	obtainTaskDataError error
 	executeScriptError  error
 
@@ -56,8 +53,6 @@ func TestCustomExecuteRun(t *testing.T) {
 	testContext := context.WithValue(context.Background(), testCtxKey, "test-value")
 	testSSHPort := 1234
 	testSSHUsername := "user"
-	testSSHPrivateKey := "/home/myuser/.ssh/myprivatekey"
-	testSSHPrivateKeyContent := []byte("ssh private key content")
 	testMetadataConfig := config.TaskMetadata{
 		Directory: "/fargate-driver/",
 	}
@@ -66,6 +61,7 @@ func TestCustomExecuteRun(t *testing.T) {
 	testTask := task.Data{
 		TaskARN:     "task-arn",
 		ContainerIP: "1.2.3.4",
+		PrivateKey:  []byte("ssh private key content"),
 	}
 	testError := errors.New("simulated error")
 
@@ -86,11 +82,6 @@ func TestCustomExecuteRun(t *testing.T) {
 			readScriptError:         testError,
 			expectedError:           testError,
 		},
-		"Error reading private key": {
-			setCommandLineArguments: true,
-			readPrivateKeyError:     testError,
-			expectedError:           testError,
-		},
 		"Error reading task metadata": {
 			setCommandLineArguments: true,
 			obtainTaskDataError:     testError,
@@ -107,8 +98,6 @@ func TestCustomExecuteRun(t *testing.T) {
 		t.Run(tn, func(t *testing.T) {
 			tt.context = testContext
 			tt.sshUsername = testSSHUsername
-			tt.sshPrivateKey = testSSHPrivateKey
-			tt.sshPrivateKeyContent = testSSHPrivateKeyContent
 			tt.metadataConfig = testMetadataConfig
 			tt.scriptPath = testScriptPath
 			tt.scriptContent = testScriptContent
@@ -127,12 +116,8 @@ func TestCustomExecuteRun(t *testing.T) {
 			shouldCallReadScript := tt.setCommandLineArguments
 			setExpectationForReadScriptFile(mockFS, shouldCallReadScript, tt)
 
-			// Should call read private key if no problem was detected reading the script file
-			shouldCallReadKey := shouldCallReadScript && tt.readScriptError == nil
-			setExpectationForReadKeyFile(mockFS, shouldCallReadKey, tt)
-
 			// Should call metadata manager if no error occurred during reading the script and private key
-			shouldCallReadMetadata := shouldCallReadKey && tt.readPrivateKeyError == nil
+			shouldCallReadMetadata := shouldCallReadScript && tt.readScriptError == nil
 			setExpectationForReadMetadata(mockMetadataManager, shouldCallReadMetadata, tt)
 
 			// Should call executor if no error occurred on any of the previous calls
@@ -175,16 +160,6 @@ func setExpectationForReadScriptFile(mockFS *fs.MockFS, shouldCall bool, testPar
 		Once()
 }
 
-func setExpectationForReadKeyFile(mockFS *fs.MockFS, shouldCall bool, testParams runCommandTestCase) {
-	if !shouldCall {
-		return
-	}
-
-	mockFS.On("ReadFile", testParams.sshPrivateKey).
-		Return(testParams.sshPrivateKeyContent, testParams.readPrivateKeyError).
-		Once()
-}
-
 func setExpectationForReadMetadata(mockManager *task.MockMetadataManager, shouldCall bool, testParams runCommandTestCase) {
 	if !shouldCall {
 		return
@@ -204,7 +179,7 @@ func setExpectationForExecuteScript(mockExecutor *executors.MockExecutor, should
 		Hostname:   testParams.task.ContainerIP,
 		Port:       executors.DefaultPort,
 		Username:   testParams.sshUsername,
-		PrivateKey: testParams.sshPrivateKeyContent,
+		PrivateKey: testParams.task.PrivateKey,
 	}
 
 	if testParams.sshPort != nil {
@@ -229,10 +204,7 @@ func setExpectationForExecuteScript(mockExecutor *executors.MockExecutor, should
 }
 
 func createContextForRunCmdTests(t *testing.T, testParams runCommandTestCase) *cli.Context {
-	sshConfig := config.SSH{
-		Username:       testParams.sshUsername,
-		PrivateKeyPath: testParams.sshPrivateKey,
-	}
+	sshConfig := config.SSH{Username: testParams.sshUsername}
 
 	if testParams.sshPort != nil {
 		sshConfig.Port = *testParams.sshPort
