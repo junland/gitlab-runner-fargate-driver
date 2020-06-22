@@ -156,13 +156,15 @@ LogFormat = "text"
 
 ### The `[SSH]` section
 
-| Settings         | Type   | Required | Description                                               |
-| ---------------- | ------ | -------- | --------------------------------------------------------- |
-| `Username`       | string | Yes      | The username to connect to the task container via SSH.    |
+| Settings         | Type    | Required | Description                                               |
+| ---------------- | ------  | -------- | --------------------------------------------------------- |
+| `Username`       | string  | Yes      | The username to connect to the task container via SSH.    |
+| `Port`           | integer | No       | Port number of the SSH server listening in the container. If omitted, will use the default SSH port (22). |
 
 ```toml
 [SSH]
   Username = "root"
+  Port = 22
 ```
 
 ## Example
