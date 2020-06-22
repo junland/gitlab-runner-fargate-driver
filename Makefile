@@ -146,7 +146,7 @@ release_gitlab: export CI_PROJECT_URL ?=
 release_gitlab:
 ifneq ($(CI_COMMIT_TAG),)
 	# Saving as GitLab release at $(CI_PROJECT_URL)/-/releases
-	@$(shell ./scripts/gitlab_release)
+	@$(shell ./scripts/gitlab_release.sh)
 endif
 
 .PHONY: index_file
