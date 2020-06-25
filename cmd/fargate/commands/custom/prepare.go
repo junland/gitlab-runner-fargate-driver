@@ -132,7 +132,7 @@ func (c *PrepareCommand) startNewFargateTask(ctx *cli.Context, publicKey []byte)
 			"SSH_PUBLIC_KEY": string(publicKey),
 		},
 	}
-	
+
 	connection := aws.ConnectionSettings{
 		Subnet:         c.cfg.Fargate.Subnet,
 		SecurityGroup:  c.cfg.Fargate.SecurityGroup,
