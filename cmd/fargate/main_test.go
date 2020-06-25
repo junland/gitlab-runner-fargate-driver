@@ -46,14 +46,14 @@ func TestLoadCliArgsEnvVars(t *testing.T) {
 
 	for tn, tt := range tests {
 		t.Run(tn, func(t *testing.T) {
-			originalTaskDefGlobalValue := global.TaskDefinition
-			originalPlatVersionGlobalValue := global.PlatformVersion
+			oldTaskDefGlobalValue := global.TaskDefinition
+			oldPlatformVersionGlobalValue := global.PlatformVersion
 			global.TaskDefinition = tt.taskDefinitionOverrideValue
 			global.PlatformVersion = tt.platformVersionOverrideValue
 
 			defer func() {
-				global.TaskDefinition = originalTaskDefGlobalValue
-				global.PlatformVersion = originalPlatVersionGlobalValue
+				global.TaskDefinition = oldTaskDefGlobalValue
+				global.PlatformVersion = oldPlatformVersionGlobalValue
 			}()
 
 			testContext := createCliContextForTests(originalTaskDefinition, originalPlatformVersion)
