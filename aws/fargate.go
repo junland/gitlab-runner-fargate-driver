@@ -49,7 +49,7 @@ type TaskSettings struct {
 	EnvironmentVariables map[string]string
 }
 
-// ConnectionSettings centralizes attributes related to the cluster's connection configuration
+// ConnectionSettings centralizes attributes related to the task's network configuration
 type ConnectionSettings struct {
 	Subnet         string
 	SecurityGroup  string
