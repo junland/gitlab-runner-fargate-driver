@@ -103,7 +103,7 @@ func TestRunTask(t *testing.T) {
 				mockECS.On(
 					"RunTaskWithContext",
 					testContext,
-					getExpectedECSRunTaskInput(connectionSettings, taskSettings),
+					mock.AnythingOfType("*ecs.RunTaskInput"),
 				).
 					Return(
 						&ecs.RunTaskOutput{
@@ -135,52 +135,6 @@ func TestRunTask(t *testing.T) {
 
 func createTestLogger() logging.Logger {
 	return test.NewNullLogger()
-}
-
-func getExpectedECSRunTaskInput(connectionSettings ConnectionSettings, taskSettings TaskSettings) *ecs.RunTaskInput {
-	publicIP := "DISABLED"
-	if connectionSettings.EnablePublicIP {
-		publicIP = "ENABLED"
-	}
-
-	var expectedPlatformVersion *string
-	if taskSettings.PlatformVersion != "" {
-		expectedPlatformVersion = &taskSettings.PlatformVersion
-	}
-
-	var expectedOverride *ecs.TaskOverride
-	if len(taskSettings.EnvironmentVariables) > 0 {
-		environmentVars := make([]*ecs.KeyValuePair, 0)
-		for key, value := range taskSettings.EnvironmentVariables {
-			environmentVars = append(environmentVars, &ecs.KeyValuePair{
-				Name:  &key,
-				Value: &value,
-			})
-		}
-
-		expectedOverride = &ecs.TaskOverride{
-			ContainerOverrides: []*ecs.ContainerOverride{
-				{
-					Name:        &defaultContainerName,
-					Environment: environmentVars,
-				},
-			},
-		}
-	}
-
-	return &ecs.RunTaskInput{
-		TaskDefinition: &taskSettings.TaskDefinition,
-		Cluster:        &taskSettings.Cluster,
-		NetworkConfiguration: &ecs.NetworkConfiguration{
-			AwsvpcConfiguration: &ecs.AwsVpcConfiguration{
-				SecurityGroups: []*string{&connectionSettings.SecurityGroup},
-				Subnets:        []*string{&connectionSettings.Subnet},
-				AssignPublicIp: &publicIP,
-			},
-		},
-		Overrides:       expectedOverride,
-		PlatformVersion: expectedPlatformVersion,
-	}
 }
 
 func TestNewFargate(t *testing.T) {
