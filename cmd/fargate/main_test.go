@@ -12,8 +12,8 @@ import (
 func TestLoadCliArgsEnvVars(t *testing.T) {
 	originalTaskDefinition := "default-task-def:1"
 	originalPlatformVersion := "LATEST"
-	overrideValueForTaskDefinition := "another-task-def:1"
-	overrideValueForPlatformVersion := "1.4.0"
+	overrideTaskDefinition := "another-task-def:1"
+	overridePlatformVersion := "1.4.0"
 
 	tests := map[string]struct {
 		taskDefinitionOverrideValue  string
@@ -27,20 +27,20 @@ func TestLoadCliArgsEnvVars(t *testing.T) {
 			expectedPlatformVersion:     originalPlatformVersion,
 		},
 		"Should override task definition if received by command line or env variable": {
-			taskDefinitionOverrideValue: overrideValueForTaskDefinition,
-			expectedTaskDefinition:      overrideValueForTaskDefinition,
+			taskDefinitionOverrideValue: overrideTaskDefinition,
+			expectedTaskDefinition:      overrideTaskDefinition,
 			expectedPlatformVersion:     originalPlatformVersion,
 		},
 		"Should override platform version if received by command line or env variable": {
-			platformVersionOverrideValue: overrideValueForPlatformVersion,
+			platformVersionOverrideValue: overridePlatformVersion,
 			expectedTaskDefinition:       originalTaskDefinition,
-			expectedPlatformVersion:      overrideValueForPlatformVersion,
+			expectedPlatformVersion:      overridePlatformVersion,
 		},
 		"Should override platform version and task definition if received by command line or env variable": {
-			taskDefinitionOverrideValue:  overrideValueForTaskDefinition,
-			platformVersionOverrideValue: overrideValueForPlatformVersion,
-			expectedTaskDefinition:       overrideValueForTaskDefinition,
-			expectedPlatformVersion:      overrideValueForPlatformVersion,
+			taskDefinitionOverrideValue:  overrideTaskDefinition,
+			platformVersionOverrideValue: overridePlatformVersion,
+			expectedTaskDefinition:       overrideTaskDefinition,
+			expectedPlatformVersion:      overridePlatformVersion,
 		},
 	}
 
