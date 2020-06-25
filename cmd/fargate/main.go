@@ -27,7 +27,7 @@ type globalFlags struct {
 	ConfigFile string `long:"config" description:"Path to configuration file"`
 
 	TaskDefinition  string `long:"task-def" description:"Task definition" env:"CUSTOM_ENV_FARGATE_TASK_DEFINITION"`
-	PlatformVersion string `long:"platform-version" description:"Fargate platform version (default: LATEST)" env:"CUSTOM_ENV_FARGATE_PLATFORM_VERSION"`
+	PlatformVersion string `long:"platform-version" description:"Fargate platform version" env:"CUSTOM_ENV_FARGATE_PLATFORM_VERSION"`
 }
 
 var (
