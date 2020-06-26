@@ -5,11 +5,10 @@ include:
 # we need to replace the rules with our own, the same
 # as in `.merge_request_pipelines` template.
 license_scanning:
-  only:
-    refs:
-    - merge_requests
-    - master@gitlab-org/ci-cd/custom-executor-drivers/fargate
-    - /\Av[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?\Z/@gitlab-org/ci-cd/custom-executor-drivers/fargate
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - if: '$CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?\z/'
 
 tests:
   extends:
