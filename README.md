@@ -10,11 +10,17 @@ use [AWS Fargate](https://aws.amazon.com/fargate/) to execute the jobs.
 
 The driver is released in the form of a binary and is available from our S3 bucket.
 
+For the latest stable release, visit
+<https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com/latest/index.html>.
+
+For specific, tagged versions, please replace the `latest` in the URL with a specific tag. For example,
+to download version `v0.1.0`, go to `https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com/v0.1.0/index.html`.
+
 For the latest beta version, based on the current state of the `master` branch,
 visit <https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com/master/index.html>.
-
-For specific, tagged versions, please replace the `master` in the URL with a specific tag. For example,
-to download version `v0.1.0`, go to `https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com/v0.1.0/index.html`.
+Beta versions are not recommended for production use, and some
+documentation might be out of sync, especially related guides that are hosted in
+other repositories.
 
 All stable and RC releases, together with links to the specific S3 bucket, will be listed
 on the [Releases](https://gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/-/releases)
@@ -23,4 +29,3 @@ page.
 ## License
 
 MIT
-
