@@ -124,19 +124,22 @@ func (c *PrepareCommand) init(ctx *cli.Context) error {
 func (c *PrepareCommand) startNewFargateTask(ctx *cli.Context, publicKey []byte) (string, error) {
 	c.logger.Info("Starting new Fargate task")
 
-	taskDefinition := c.cfg.Fargate.TaskDefinition
+	taskSettings := aws.TaskSettings{
+		Cluster:         c.cfg.Fargate.Cluster,
+		TaskDefinition:  c.cfg.Fargate.TaskDefinition,
+		PlatformVersion: c.cfg.Fargate.PlatformVersion,
+		EnvironmentVariables: map[string]string{
+			"SSH_PUBLIC_KEY": string(publicKey),
+		},
+	}
+
 	connection := aws.ConnectionSettings{
-		Cluster:        c.cfg.Fargate.Cluster,
 		Subnet:         c.cfg.Fargate.Subnet,
 		SecurityGroup:  c.cfg.Fargate.SecurityGroup,
 		EnablePublicIP: c.cfg.Fargate.EnablePublicIP,
 	}
 
-	envVars := map[string]string{
-		"SSH_PUBLIC_KEY": string(publicKey),
-	}
-
-	taskARN, err := c.awsFargate.RunTask(ctx.Ctx, taskDefinition, connection, envVars)
+	taskARN, err := c.awsFargate.RunTask(ctx.Ctx, taskSettings, connection)
 	if err != nil {
 		return taskARN, fmt.Errorf("running new task on Fargate: %w", err)
 	}

@@ -9,6 +9,7 @@ LogFormat = "text"
     SecurityGroup = "sg-XYZ"
     TaskDefinition = "my-task-definition:1"
     EnablePublicIP = true
+    PlatformVersion = "LATEST"
 
 [TaskMetadata]
     Directory = "/fargate-driver/"

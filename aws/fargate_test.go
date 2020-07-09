@@ -19,6 +19,9 @@ import (
 )
 
 func TestRunTask(t *testing.T) {
+	testContext, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testError := errors.New("simulated error")
 	taskARN := "my-task-arn"
 	logger := createTestLogger()
@@ -27,13 +30,15 @@ func TestRunTask(t *testing.T) {
 	tests := map[string]struct {
 		initializeAdapter bool
 		environmentVars   map[string]string
+		platformVersion   string
 		awsError          error
 		expectedARN       string
 		expectedError     error
 	}{
-		"Fargate API returning success without overriding env variables": {
+		"Fargate API returning success": {
 			initializeAdapter: true,
 			environmentVars:   nil,
+			platformVersion:   "",
 			awsError:          nil,
 			expectedARN:       taskARN,
 			expectedError:     nil,
@@ -41,6 +46,15 @@ func TestRunTask(t *testing.T) {
 		"Fargate API returning success when overriding env variables": {
 			initializeAdapter: true,
 			environmentVars:   testEnvVar,
+			platformVersion:   "",
+			awsError:          nil,
+			expectedARN:       taskARN,
+			expectedError:     nil,
+		},
+		"Fargate API returning success overriding platform version": {
+			initializeAdapter: true,
+			environmentVars:   nil,
+			platformVersion:   "1.4.0",
 			awsError:          nil,
 			expectedARN:       taskARN,
 			expectedError:     nil,
@@ -48,6 +62,7 @@ func TestRunTask(t *testing.T) {
 		"Fargate API returning error": {
 			initializeAdapter: true,
 			environmentVars:   nil,
+			platformVersion:   "",
 			awsError:          testError,
 			expectedARN:       "",
 			expectedError:     testError,
@@ -55,6 +70,7 @@ func TestRunTask(t *testing.T) {
 		"Fargate adapter not initialized error": {
 			initializeAdapter: false,
 			environmentVars:   nil,
+			platformVersion:   "",
 			awsError:          nil,
 			expectedARN:       "",
 			expectedError:     ErrNotInitialized,
@@ -71,10 +87,22 @@ func TestRunTask(t *testing.T) {
 
 			fargate := NewFargate(logger, "us-east-1")
 
+			connectionSettings := ConnectionSettings{
+				Subnet:         "subnet-name",
+				SecurityGroup:  "security-group-name",
+				EnablePublicIP: true,
+			}
+			taskSettings := TaskSettings{
+				Cluster:              "cluster-name",
+				TaskDefinition:       "task-def",
+				PlatformVersion:      tt.platformVersion,
+				EnvironmentVariables: tt.environmentVars,
+			}
+
 			if tt.initializeAdapter {
 				mockECS.On(
 					"RunTaskWithContext",
-					mock.AnythingOfType("*context.emptyCtx"),
+					testContext,
 					mock.AnythingOfType("*ecs.RunTaskInput"),
 				).
 					Return(
@@ -92,13 +120,7 @@ func TestRunTask(t *testing.T) {
 				fargate.(*awsFargate).ec2Svc = mockEC2
 			}
 
-			connection := ConnectionSettings{
-				Cluster:        "cluster-name",
-				Subnet:         "subnet-name",
-				SecurityGroup:  "security-group-name",
-				EnablePublicIP: true,
-			}
-			arn, err := fargate.RunTask(context.Background(), "param1", connection, tt.environmentVars)
+			arn, err := fargate.RunTask(testContext, taskSettings, connectionSettings)
 
 			if tt.expectedError != nil {
 				assertions.ErrorIs(t, err, tt.expectedError)

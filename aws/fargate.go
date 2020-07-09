@@ -25,7 +25,7 @@ var (
 // Fargate should be used to manage AWS Fargate Tasks (start, stop, etc)
 type Fargate interface {
 	// RunTask starts a new task in a pre configured Fargate
-	RunTask(ctx context.Context, taskDefinition string, connection ConnectionSettings, envVars map[string]string) (string, error)
+	RunTask(ctx context.Context, taskSettings TaskSettings, connection ConnectionSettings) (string, error)
 
 	// WaitUntilTaskRunning blocks the request until the task is in "running"
 	// state or failed to reach this state
@@ -41,9 +41,16 @@ type Fargate interface {
 	Init() error
 }
 
-// ConnectionSettings centralizes attributes related to the cluster configuration
+// TaskSettings centralizes attributes related to the task configuration
+type TaskSettings struct {
+	Cluster              string
+	TaskDefinition       string
+	PlatformVersion      string
+	EnvironmentVariables map[string]string
+}
+
+// ConnectionSettings centralizes attributes related to the task's network configuration
 type ConnectionSettings struct {
-	Cluster        string
 	Subnet         string
 	SecurityGroup  string
 	EnablePublicIP bool
@@ -100,7 +107,7 @@ func (a *awsFargate) Init() error {
 	return nil
 }
 
-func (a *awsFargate) RunTask(ctx context.Context, taskDefinition string, connection ConnectionSettings, envVars map[string]string) (string, error) {
+func (a *awsFargate) RunTask(ctx context.Context, taskSettings TaskSettings, connection ConnectionSettings) (string, error) {
 	err := a.errIfNotInitialized()
 	if err != nil {
 		return "", fmt.Errorf("could not start AWS Fargate Task: %w", err)
@@ -112,9 +119,15 @@ func (a *awsFargate) RunTask(ctx context.Context, taskDefinition string, connect
 	if connection.EnablePublicIP {
 		publicIP = "ENABLED"
 	}
+
+	var platformVersion *string
+	if taskSettings.PlatformVersion != "" {
+		platformVersion = &taskSettings.PlatformVersion
+	}
+
 	taskInput := ecs.RunTaskInput{
-		TaskDefinition: &taskDefinition,
-		Cluster:        &connection.Cluster,
+		TaskDefinition: &taskSettings.TaskDefinition,
+		Cluster:        &taskSettings.Cluster,
 		NetworkConfiguration: &ecs.NetworkConfiguration{
 			AwsvpcConfiguration: &ecs.AwsVpcConfiguration{
 				SecurityGroups: []*string{&connection.SecurityGroup},
@@ -122,7 +135,8 @@ func (a *awsFargate) RunTask(ctx context.Context, taskDefinition string, connect
 				AssignPublicIp: &publicIP,
 			},
 		},
-		Overrides: a.processEnvVariablesToInject(envVars),
+		Overrides:       a.processEnvVariablesToInject(taskSettings.EnvironmentVariables),
+		PlatformVersion: platformVersion,
 	}
 
 	taskOutput, err := a.ecsSvc.RunTaskWithContext(ctx, &taskInput)

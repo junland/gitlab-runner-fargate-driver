@@ -238,22 +238,24 @@ func setExpectationForFargateRunTask(mockAwsFargate *aws.MockFargate, testParams
 	}
 
 	expectedConnectionSettings := aws.ConnectionSettings{
-		Cluster:        testParams.fargateConfig.Cluster,
 		Subnet:         testParams.fargateConfig.Subnet,
 		SecurityGroup:  testParams.fargateConfig.SecurityGroup,
 		EnablePublicIP: testParams.fargateConfig.EnablePublicIP,
 	}
-
-	expectedEnvVars := map[string]string{
-		"SSH_PUBLIC_KEY": string(testParams.keyPair.PublicKey),
+	expectedTaskSettings := aws.TaskSettings{
+		Cluster:         testParams.fargateConfig.Cluster,
+		TaskDefinition:  testParams.fargateConfig.TaskDefinition,
+		PlatformVersion: testParams.fargateConfig.PlatformVersion,
+		EnvironmentVariables: map[string]string{
+			"SSH_PUBLIC_KEY": string(testParams.keyPair.PublicKey),
+		},
 	}
 
 	mockAwsFargate.On(
 		"RunTask",
 		testParams.context,
-		testParams.fargateConfig.TaskDefinition,
+		expectedTaskSettings,
 		expectedConnectionSettings,
-		expectedEnvVars,
 	).
 		Return(*testParams.taskARN, testParams.fargateRunTaskError).
 		Once()
