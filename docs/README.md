@@ -198,6 +198,19 @@ Evaluation logic for communication between the Gitlab Runner and the Fargate tas
 | false          | false       | Private IP |
 
 
+### The `[STSConfiguration]` section
+
+| Settings                     | Type   | Required | Description                                                                                                                                                                                                                                                        |
+| ---------------------------- | ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `RoleARN`            | string | No       | The AWS Role ARN that should be assumed in a STS session when making API calls to AWS Fargate. Note that this setting is overriden if a different value is provided by the role-arn command line argument or by the ROLE_ARN environment variable.       |
+| `SessionVars` | string | No       | Comma separated list of environment variables to add as session tags. Note that this setting is overriden if a different value is provided by the session-vars command line argument or by the SESSION_VARS environment variable. |
+
+```toml
+[STSConfiguration]
+  RoleARN = "arn:aws:iam::xxxxxxxxx:role/role-name"
+  SessionVars = "CI_PROJECT_ID,CI_PROJECT_PATH,GITLAB_USER_EMAIL"
+```
+
 
 ### The `[TaskMetadata]` section
 

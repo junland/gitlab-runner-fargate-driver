@@ -15,8 +15,8 @@ func NewCleanupCommand() cli.Command {
 	cmd := new(CleanupCommand)
 	cmd.abstractCustomCommand.customCommand = cmd
 
-	cmd.newFargate = func(logger logging.Logger, awsRegion string) aws.Fargate {
-		return aws.NewFargate(logger, awsRegion)
+	cmd.newFargate = func(logger logging.Logger, awsRegion, roleARN, stsSessionVars string) aws.Fargate {
+		return aws.NewFargate(logger, awsRegion, roleARN, stsSessionVars)
 	}
 	cmd.newMetadataManager = func(logger logging.Logger, directory string) task.MetadataManager {
 		return task.NewMetadataManager(logger, directory)
@@ -51,7 +51,7 @@ type CleanupCommand struct {
 	metadataManager task.MetadataManager
 
 	// Wrapping constructors to make easier mocking in the unit tests
-	newFargate         func(logger logging.Logger, awsRegion string) aws.Fargate
+	newFargate         func(logger logging.Logger, awsRegion, roleARN, stsSessionVars string) aws.Fargate
 	newMetadataManager func(logger logging.Logger, directory string) task.MetadataManager
 }
 
@@ -91,7 +91,7 @@ func (c *CleanupCommand) init(ctx *cli.Context) error {
 	c.logger = ctx.Logger().
 		WithField("command", "cleanup_exec")
 
-	c.awsFargate = c.newFargate(c.logger, c.cfg.Fargate.Region)
+	c.awsFargate = c.newFargate(c.logger, c.cfg.Fargate.Region, c.cfg.STSConfiguration.RoleARN, c.cfg.STSConfiguration.SessionVars)
 	err := c.awsFargate.Init()
 	if err != nil {
 		return fmt.Errorf("initializing Fargate adapter: %w", err)
