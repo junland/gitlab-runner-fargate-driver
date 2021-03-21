@@ -31,6 +31,9 @@ type globalFlags struct {
 	PlatformVersion    string `long:"platform-version" description:"Fargate platform version" env:"CUSTOM_ENV_FARGATE_PLATFORM_VERSION"`
 	Subnet             string `long:"subnet" description:"Task level subnets" env:"CUSTOM_ENV_FARGATE_SUBNET"`
 	SecurityGroup      string `long:"security-group" description:"Task level security groups" env:"CUSTOM_ENV_FARGATE_SECURITY_GROUP"`
+
+	RoleARN     string `long:"role-arn" description:"Role to assume with STS" env:"CUSTOM_ENV_ROLE_ARN"`
+	SessionVars string `long:"session-vars" description:"Comma separated list of env variables to add to STS session as request tags" env:"CUSTOM_ENV_SESSION_VARS"`
 }
 
 var (
@@ -136,6 +139,14 @@ func loadCliArgsEnvVars(ctx *cli.Context) error {
 
 	if global.EvaluateTaskHealth != nil {
 		config.Fargate.EvaluateTaskHealth = *global.EvaluateTaskHealth
+	}
+
+	if global.RoleARN != "" {
+		config.STSConfiguration.RoleARN = global.RoleARN
+	}
+
+	if global.SessionVars != "" {
+		config.STSConfiguration.SessionVars = global.SessionVars
 	}
 
 	ctx.SetConfig(config)

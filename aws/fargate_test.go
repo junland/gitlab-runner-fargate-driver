@@ -3,6 +3,7 @@ package aws
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ecs"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -104,7 +106,7 @@ func TestRunTask(t *testing.T) {
 			mockEC2 := new(mockEc2Client)
 			defer mockEC2.AssertExpectations(t)
 
-			fargate := NewFargate(logger, "us-east-1")
+			fargate := NewFargate(logger, "us-east-1", "", "")
 
 			subnet := "subnet-name"
 			securityGroup := "security-group-name"
@@ -180,17 +182,19 @@ func createTestLogger() logging.Logger {
 func TestNewFargate(t *testing.T) {
 	logger := createTestLogger()
 	awsRegion := "us-east-1"
-	f := NewFargate(logger, awsRegion)
+	f := NewFargate(logger, awsRegion, "", "")
 	assert.NotNil(t, f, "Should instantiate the AWS client")
 	assert.Equal(t, logger, f.(*awsFargate).logger, "Should have initialized the logger")
 	assert.Equal(t, awsRegion, f.(*awsFargate).awsRegion, "Should have initialized the region")
 }
 
 func TestInit(t *testing.T) {
+	logger := createTestLogger()
 	testError := errors.New("simulated error")
 
 	tests := map[string]struct {
 		sessionCreator func(awsRegion string) (*session.Session, error)
+		roleARN        string
 		expectedError  error
 	}{
 		"Init succeeded": {
@@ -201,6 +205,17 @@ func TestInit(t *testing.T) {
 					},
 				)
 			},
+			expectedError: nil,
+		},
+		"Init with role to assume succeeded": {
+			sessionCreator: func(awsRegion string) (*session.Session, error) {
+				return session.NewSession(
+					&aws.Config{
+						Region: aws.String(awsRegion),
+					},
+				)
+			},
+			roleARN:       "arn:aws:iam::xxxxxxxxx:role/role-name",
 			expectedError: nil,
 		},
 		"Init failed due to AWS session error": {
@@ -216,6 +231,8 @@ func TestInit(t *testing.T) {
 			awsFargate := new(awsFargate)
 
 			awsFargate.sessionCreator = tt.sessionCreator
+			awsFargate.logger = logger
+			awsFargate.roleARN = tt.roleARN
 
 			err := awsFargate.Init()
 
@@ -270,7 +287,7 @@ func TestWaitUntilTaskRunning(t *testing.T) {
 			mockEC2 := new(mockEc2Client)
 			defer mockEC2.AssertExpectations(t)
 
-			fargate := NewFargate(logger, "us-east-1")
+			fargate := NewFargate(logger, "us-east-1", "", "")
 
 			if tt.initializeAdapter {
 				mockECS.On(
@@ -371,7 +388,7 @@ func TestWaitUntilTaskHealthy(t *testing.T) {
 			mockEC2 := new(mockEc2Client)
 			defer mockEC2.AssertExpectations(t)
 
-			fargate := NewFargate(logger, "us-east-1")
+			fargate := NewFargate(logger, "us-east-1", "", "")
 
 			mockECS.On(
 				"DescribeTasksWithContext",
@@ -490,7 +507,7 @@ func TestStopTask(t *testing.T) {
 			mockEC2 := new(mockEc2Client)
 			defer mockEC2.AssertExpectations(t)
 
-			fargate := NewFargate(logger, "us-east-1")
+			fargate := NewFargate(logger, "us-east-1", "", "")
 
 			clusterName := "ecs-cluster-name"
 			taskArn := "arn:task:mock"
@@ -601,7 +618,7 @@ func TestGetContainerIP(t *testing.T) {
 			)
 			defer mockEC2.AssertExpectations(t)
 
-			fargate := NewFargate(logger, "us-east-1")
+			fargate := NewFargate(logger, "us-east-1", "", "")
 			if tt.initializeAdapter {
 				err := fargate.Init()
 				require.NoError(t, err)
@@ -696,4 +713,75 @@ func mockFargateDescribeTask(shouldBeCalled bool, errorToReturn error) *mockEcsC
 		Once()
 
 	return mockECS
+}
+
+func TestGetSTSTags(t *testing.T) {
+	tests := map[string]struct {
+		stsVariables       string
+		stsVariablesValues map[string]string
+		exptectedStsTags   []*sts.Tag
+		expectedTagKeys    []*string
+	}{
+		"Empty tags when no variables": {
+			stsVariables:     "",
+			exptectedStsTags: []*sts.Tag{},
+			expectedTagKeys:  []*string{},
+		},
+		"Tags for existing env variables": {
+			stsVariables: "TEST,TEST_VAR",
+			stsVariablesValues: map[string]string{
+				"TEST":     "aaa",
+				"TEST_VAR": "bbb",
+			},
+			exptectedStsTags: []*sts.Tag{
+				{
+					Key:   aws.String("TEST"),
+					Value: aws.String("aaa"),
+				},
+				{
+					Key:   aws.String("TEST_VAR"),
+					Value: aws.String("bbb"),
+				},
+			},
+			expectedTagKeys: []*string{
+				aws.String("TEST"),
+				aws.String("TEST_VAR"),
+			},
+		}, "Tags for missing env variables": {
+			stsVariables: "TEST,TEST_VAR",
+			stsVariablesValues: map[string]string{
+				"TEST": "aaa",
+			},
+			exptectedStsTags: []*sts.Tag{
+				{
+					Key:   aws.String("TEST"),
+					Value: aws.String("aaa"),
+				},
+				{
+					Key:   aws.String("TEST_VAR"),
+					Value: aws.String(""),
+				},
+			},
+			expectedTagKeys: []*string{
+				aws.String("TEST"),
+				aws.String("TEST_VAR"),
+			},
+		},
+	}
+
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			for k, v := range tt.stsVariablesValues {
+				err := os.Setenv("CUSTOM_ENV_"+k, v)
+				require.NoError(t, err)
+			}
+			stsTags, tagKeys := getSTSTags(tt.stsVariables)
+			assert.Equal(t, tt.exptectedStsTags, stsTags)
+			assert.Equal(t, tt.expectedTagKeys, tagKeys)
+			for k := range tt.stsVariablesValues {
+				err := os.Unsetenv("CUSTOM_ENV_" + k)
+				require.NoError(t, err)
+			}
+		})
+	}
 }

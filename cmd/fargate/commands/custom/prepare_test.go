@@ -235,7 +235,7 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 			prepare.newKeyFactory = func(logger logging.Logger) ssh.KeyFactory {
 				return mockKeyFactory
 			}
-			prepare.newFargate = func(logger logging.Logger, awsRegion string) aws.Fargate {
+			prepare.newFargate = func(logger logging.Logger, awsRegion, roleARN, stsSessionVars string) aws.Fargate {
 				return mockAwsFargate
 			}
 			prepare.newMetadataManager = func(logger logging.Logger, directory string) task.MetadataManager {
