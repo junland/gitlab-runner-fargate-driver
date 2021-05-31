@@ -38,7 +38,7 @@ before_script:
   tags:
   - gitlab-org-docker
 
-.rules:merge_request_pipelines
+.rules:merge_request_pipelines:
   rules:
   - if: $CI_MERGE_REQUEST_ID
   - if: '$CI_COMMIT_BRANCH == "master"'
