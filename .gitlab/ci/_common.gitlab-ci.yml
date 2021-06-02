@@ -40,6 +40,6 @@ before_script:
 
 .rules:merge_request_pipelines:
   rules:
-  - if: $CI_MERGE_REQUEST_ID
-  - if: '$CI_COMMIT_BRANCH == "master"'
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   - if: '$CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?\z/'

@@ -8,7 +8,6 @@ license_scanning:
   extends:
   - .rules:merge_request_pipelines
 
-
 tests:
   extends:
   - .merge_request_pipelines
