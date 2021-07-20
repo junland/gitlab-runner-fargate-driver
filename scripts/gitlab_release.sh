@@ -41,7 +41,7 @@ EOS
 
 curl -f \
      --header 'Content-Type: application/json' \
-     --header "PRIVATE-TOKEN: ${CI_JOB_TOKEN}" \
+     --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
      --data "${release}" \
      --request POST \
      "${api}/projects/${projectID}/releases"
