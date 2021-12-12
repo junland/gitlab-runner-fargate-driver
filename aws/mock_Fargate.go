@@ -13,20 +13,20 @@ type MockFargate struct {
 	mock.Mock
 }
 
-// GetContainerIP provides a mock function with given fields: ctx, taskARN, cluster, usePublicIP
-func (_m *MockFargate) GetContainerIP(ctx context.Context, taskARN string, cluster string, usePublicIP bool) (string, error) {
-	ret := _m.Called(ctx, taskARN, cluster, usePublicIP)
+// GetContainerIP provides a mock function with given fields: ctx, taskARN, cluster, EnablePublicIP, usePublicIP
+func (_m *MockFargate) GetContainerIP(ctx context.Context, taskARN string, cluster string, EnablePublicIP bool, usePublicIP bool) (string, error) {
+	ret := _m.Called(ctx, taskARN, cluster, EnablePublicIP, usePublicIP)
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, bool) string); ok {
-		r0 = rf(ctx, taskARN, cluster, usePublicIP)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, bool, bool) string); ok {
+		r0 = rf(ctx, taskARN, cluster, EnablePublicIP, usePublicIP)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, bool) error); ok {
-		r1 = rf(ctx, taskARN, cluster, usePublicIP)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, bool, bool) error); ok {
+		r1 = rf(ctx, taskARN, cluster, EnablePublicIP, usePublicIP)
 	} else {
 		r1 = ret.Error(1)
 	}
