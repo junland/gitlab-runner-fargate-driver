@@ -63,6 +63,7 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 		SecurityGroup:  "security-group",
 		TaskDefinition: "task-definition",
 		EnablePublicIP: true,
+		UsePublicIP: true,
 	}
 	testMetadataConfig := config.TaskMetadata{
 		Directory: "directory",
@@ -241,6 +242,7 @@ func setExpectationForFargateRunTask(mockAwsFargate *aws.MockFargate, testParams
 		Subnet:         testParams.fargateConfig.Subnet,
 		SecurityGroup:  testParams.fargateConfig.SecurityGroup,
 		EnablePublicIP: testParams.fargateConfig.EnablePublicIP,
+		UsePublicIP: testParams.fargateConfig.UsePublicIP,
 	}
 	expectedTaskSettings := aws.TaskSettings{
 		Cluster:         testParams.fargateConfig.Cluster,
@@ -286,6 +288,7 @@ func setExpectationForFargateGetIP(mockAwsFargate *aws.MockFargate, testParams p
 		*testParams.taskARN,
 		testParams.fargateConfig.Cluster,
 		testParams.fargateConfig.EnablePublicIP,
+		testParams.fargateConfig.UsePublicIP,
 	).
 		Return(testParams.containerIP, testParams.fargateContainerIPError).
 		Once()

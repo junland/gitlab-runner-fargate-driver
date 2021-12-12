@@ -20,6 +20,7 @@ type Global struct {
 type Fargate struct {
 	Cluster         string
 	EnablePublicIP  bool
+	UsePublicIP     bool
 	PlatformVersion string
 	Region          string
 	Subnet          string
@@ -47,6 +48,10 @@ func LoadFromFile(file string) (Global, error) {
 	err = toml.Unmarshal(data, &cfg)
 	if err != nil {
 		return Global{}, fmt.Errorf("couldn't parse TOML content of the configuration file: %w", err)
+	}
+
+	if (!cfg.Fargate.EnablePublicIP && cfg.Fargate.UsePublicIP) {
+		return Global{}, fmt.Errorf("can't use public IP to communicate if EnablePublicIP not enabled in configuration file: %w", err)
 	}
 
 	return cfg, nil

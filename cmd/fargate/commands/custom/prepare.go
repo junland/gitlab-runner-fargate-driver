@@ -137,6 +137,7 @@ func (c *PrepareCommand) startNewFargateTask(ctx *cli.Context, publicKey []byte)
 		Subnet:         c.cfg.Fargate.Subnet,
 		SecurityGroup:  c.cfg.Fargate.SecurityGroup,
 		EnablePublicIP: c.cfg.Fargate.EnablePublicIP,
+		UsePublicIP:   c.cfg.Fargate.UsePublicIP,
 	}
 
 	taskARN, err := c.awsFargate.RunTask(ctx.Ctx, taskSettings, connection)
@@ -195,6 +196,7 @@ func (c *PrepareCommand) waitFargateTaskReady(ctx *cli.Context, taskARN string) 
 		taskARN,
 		c.cfg.Fargate.Cluster,
 		c.cfg.Fargate.EnablePublicIP,
+		c.cfg.Fargate.UsePublicIP,
 	)
 	if err != nil {
 		return containerIP, fmt.Errorf("fetching the container IP: %w", err)
