@@ -82,6 +82,7 @@ func TestRunTask(t *testing.T) {
 				Subnet:         "subnet-name",
 				SecurityGroup:  "security-group-name",
 				EnablePublicIP: true,
+				UsePublicIP:    true,
 			}
 			taskSettings := TaskSettings{
 				Cluster:              "cluster-name",
@@ -331,7 +332,8 @@ func TestGetContainerIP(t *testing.T) {
 
 	tests := map[string]struct {
 		initializeAdapter  bool
-		usePublicIP        bool
+		EnablePublicIP     bool
+		UsePublicIP        bool
 		awsDescribeTask    error
 		awsDescribeNetwork error
 		expectedIP         string
@@ -339,7 +341,8 @@ func TestGetContainerIP(t *testing.T) {
 	}{
 		"Successfully obtained IP when private desired": {
 			initializeAdapter:  true,
-			usePublicIP:        false,
+			EnablePublicIP:     false,
+			UsePublicIP:        false,
 			awsDescribeTask:    nil,
 			awsDescribeNetwork: nil,
 			expectedIP:         "10.0.0.1",
@@ -347,15 +350,35 @@ func TestGetContainerIP(t *testing.T) {
 		},
 		"Successfully obtained IP when public desired": {
 			initializeAdapter:  true,
-			usePublicIP:        true,
+			EnablePublicIP:     true,
+			UsePublicIP:        true,
 			awsDescribeTask:    nil,
 			awsDescribeNetwork: nil,
 			expectedIP:         "172.0.0.1",
 			expectedError:      nil,
 		},
+		"Successfully obtained IP when private desired and public enabled": {
+			initializeAdapter:  true,
+			EnablePublicIP:     true,
+			UsePublicIP:        false,
+			awsDescribeTask:    nil,
+			awsDescribeNetwork: nil,
+			expectedIP:         "10.0.0.1",
+			expectedError:      nil,
+		},
+		"Successfully obtained IP when public disabled": {
+			initializeAdapter:  true,
+			EnablePublicIP:     false,
+			UsePublicIP:        false,
+			awsDescribeTask:    nil,
+			awsDescribeNetwork: nil,
+			expectedIP:         "10.0.0.1",
+			expectedError:      nil,
+		},
 		"Error during fetching task info for private IP": {
 			initializeAdapter:  true,
-			usePublicIP:        false,
+			EnablePublicIP:     false,
+			UsePublicIP:        false,
 			awsDescribeTask:    testError,
 			awsDescribeNetwork: nil,
 			expectedIP:         "",
@@ -363,7 +386,8 @@ func TestGetContainerIP(t *testing.T) {
 		},
 		"Error during fetching task info for public IP": {
 			initializeAdapter:  true,
-			usePublicIP:        true,
+			EnablePublicIP:     true,
+			UsePublicIP:        true,
 			awsDescribeTask:    testError,
 			awsDescribeNetwork: nil,
 			expectedIP:         "",
@@ -371,7 +395,8 @@ func TestGetContainerIP(t *testing.T) {
 		},
 		"Error during fetching ip for public IP": {
 			initializeAdapter:  true,
-			usePublicIP:        true,
+			EnablePublicIP:     true,
+			UsePublicIP:        true,
 			awsDescribeTask:    nil,
 			awsDescribeNetwork: testError,
 			expectedIP:         "",
@@ -379,7 +404,8 @@ func TestGetContainerIP(t *testing.T) {
 		},
 		"Fargate adapter not initialized error": {
 			initializeAdapter:  false,
-			usePublicIP:        true,
+			EnablePublicIP:     true,
+			UsePublicIP:        false,
 			awsDescribeTask:    nil,
 			awsDescribeNetwork: nil,
 			expectedIP:         "",
@@ -392,9 +418,9 @@ func TestGetContainerIP(t *testing.T) {
 			mockECS := mockFargateDescribeTask(tt.initializeAdapter, tt.awsDescribeTask)
 			defer mockECS.AssertExpectations(t)
 
-			networkAPIShouldBeCalled := tt.usePublicIP &&
+			networkAPIShouldBeCalled := tt.EnablePublicIP &&
 				tt.awsDescribeTask == nil &&
-				tt.initializeAdapter
+				tt.initializeAdapter && tt.UsePublicIP
 			mockEC2 := mockFargateDescribeNetworkInterfaces(
 				networkAPIShouldBeCalled, tt.awsDescribeNetwork,
 			)
@@ -410,8 +436,7 @@ func TestGetContainerIP(t *testing.T) {
 				fargate.(*awsFargate).ec2Svc = mockEC2
 			}
 
-			ip, err := fargate.GetContainerIP(context.Background(), "param1", "param2", tt.usePublicIP)
-
+			ip, err := fargate.GetContainerIP(context.Background(), "param1", "param2", tt.EnablePublicIP, tt.UsePublicIP)
 			assert.Equal(t, tt.expectedIP, ip)
 
 			if tt.expectedError != nil {
