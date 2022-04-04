@@ -1,8 +1,8 @@
 package ssh
 
 import (
+	"crypto/ed25519"
 	"crypto/rand"
-	"crypto/rsa"
 	"errors"
 	"io"
 	"testing"
@@ -22,49 +22,57 @@ func TestNewKeyFactory(t *testing.T) {
 
 	assert.NotNil(t, factory)
 	assert.Equal(t, testLogger, factory.(*keyFactory).logger)
-	assert.NotNil(t, factory.(*keyFactory).generateRSAKey)
+	assert.NotNil(t, factory.(*keyFactory).generateEd25519Key)
 	assert.NotNil(t, factory.(*keyFactory).newSSHPublicKey)
 }
 
 func TestKeyFactory_Create(t *testing.T) {
 	testError := errors.New("simulated error")
-	testErrorRSAInternal := new(ErrInvalidPrivateKey)
-	bitSize := 64
+	testErrorEd25519Internal := new(ErrInvalidPrivateKey)
 
-	validKeyPair, err := rsa.GenerateKey(rand.Reader, bitSize)
+	pubKey, privKey, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 
-	invalidKeyPair := new(rsa.PrivateKey)
+	// Create Fake Byte Arrays to Represent ed25519 Key Pairs
+	invalidPrivKey := make([]byte, ed25519.PrivateKeySize)
+	invalidPubKey := make([]byte, ed25519.PublicKeySize)
+	_, _ = rand.Read(invalidPrivKey)
+	_, _ = rand.Read(invalidPubKey)
 
 	tests := map[string]struct {
-		mockedRSAKey   *rsa.PrivateKey
-		rsaKeyError    error
-		publicKeyError error
-		expectedError  error
+		mockedEd25519PrivKey ed25519.PrivateKey
+		mockedEd25519PubKey  ed25519.PublicKey
+		ed25519KeyError      error
+		publicKeyError       error
+		expectedError        error
 	}{
 		"Key pair generated with success": {
-			mockedRSAKey:   validKeyPair,
-			rsaKeyError:    nil,
-			publicKeyError: nil,
-			expectedError:  nil,
+			mockedEd25519PrivKey: privKey,
+			mockedEd25519PubKey:  pubKey,
+			ed25519KeyError:      nil,
+			publicKeyError:       nil,
+			expectedError:        nil,
 		},
-		"Error generating key": {
-			mockedRSAKey:   nil,
-			rsaKeyError:    testError,
-			publicKeyError: nil,
-			expectedError:  testError,
+		"Error generating key pair": {
+			mockedEd25519PrivKey: nil,
+			mockedEd25519PubKey:  nil,
+			ed25519KeyError:      testError,
+			publicKeyError:       nil,
+			expectedError:        testError,
 		},
 		"Error invalid key pair": {
-			mockedRSAKey:   invalidKeyPair,
-			rsaKeyError:    nil,
-			publicKeyError: nil,
-			expectedError:  testErrorRSAInternal,
+			mockedEd25519PrivKey: invalidPrivKey,
+			mockedEd25519PubKey:  invalidPubKey,
+			ed25519KeyError:      nil,
+			publicKeyError:       nil,
+			expectedError:        testErrorEd25519Internal,
 		},
 		"Error creating SSH public key": {
-			mockedRSAKey:   validKeyPair,
-			rsaKeyError:    nil,
-			publicKeyError: testError,
-			expectedError:  testError,
+			mockedEd25519PrivKey: privKey,
+			mockedEd25519PubKey:  pubKey,
+			ed25519KeyError:      nil,
+			publicKeyError:       testError,
+			expectedError:        testError,
 		},
 	}
 
@@ -72,8 +80,8 @@ func TestKeyFactory_Create(t *testing.T) {
 		t.Run(tn, func(t *testing.T) {
 			factory := NewKeyFactory(test.NewNullLogger())
 
-			factory.(*keyFactory).generateRSAKey = func(r io.Reader, b int) (*rsa.PrivateKey, error) {
-				return tt.mockedRSAKey, tt.rsaKeyError
+			factory.(*keyFactory).generateEd25519Key = func(r io.Reader) (ed25519.PublicKey, ed25519.PrivateKey, error) {
+				return tt.mockedEd25519PubKey, tt.mockedEd25519PrivKey, tt.ed25519KeyError
 			}
 
 			if tt.publicKeyError != nil {
@@ -82,7 +90,7 @@ func TestKeyFactory_Create(t *testing.T) {
 				}
 			}
 
-			keyPair, err := factory.Create(bitSize)
+			keyPair, err := factory.Create()
 
 			if tt.expectedError != nil {
 				assertions.ErrorIs(t, err, tt.expectedError)
