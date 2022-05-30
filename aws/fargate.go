@@ -168,9 +168,11 @@ func (a *awsFargate) processEnvVariablesToInject(envVars map[string]string) *ecs
 
 	environmentVars := make([]*ecs.KeyValuePair, 0)
 	for key, value := range envVars {
+		name := key
+		v := value
 		environmentVars = append(environmentVars, &ecs.KeyValuePair{
-			Name:  &key,
-			Value: &value,
+			Name:  &name,
+			Value: &v,
 		})
 	}
 
