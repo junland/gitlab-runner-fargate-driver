@@ -5,7 +5,7 @@ FROM golang:${GO_VERSION}-alpine${ALPINE_VERSION} AS builder
 
 WORKDIR /go/src/ssh_service
 
-COPY main.go ./main.go
+COPY main.go go.mod ./
 
 ENV CGO_ENABLED 0
 RUN go build -o /usr/local/bin/ssh_service ./

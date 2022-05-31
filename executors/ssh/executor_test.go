@@ -330,7 +330,7 @@ func TestSSHIntegration(t *testing.T) {
 
 trap 'echo "Exiting!"' EXIT
 
-for i in $(seq 1 4); do
+for i in $(seq 1 30); do
   echo -n .
   sleep 1
 done
