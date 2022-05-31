@@ -293,18 +293,18 @@ func TestSSHIntegration(t *testing.T) {
 		ctx          func() context.Context
 		assertOutput func(t *testing.T, output string)
 	}{
-		"context finished before command": {
-			ctx: func() context.Context {
-				ctx, cancel := context.WithCancel(context.Background())
-				cancel()
+		// "context finished before command": {
+		// 	ctx: func() context.Context {
+		// 		ctx, cancel := context.WithCancel(context.Background())
+		// 		cancel()
 
-				return ctx
-			},
-			assertOutput: func(t *testing.T, output string) {
-				t.Log(output)
-				assert.NotContains(t, output, "Exiting!")
-			},
-		},
+		// 		return ctx
+		// 	},
+		// 	assertOutput: func(t *testing.T, output string) {
+		// 		t.Log(output)
+		// 		assert.NotContains(t, output, "Exiting!")
+		// 	},
+		// },
 		"context finished after command": {
 			ctx: func() context.Context {
 				return context.Background()
@@ -330,7 +330,7 @@ func TestSSHIntegration(t *testing.T) {
 
 trap 'echo "Exiting!"' EXIT
 
-for i in $(seq 1 4); do
+for i in $(seq 1 30); do
   echo -n .
   sleep 1
 done
