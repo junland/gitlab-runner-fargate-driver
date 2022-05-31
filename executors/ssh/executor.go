@@ -61,8 +61,11 @@ func NewExecutor(logger logging.Logger) executors.Executor {
 func (s *executor) Execute(ctx context.Context, connection executors.ConnectionSettings, script []byte) (err error) {
 	s.logger.Debug("[Execute] Will connect to server and execute the specified shell script")
 
+	fmt.Println("Start execution")
+
 	err = s.connect(connection)
 	if err != nil {
+		fmt.Println("Could not connect ...")
 		return fmt.Errorf("connecting to server: %w", err)
 	}
 
@@ -80,6 +83,8 @@ func (s *executor) Execute(ctx context.Context, connection executors.ConnectionS
 	}
 
 	s.logger.Debug("[Execute] Successfully executed script")
+
+	fmt.Println("End of execution")
 
 	return nil
 }
@@ -133,22 +138,28 @@ func (s *executor) disconnect() error {
 func (s *executor) executeScript(ctx context.Context, script []byte, stdout io.Writer, stderr io.Writer) error {
 	s.logger.Debug("[executeScript] Will execute a remote script")
 
+	fmt.Println("Executing script soon")
+
 	if s.client == nil {
+		fmt.Println("Invalid client")
 		return ErrNotConnected
 	}
 
 	session, err := s.client.NewSession(stdout, stderr)
 	if err != nil {
+		fmt.Println("Could not open a new session")
 		return fmt.Errorf("creating session for ssh client: %w", err)
 	}
 	defer session.Close()
 
 	err = session.ExecuteScript(ctx, string(script))
 	if err != nil {
+		fmt.Println("Could not execute the remote script")
 		return fmt.Errorf("executing remote script: %w", err)
 	}
 
 	s.logger.Debug("[executeScript] Command executed")
+	fmt.Println("End of script execution")
 
 	return nil
 }
