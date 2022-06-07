@@ -32,7 +32,6 @@ linters:
     - goconst
     - gocyclo
     - goimports
-    - golint
     - gosec
     - gosimple
     - govet
@@ -40,6 +39,7 @@ linters:
     - megacheck
     - misspell
     - prealloc
+    - revive
     - structcheck
     - typecheck
     - unconvert

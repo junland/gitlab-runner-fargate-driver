@@ -103,7 +103,7 @@ func TestPersist(t *testing.T) {
 				mockFS.On("WriteFile",
 					mock.AnythingOfType("string"),
 					mock.AnythingOfType("[]uint8"),
-					mock.AnythingOfType("os.FileMode"),
+					mock.AnythingOfType("fs.FileMode"),
 				).
 					Return(tt.writeFileError).
 					Once()

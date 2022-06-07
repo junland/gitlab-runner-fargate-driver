@@ -33,7 +33,7 @@ code quality:
   extends:
   - .merge_request_pipelines
   stage: test
-  image: golangci/golangci-lint:v1.24.0
+  image: golangci/golangci-lint:v1.46.2
   variables:
     REPORT_FILE: gl-code-quality-report.json
     LINT_FLAGS: "--color never --deadline 15m"
