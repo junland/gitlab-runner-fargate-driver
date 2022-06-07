@@ -3,8 +3,8 @@ package ssh
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
@@ -242,15 +242,15 @@ func createFakePrivateKeyForTests(valid bool) []byte {
 		return []byte("invalid key")
 	}
 
-	privateKey, _ := rsa.GenerateKey(rand.Reader, 64)
+	_, privateKey, _ := ed25519.GenerateKey(rand.Reader)
 	return encodePrivateKeyToPEM(privateKey)
 }
 
-func encodePrivateKeyToPEM(privateKey *rsa.PrivateKey) []byte {
-	privDER := x509.MarshalPKCS1PrivateKey(privateKey)
+func encodePrivateKeyToPEM(privateKey ed25519.PrivateKey) []byte {
+	privDER, _ := x509.MarshalPKCS8PrivateKey(privateKey)
 
 	privBlock := pem.Block{
-		Type:    "RSA PRIVATE KEY",
+		Type:    "PRIVATE KEY",
 		Headers: nil,
 		Bytes:   privDER,
 	}

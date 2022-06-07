@@ -9,13 +9,13 @@ type MockKeyFactory struct {
 	mock.Mock
 }
 
-// Create provides a mock function with given fields: bitSize
-func (_m *MockKeyFactory) Create(bitSize int) (*KeyPair, error) {
-	ret := _m.Called(bitSize)
+// Create provides a mock function with given fields:
+func (_m *MockKeyFactory) Create() (*KeyPair, error) {
+	ret := _m.Called()
 
 	var r0 *KeyPair
-	if rf, ok := ret.Get(0).(func(int) *KeyPair); ok {
-		r0 = rf(bitSize)
+	if rf, ok := ret.Get(0).(func() *KeyPair); ok {
+		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*KeyPair)
@@ -23,8 +23,8 @@ func (_m *MockKeyFactory) Create(bitSize int) (*KeyPair, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(int) error); ok {
-		r1 = rf(bitSize)
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
 	} else {
 		r1 = ret.Error(1)
 	}
