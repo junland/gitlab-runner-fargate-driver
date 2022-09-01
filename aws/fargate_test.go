@@ -32,6 +32,7 @@ func TestRunTask(t *testing.T) {
 		environmentVars   map[string]string
 		platformVersion   string
 		awsError          error
+		successfulRun     bool
 		expectedARN       string
 		expectedError     error
 	}{
@@ -40,6 +41,7 @@ func TestRunTask(t *testing.T) {
 			environmentVars:   nil,
 			platformVersion:   "",
 			awsError:          nil,
+			successfulRun:     true,
 			expectedARN:       taskARN,
 			expectedError:     nil,
 		},
@@ -48,6 +50,7 @@ func TestRunTask(t *testing.T) {
 			environmentVars:   testEnvVar,
 			platformVersion:   "",
 			awsError:          nil,
+			successfulRun:     true,
 			expectedARN:       taskARN,
 			expectedError:     nil,
 		},
@@ -56,6 +59,7 @@ func TestRunTask(t *testing.T) {
 			environmentVars:   nil,
 			platformVersion:   "1.4.0",
 			awsError:          nil,
+			successfulRun:     true,
 			expectedARN:       taskARN,
 			expectedError:     nil,
 		},
@@ -63,6 +67,14 @@ func TestRunTask(t *testing.T) {
 			initializeAdapter: true,
 			environmentVars:   nil,
 			platformVersion:   "",
+			awsError:          testError,
+			expectedARN:       "",
+			expectedError:     testError,
+		},
+		"Fargate API returning no error but failures running task": {
+			initializeAdapter: true,
+			environmentVars:   nil,
+			platformVersion:   "1.4.0",
 			awsError:          testError,
 			expectedARN:       "",
 			expectedError:     testError,
@@ -100,16 +112,21 @@ func TestRunTask(t *testing.T) {
 			}
 
 			if tt.initializeAdapter {
+				output := &ecs.RunTaskOutput{}
+
+				if tt.successfulRun {
+					output.Tasks = []*ecs.Task{{TaskArn: &taskARN}}
+				} else {
+					reason := "Capacity error"
+					output.Failures = []*ecs.Failure{{Reason: &reason}}
+				}
+
 				mockECS.On(
 					"RunTaskWithContext",
 					testContext,
 					mock.AnythingOfType("*ecs.RunTaskInput"),
 				).
-					Return(
-						&ecs.RunTaskOutput{
-							Tasks: []*ecs.Task{{TaskArn: &taskARN}},
-						}, tt.awsError,
-					).
+					Return(output, tt.awsError).
 					Once()
 
 				err := fargate.Init()
