@@ -144,6 +144,16 @@ func (a *awsFargate) RunTask(ctx context.Context, taskSettings TaskSettings, con
 		return "", fmt.Errorf("error starting AWS Fargate Task: %w", err)
 	}
 
+	if len(taskOutput.Failures) > 0 {
+		for _, failure := range taskOutput.Failures {
+			a.logger.
+				WithField("failure", failure.String()).
+				Error("error starting AWS Fargate Task")
+		}
+
+		return "", fmt.Errorf("error starting AWS Fargate Task")
+	}
+
 	taskARN := *taskOutput.Tasks[0].TaskArn
 
 	a.logger.
