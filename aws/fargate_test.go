@@ -23,69 +23,73 @@ func TestRunTask(t *testing.T) {
 	defer cancel()
 
 	testError := errors.New("simulated error")
+	testFailure := "simulated failure"
 	taskARN := "my-task-arn"
 	logger := createTestLogger()
 	testEnvVar := map[string]string{"MY_ENV_VAR": "testing"}
 
 	tests := map[string]struct {
-		initializeAdapter bool
-		environmentVars   map[string]string
-		platformVersion   string
-		awsError          error
-		successfulRun     bool
-		expectedARN       string
-		expectedError     error
+		initializeAdapter  bool
+		environmentVars    map[string]string
+		platformVersion    string
+		awsError           error
+		expectedARN        string
+		expectedError      error
+		expectedRunFailure string
 	}{
 		"Fargate API returning success": {
-			initializeAdapter: true,
-			environmentVars:   nil,
-			platformVersion:   "",
-			awsError:          nil,
-			successfulRun:     true,
-			expectedARN:       taskARN,
-			expectedError:     nil,
+			initializeAdapter:  true,
+			environmentVars:    nil,
+			platformVersion:    "",
+			awsError:           nil,
+			expectedARN:        taskARN,
+			expectedError:      nil,
+			expectedRunFailure: "",
 		},
 		"Fargate API returning success when overriding env variables": {
-			initializeAdapter: true,
-			environmentVars:   testEnvVar,
-			platformVersion:   "",
-			awsError:          nil,
-			successfulRun:     true,
-			expectedARN:       taskARN,
-			expectedError:     nil,
+			initializeAdapter:  true,
+			environmentVars:    testEnvVar,
+			platformVersion:    "",
+			awsError:           nil,
+			expectedARN:        taskARN,
+			expectedError:      nil,
+			expectedRunFailure: "",
 		},
 		"Fargate API returning success overriding platform version": {
-			initializeAdapter: true,
-			environmentVars:   nil,
-			platformVersion:   "1.4.0",
-			awsError:          nil,
-			successfulRun:     true,
-			expectedARN:       taskARN,
-			expectedError:     nil,
+			initializeAdapter:  true,
+			environmentVars:    nil,
+			platformVersion:    "1.4.0",
+			awsError:           nil,
+			expectedARN:        taskARN,
+			expectedError:      nil,
+			expectedRunFailure: "",
 		},
 		"Fargate API returning error": {
-			initializeAdapter: true,
-			environmentVars:   nil,
-			platformVersion:   "",
-			awsError:          testError,
-			expectedARN:       "",
-			expectedError:     testError,
+			initializeAdapter:  true,
+			environmentVars:    nil,
+			platformVersion:    "",
+			awsError:           testError,
+			expectedARN:        "",
+			expectedError:      testError,
+			expectedRunFailure: "",
 		},
 		"Fargate API returning no error but failures running task": {
-			initializeAdapter: true,
-			environmentVars:   nil,
-			platformVersion:   "1.4.0",
-			awsError:          nil,
-			expectedARN:       "",
-			expectedError:     ErrTaskRunFailure,
+			initializeAdapter:  true,
+			environmentVars:    nil,
+			platformVersion:    "1.4.0",
+			awsError:           nil,
+			expectedARN:        "",
+			expectedError:      ErrTaskRunFailure,
+			expectedRunFailure: testFailure,
 		},
 		"Fargate adapter not initialized error": {
-			initializeAdapter: false,
-			environmentVars:   nil,
-			platformVersion:   "",
-			awsError:          nil,
-			expectedARN:       "",
-			expectedError:     ErrNotInitialized,
+			initializeAdapter:  false,
+			environmentVars:    nil,
+			platformVersion:    "",
+			awsError:           nil,
+			expectedARN:        "",
+			expectedError:      ErrNotInitialized,
+			expectedRunFailure: "",
 		},
 	}
 
@@ -114,11 +118,10 @@ func TestRunTask(t *testing.T) {
 			if tt.initializeAdapter {
 				output := &ecs.RunTaskOutput{}
 
-				if tt.successfulRun {
+				if tt.expectedRunFailure == "" {
 					output.Tasks = []*ecs.Task{{TaskArn: &taskARN}}
 				} else {
-					reason := "Capacity error"
-					output.Failures = []*ecs.Failure{{Reason: &reason}}
+					output.Failures = []*ecs.Failure{{Reason: &tt.expectedRunFailure}}
 				}
 
 				mockECS.On(
