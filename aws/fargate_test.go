@@ -77,7 +77,7 @@ func TestRunTask(t *testing.T) {
 			platformVersion:   "1.4.0",
 			awsError:          nil,
 			expectedARN:       "",
-			expectedError:     nil,
+			expectedError:     ErrTaskRunFailure,
 		},
 		"Fargate adapter not initialized error": {
 			initializeAdapter: false,
@@ -139,13 +139,8 @@ func TestRunTask(t *testing.T) {
 
 			arn, err := fargate.RunTask(testContext, taskSettings, connectionSettings)
 
-			if !tt.successfulRun {
-				assert.NotNil(t, err, "No error returned for unsuccessful case")
-
-				if tt.expectedError != nil {
-					assertions.ErrorIs(t, err, tt.expectedError)
-				}
-
+			if tt.expectedError != nil {
+				assertions.ErrorIs(t, err, tt.expectedError)
 				return
 			}
 
