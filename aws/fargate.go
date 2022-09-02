@@ -147,21 +147,9 @@ func (a *awsFargate) RunTask(ctx context.Context, taskSettings TaskSettings, con
 
 	if len(taskOutput.Failures) > 0 {
 		for _, failure := range taskOutput.Failures {
-			logger := a.logger
-
-			if failure.Arn != nil {
-				logger.WithField("arn", *failure.Arn)
-			}
-
-			if failure.Detail != nil {
-				logger.WithField("detail", *failure.Detail)
-			}
-
-			if failure.Reason != nil {
-				logger.WithField("reason", *failure.Reason)
-			}
-
-			logger.Error("[RunTask] Fargate Task run failure")
+			a.logger.
+				WithField("failure", failure).
+				Error("[RunTask] Fargate Task run failure")
 		}
 
 		return "", ErrTaskRunFailure
