@@ -21,7 +21,7 @@ func NewFile(path string) Storage {
 }
 
 var openFile = func(filename string) (*os.File, error) {
-	return os.OpenFile(filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
+	return os.OpenFile(filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o600)
 }
 
 func (f *File) Open() error {

@@ -32,6 +32,7 @@ AcceptEnv LANG LC_*
 Subsystem       sftp    /usr/lib/openssh/sftp-server
 `
 )
+
 const (
 	authorizedKeysFilePath = "/root/.ssh/authorized_keys"
 	username               = "root"
