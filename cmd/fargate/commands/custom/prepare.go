@@ -137,7 +137,7 @@ func (c *PrepareCommand) startNewFargateTask(ctx *cli.Context, publicKey []byte)
 		Subnet:         c.cfg.Fargate.Subnet,
 		SecurityGroup:  c.cfg.Fargate.SecurityGroup,
 		EnablePublicIP: c.cfg.Fargate.EnablePublicIP,
-		UsePublicIP:   c.cfg.Fargate.UsePublicIP,
+		UsePublicIP:    c.cfg.Fargate.UsePublicIP,
 	}
 
 	taskARN, err := c.awsFargate.RunTask(ctx.Ctx, taskSettings, connection)

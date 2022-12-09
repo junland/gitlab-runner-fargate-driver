@@ -82,7 +82,7 @@ func TestRunTask(t *testing.T) {
 				Subnet:         "subnet-name",
 				SecurityGroup:  "security-group-name",
 				EnablePublicIP: true,
-				UsePublicIP: true,
+				UsePublicIP:    true,
 			}
 			taskSettings := TaskSettings{
 				Cluster:              "cluster-name",
@@ -470,7 +470,6 @@ func mockFargateDescribeNetworkInterfaces(shouldBeCalled bool, errorToReturn err
 							PublicIp: &publicIP,
 						},
 					},
-					
 				},
 			}, errorToReturn,
 		).
