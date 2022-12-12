@@ -180,11 +180,11 @@ $(MOCKERY):
 
 $(goJunitReport):
 	# Installing go-junit-report
-	@go get github.com/jstemmer/go-junit-report
+	@go install github.com/jstemmer/go-junit-report
 
 $(gox):
 	# Installing gox
-	@go get github.com/mitchellh/gox
+	@go install github.com/mitchellh/gox
 
 $(releaseIndexGen): OS_TYPE ?= $(shell uname -s | tr '[:upper:]' '[:lower:]')
 $(releaseIndexGen): DOWNLOAD_URL = "https://storage.googleapis.com/gitlab-runner-tools/release-index-generator/$(RELEASE_INDEX_GEN_VERSION)/release-index-gen-$(OS_TYPE)-amd64"
