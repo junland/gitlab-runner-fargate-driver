@@ -5,7 +5,7 @@ export BUILT ?= $(shell date -u +%Y-%m-%dT%H:%M:%S%z)
 export LATEST_STABLE_TAG := $(shell git -c versionsort.prereleaseSuffix="-rc" tag -l "v*.*.*" --sort=-v:refname | awk '!/rc/' | head -n 1)
 export CGO_ENABLED ?= 0
 export GOPATH ?= ".go/"
-export BUILD_PLATFORMS ?= -osarch 'linux/amd64 linux/386'
+export BUILD_PLATFORMS ?= -osarch 'linux/amd64 linux/386 linux/arm linux/arm64'
 
 export goJunitReport ?= $(GOPATH)/bin/go-junit-report
 MOCKERY_VERSION = 2.12.3
