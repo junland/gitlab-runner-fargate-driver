@@ -147,6 +147,17 @@ LogFormat = "text"
   PlatformVersion = "1.4.0"
 ```
 
+Evaluation logic for communication between the Gitlab Runner and the Fargate tasks:
+
+| EnablePublicIP | UsePublicIP |  Outcome   |
+| -------------- | ----------- | ---------- |
+| true           | true        | Public IP  |
+| true           | false       | Private IP |
+| false          | true        | Error      |
+| false          | false       | Private IP |
+
+
+
 ### The `[TaskMetadata]` section
 
 | Settings    | Type   | Required | Description                                                                                                                                                                                    |
