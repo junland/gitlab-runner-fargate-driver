@@ -147,12 +147,7 @@ func (a *awsFargate) RunTask(ctx context.Context, taskSettings TaskSettings, con
 	}
 
 	if len(taskOutput.Failures) > 0 {
-		for _, failure := range taskOutput.Failures {
-			a.logger.
-				WithField("failure", failure).
-				Error("[RunTask] Fargate Task run failure")
-		}
-
+		a.logFailures(taskOutput.Failures)
 		return "", ErrTaskRunFailure
 	}
 
@@ -167,6 +162,14 @@ func (a *awsFargate) RunTask(ctx context.Context, taskSettings TaskSettings, con
 		Debug("[RunTask] Fargate Task started with success")
 
 	return taskARN, nil
+}
+
+func (a *awsFargate) logFailures(failures []*ecs.Failure) {
+	for _, failure := range failures {
+		a.logger.
+			WithField("failure", failure).
+			Error("[RunTask] Fargate Task run failure")
+	}
 }
 
 func (a *awsFargate) errIfNotInitialized() error {
