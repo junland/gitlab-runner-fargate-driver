@@ -21,6 +21,7 @@ var (
 	// ErrNotInitialized is returned when the fargate methods are invoked without initialization
 	ErrNotInitialized = errors.New("fargate adapter is not initialized")
 	ErrTaskRunFailure = errors.New("fargate task run failure")
+	ErrNoTaskRun      = errors.New("fargate no tasks could be run")
 )
 
 // Fargate should be used to manage AWS Fargate Tasks (start, stop, etc)
@@ -153,6 +154,10 @@ func (a *awsFargate) RunTask(ctx context.Context, taskSettings TaskSettings, con
 		}
 
 		return "", ErrTaskRunFailure
+	}
+
+	if len(taskOutput.Tasks) == 0 {
+		return "", ErrNoTaskRun
 	}
 
 	taskARN := *taskOutput.Tasks[0].TaskArn
