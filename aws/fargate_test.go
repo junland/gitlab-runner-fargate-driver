@@ -356,7 +356,7 @@ func TestGetContainerIP(t *testing.T) {
 			awsDescribeNetwork: nil,
 			expectedIP:         "172.0.0.1",
 			expectedError:      nil,
-		},		
+		},
 		"Successfully obtained IP when private desired and public enabled": {
 			initializeAdapter:  true,
 			EnablePublicIP:     true,

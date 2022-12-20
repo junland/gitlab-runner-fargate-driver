@@ -56,7 +56,7 @@ type ConnectionSettings struct {
 	Subnet         string
 	SecurityGroup  string
 	EnablePublicIP bool
-	UsePublicIP   bool
+	UsePublicIP    bool
 }
 
 type ecsClient interface {
