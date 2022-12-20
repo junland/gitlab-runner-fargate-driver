@@ -11,8 +11,6 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/task"
 )
 
-const defaultBitSize = 4096
-
 // NewPrepareCommand constructs the command line abstraction for the "prepare" stage
 func NewPrepareCommand() cli.Command {
 	cmd := new(PrepareCommand)
@@ -66,7 +64,7 @@ func (c *PrepareCommand) CustomExecute(ctx *cli.Context) error {
 
 	c.logger.Info("Executing the command")
 
-	keyPair, err := c.keyFactory.Create(defaultBitSize)
+	keyPair, err := c.keyFactory.Create()
 	if err != nil {
 		return fmt.Errorf("generating public/private keys: %w", err)
 	}
