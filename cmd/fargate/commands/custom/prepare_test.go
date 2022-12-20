@@ -216,7 +216,7 @@ func setExpectationsForKeyFactory(mockKeyFactory *ssh.MockKeyFactory, testParams
 		return
 	}
 
-	mockKeyFactory.On("Create", defaultBitSize).
+	mockKeyFactory.On("Create").
 		Return(&testParams.keyPair, testParams.createKeyPairError).
 		Once()
 }

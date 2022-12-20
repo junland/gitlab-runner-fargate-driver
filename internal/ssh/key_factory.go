@@ -1,10 +1,11 @@
 package ssh
 
 import (
+	"crypto/ed25519"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 
@@ -14,10 +15,10 @@ import (
 )
 
 const (
-	rsaPrivateKeyType = "RSA PRIVATE KEY"
+	ed25519PrivateKeyType = "PRIVATE KEY"
 )
 
-// ErrInvalidPrivateKey will be used to wrap a RSA internal error
+// ErrInvalidPrivateKey will be used to wrap an Ed25519 internal error
 type ErrInvalidPrivateKey struct {
 	inner error
 }
@@ -37,7 +38,7 @@ func (e *ErrInvalidPrivateKey) Is(err error) bool {
 
 // KeyFactory is a factory for Public and Private key pairs
 type KeyFactory interface {
-	Create(bitSize int) (*KeyPair, error)
+	Create() (*KeyPair, error)
 }
 
 // KeyPair centralizes the generated public and private keys
@@ -50,38 +51,42 @@ type keyFactory struct {
 	logger logging.Logger
 
 	// Functions encapsulated to make easier creating unit tests
-	generateRSAKey  func(random io.Reader, bits int) (*rsa.PrivateKey, error)
-	newSSHPublicKey func(key interface{}) (ssh.PublicKey, error)
+	generateEd25519Key func(rand io.Reader) (ed25519.PublicKey, ed25519.PrivateKey, error)
+	newSSHPublicKey    func(key interface{}) (ssh.PublicKey, error)
 }
 
 // NewKeyFactory instantiates a concrete instance of KeyFactory
 func NewKeyFactory(logger logging.Logger) KeyFactory {
 	return &keyFactory{
-		logger:          logger,
-		generateRSAKey:  rsa.GenerateKey,
-		newSSHPublicKey: ssh.NewPublicKey,
+		logger:             logger,
+		generateEd25519Key: ed25519.GenerateKey,
+		newSSHPublicKey:    ssh.NewPublicKey,
 	}
 }
 
-// Create generates a RSA Public and Private key pair
-func (r *keyFactory) Create(bitSize int) (*KeyPair, error) {
+// Create generates an ed25519 Public and Private key pair
+func (r *keyFactory) Create() (*KeyPair, error) {
 	r.logger.Debug("[Create] Will generate new key pair")
 
-	privateKey, err := r.generateRSAKey(rand.Reader, bitSize)
+	publicKey, privateKey, err := r.generateEd25519Key(rand.Reader)
 	if err != nil {
-		return nil, fmt.Errorf("generating the private key: %w", err)
+		return nil, fmt.Errorf("generating the private and public key: %w", err)
 	}
 
-	err = privateKey.Validate()
-	if err != nil {
+	// Only helps with existing Test Mocks
+	if !publicKey.Equal(privateKey.Public()) {
+		err = errors.New("private Key is not valid for public Key")
 		return nil, &ErrInvalidPrivateKey{inner: err}
 	}
 
-	privateKeyBytes := r.encodePrivateKeyToPEM(privateKey)
-
-	publicKeyBytes, err := r.getPublicKey(privateKey)
+	privateKeyBytes, err := r.encodePrivateKeyToPEM(privateKey)
 	if err != nil {
-		return nil, fmt.Errorf("generating the public key: %w", err)
+		return nil, fmt.Errorf("converting the the private key to PKCS8 format: %w", err)
+	}
+
+	publicKeyBytes, err := r.getPublicKey(publicKey)
+	if err != nil {
+		return nil, fmt.Errorf("generating the ssh public key: %w", err)
 	}
 
 	keyPair := &KeyPair{
@@ -94,18 +99,23 @@ func (r *keyFactory) Create(bitSize int) (*KeyPair, error) {
 	return keyPair, nil
 }
 
-func (r *keyFactory) encodePrivateKeyToPEM(privateKey *rsa.PrivateKey) []byte {
-	block := pem.Block{
-		Type:    rsaPrivateKeyType,
-		Headers: nil,
-		Bytes:   x509.MarshalPKCS1PrivateKey(privateKey),
+func (r *keyFactory) encodePrivateKeyToPEM(privateKey ed25519.PrivateKey) ([]byte, error) {
+	privDER, err := x509.MarshalPKCS8PrivateKey(privateKey)
+	if err != nil {
+		return nil, err
 	}
 
-	return pem.EncodeToMemory(&block)
+	block := pem.Block{
+		Type:    ed25519PrivateKeyType,
+		Headers: nil,
+		Bytes:   privDER,
+	}
+
+	return pem.EncodeToMemory(&block), nil
 }
 
-func (r *keyFactory) getPublicKey(privateKey *rsa.PrivateKey) ([]byte, error) {
-	publicKey, err := r.newSSHPublicKey(&privateKey.PublicKey)
+func (r *keyFactory) getPublicKey(pubKey ed25519.PublicKey) ([]byte, error) {
+	publicKey, err := r.newSSHPublicKey(pubKey)
 	if err != nil {
 		return nil, err
 	}

@@ -104,10 +104,10 @@ func generateKey(name string) (key, error) {
 		return key{}, fmt.Errorf("creating key storage directory: %w", err)
 	}
 
-	privateKeyFilePath := filepath.Join(privateKeyDir, "id_rsa")
+	privateKeyFilePath := filepath.Join(privateKeyDir, "id_ed25519")
 	publicKeyFilePath := privateKeyFilePath + ".pub"
 
-	cmd := exec.Command("ssh-keygen", "-t", "rsa", "-b", "2048", "-N", "", "-f", privateKeyFilePath)
+	cmd := exec.Command("ssh-keygen", "-t", "ed25519", "-N", "", "-f", privateKeyFilePath)
 	err = cmd.Run()
 	if err != nil {
 		return key{}, fmt.Errorf("executing %q command: %w", cmd.String(), err)
