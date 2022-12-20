@@ -11,7 +11,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -310,8 +312,10 @@ func TestSSHIntegration(t *testing.T) {
 				return context.Background()
 			},
 			assertOutput: func(t *testing.T, output string) {
-				t.Log(output)
-				assert.Contains(t, output, "Exiting!")
+				assert.Eventually(t, func() bool {
+					t.Log(output)
+					return strings.Contains(output, "Exiting!")
+				}, 5*time.Second, 500*time.Millisecond, "output did not contain 'Exiting!'")
 			},
 		},
 	}
