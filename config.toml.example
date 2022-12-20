@@ -9,6 +9,7 @@ LogFormat = "text"
     SecurityGroup = "sg-XYZ"
     TaskDefinition = "my-task-definition:1"
     EnablePublicIP = true
+    UsePublicIP = false
     PlatformVersion = "LATEST"
 
 [TaskMetadata]

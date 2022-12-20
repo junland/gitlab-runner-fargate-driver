@@ -37,7 +37,7 @@ type Fargate interface {
 	StopTask(ctx context.Context, taskARN string, cluster string) error
 
 	// GetContainerIP returns the IP of the container related to the specified task
-	GetContainerIP(ctx context.Context, taskARN string, cluster string, usePublicIP bool) (string, error)
+	GetContainerIP(ctx context.Context, taskARN string, cluster string, enablePublicIP bool, usePublicIP bool) (string, error)
 
 	// Init initialize variables and executes necessary procedures
 	Init() error
@@ -56,6 +56,7 @@ type ConnectionSettings struct {
 	Subnet         string
 	SecurityGroup  string
 	EnablePublicIP bool
+	UsePublicIP    bool
 }
 
 type ecsClient interface {
@@ -263,7 +264,7 @@ func (a *awsFargate) StopTask(ctx context.Context, taskARN string, cluster strin
 	return nil
 }
 
-func (a *awsFargate) GetContainerIP(ctx context.Context, taskARN string, cluster string, usePublicIP bool) (string, error) {
+func (a *awsFargate) GetContainerIP(ctx context.Context, taskARN string, cluster string, enablePublicIP bool, usePublicIP bool) (string, error) {
 	err := a.errIfNotInitialized()
 	if err != nil {
 		return "", fmt.Errorf("could not get container IP: %w", err)
