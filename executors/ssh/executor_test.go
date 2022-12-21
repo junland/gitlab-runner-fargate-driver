@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -292,7 +291,7 @@ func TestSSHIntegration(t *testing.T) {
 
 	tests := map[string]struct {
 		ctx          func() context.Context
-		assertOutput func(*testing.T, fmt.Stringer)
+		assertOutput func(t *testing.T, output string)
 	}{
 		"context finished before command": {
 			ctx: func() context.Context {
@@ -301,8 +300,7 @@ func TestSSHIntegration(t *testing.T) {
 
 				return ctx
 			},
-			assertOutput: func(t *testing.T, buf fmt.Stringer) {
-				output := buf.String()
+			assertOutput: func(t *testing.T, output string) {
 				t.Log(output)
 				assert.NotContains(t, output, "Exiting!")
 			},
@@ -311,12 +309,9 @@ func TestSSHIntegration(t *testing.T) {
 			ctx: func() context.Context {
 				return context.Background()
 			},
-			assertOutput: func(t *testing.T, buf fmt.Stringer) {
-				assert.Eventually(t, func() bool {
-					output := buf.String()
-					t.Log(output)
-					return strings.Contains(output, "Exiting!")
-				}, 5*time.Second, 500*time.Millisecond, "output did not contain 'Exiting!'")
+			assertOutput: func(t *testing.T, output string) {
+				t.Log(output)
+				assert.Contains(t, output, "Exiting!")
 			},
 		},
 	}
@@ -344,7 +339,7 @@ done
 			err := e.Execute(tt.ctx(), settings, []byte(script))
 
 			assert.NoError(t, err)
-			tt.assertOutput(t, out)
+			tt.assertOutput(t, out.String())
 		})
 	}
 }
