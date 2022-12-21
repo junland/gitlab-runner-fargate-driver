@@ -1,7 +1,6 @@
 package ssh
 
 import (
-	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -11,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -321,7 +321,7 @@ func TestSSHIntegration(t *testing.T) {
 			e, ok := NewExecutor(logging.New()).(*executor)
 			require.True(t, ok)
 
-			out := new(bytes.Buffer)
+			out := new(strings.Builder)
 			e.stdout = out
 			e.stderr = out
 
