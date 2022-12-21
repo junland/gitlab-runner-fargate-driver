@@ -132,6 +132,7 @@ LogFormat = "text"
 | `SecurityGroup`  | string | Yes      | The AWS security group ID where the task should be created.                                                                                                                                                                   |
 | `TaskDefinition` | string | Yes      | The family and revision (family:revision) or full ARN of the task definition to be used for starting the task. Note that this setting is overriden if a different value is provided by the `task-def` command line argument or by the `CUSTOM_ENV_FARGATE_TASK_DEFINITION` environment variable. |
 | `EnablePublicIP` | bool   | Yes      | This flag dictates whether the Fargate task should be created providing an external IP.|
+| `UsePublicIP` | bool   | Yes      | This flag dictates whether the the runner should use the public IP address to communicate with Fargate tasks.|
 | `PlatformVersion` | string   | No      | Fargate Platform Version. See the list of [available versions](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/platform_versions.html). Note that this setting is overriden if a different value is provided by the `platform-version` command line argument or by the `CUSTOM_ENV_FARGATE_PLATFORM_VERSION` environment variable. |
 
 ```toml
@@ -142,8 +143,20 @@ LogFormat = "text"
   SecurityGroup = "sg-XYZ"
   TaskDefinition = "my-task-definition:1"
   EnablePublicIP = true
+  UsePublicIP = false
   PlatformVersion = "1.4.0"
 ```
+
+Evaluation logic for communication between the Gitlab Runner and the Fargate tasks:
+
+| EnablePublicIP | UsePublicIP |  Outcome   |
+| -------------- | ----------- | ---------- |
+| true           | true        | Public IP  |
+| true           | false       | Private IP |
+| false          | true        | Error      |
+| false          | false       | Private IP |
+
+
 
 ### The `[TaskMetadata]` section
 
@@ -246,6 +259,7 @@ LogFormat = "text"
   SecurityGroup = "sg-xxxxxxxx"
   TaskDefinition = "fargateExecutor:1"
   EnablePublicIP = false
+  UsePublicIP = false
 
 [TaskMetadata]
   Directory = "/etc/gitlab-runner/metadata"
