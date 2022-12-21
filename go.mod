@@ -9,10 +9,24 @@ require (
 	github.com/mitchellh/gox v1.0.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/afero v1.2.2
-	github.com/stretchr/objx v0.1.1 // indirect
 	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli v1.22.2
 	gitlab.com/ayufan/golang-cli-helpers v0.0.0-20171103152739-a7cf72d604cd
 	gitlab.com/gitlab-org/gitlab-runner v12.5.0+incompatible
 	golang.org/x/crypto v0.0.0-20200214034016-1d94cc7ab1c6
+)
+
+require (
+	github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/hashicorp/go-version v1.0.0 // indirect
+	github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af // indirect
+	github.com/mitchellh/iochan v1.0.0 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/russross/blackfriday/v2 v2.0.1 // indirect
+	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
+	github.com/stretchr/objx v0.1.1 // indirect
+	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
+	golang.org/x/text v0.3.0 // indirect
+	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c // indirect
 )
