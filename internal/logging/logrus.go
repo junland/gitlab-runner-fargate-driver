@@ -14,8 +14,10 @@ var formatters = map[string]func() Formatter{
 	FormatJSON:       newJSONFormatter,
 }
 
-type Fields = logrus.Fields
-type Formatter = logrus.Formatter
+type (
+	Fields    = logrus.Fields
+	Formatter = logrus.Formatter
+)
 
 func newLogrus() Logger {
 	logger := logrus.New()
