@@ -70,7 +70,7 @@ func (f *fsMetadataManager) Persist(data Data) error {
 		return fmt.Errorf("encoding data to JSON: %w", err)
 	}
 
-	err = f.fs.WriteFile(f.getFullFilePath(), buf.Bytes(), 0600)
+	err = f.fs.WriteFile(f.getFullFilePath(), buf.Bytes(), 0o600)
 	if err != nil {
 		return fmt.Errorf("writing file %q: %w", f.getFullFilePath(), err)
 	}

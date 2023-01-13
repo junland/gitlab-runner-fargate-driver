@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/BurntSushi/toml"
 )
@@ -38,7 +38,7 @@ type SSH struct {
 }
 
 func LoadFromFile(file string) (Global, error) {
-	data, err := ioutil.ReadFile(file)
+	data, err := os.ReadFile(file)
 	if err != nil {
 		return Global{}, fmt.Errorf("couldn't read configuration file %q: %w", file, err)
 	}

@@ -34,7 +34,7 @@ func TestFs_WriteFile(t *testing.T) {
 	file := "test-file"
 	content := []byte("content")
 
-	err := fs.WriteFile(file, content, 0600)
+	err := fs.WriteFile(file, content, 0o600)
 	require.NoError(t, err)
 
 	data, err := fs.ReadFile(file)
@@ -50,7 +50,7 @@ func TestFs_Exists(t *testing.T) {
 	assert.False(t, e)
 	assert.NoError(t, err)
 
-	err = fs.WriteFile(file, nil, 0600)
+	err = fs.WriteFile(file, nil, 0o600)
 	require.NoError(t, err)
 
 	e, err = fs.Exists(file)
@@ -73,7 +73,7 @@ func TestFs_Remove(t *testing.T) {
 	fs := newMem()
 
 	file := "test-file"
-	err := fs.WriteFile(file, nil, 0600)
+	err := fs.WriteFile(file, nil, 0o600)
 	require.NoError(t, err)
 
 	e, err := fs.Exists(file)
