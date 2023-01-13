@@ -3,7 +3,7 @@ package test
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
 )
@@ -11,7 +11,7 @@ import (
 func NewNullLogger() logging.Logger {
 	logger := logging.New()
 	_ = logger.SetFormat(logging.FormatTextSimple)
-	logger.SetOutput(ioutil.Discard)
+	logger.SetOutput(io.Discard)
 
 	return logger
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -13,9 +12,10 @@ import (
 	"syscall"
 )
 
-const httpPort = 8888
-const sshdPort = 2222
-const sshConfig = `
+const (
+	httpPort  = 8888
+	sshdPort  = 2222
+	sshConfig = `
 Port %d
 ListenAddress 0.0.0.0
 HostKey %s
@@ -31,8 +31,12 @@ PrintMotd no
 AcceptEnv LANG LC_*
 Subsystem       sftp    /usr/lib/openssh/sftp-server
 `
-const authorizedKeysFilePath = "/root/.ssh/authorized_keys"
-const username = "root"
+)
+
+const (
+	authorizedKeysFilePath = "/root/.ssh/authorized_keys"
+	username               = "root"
+)
 
 type Info struct {
 	Port           int
@@ -99,12 +103,12 @@ func getSignalContext() (context.Context, func()) {
 func generateKey(name string) (key, error) {
 	fmt.Printf("Generating %s key\n", name)
 
-	privateKeyDir, err := ioutil.TempDir("", "ssh-key")
+	privateKeyDir, err := os.CreateTemp("", "ssh-key")
 	if err != nil {
 		return key{}, fmt.Errorf("creating key storage directory: %w", err)
 	}
 
-	privateKeyFilePath := filepath.Join(privateKeyDir, "id_ed25519")
+	privateKeyFilePath := filepath.Join(privateKeyDir.Name(), "id_ed25519")
 	publicKeyFilePath := privateKeyFilePath + ".pub"
 
 	cmd := exec.Command("ssh-keygen", "-t", "ed25519", "-N", "", "-f", privateKeyFilePath)
@@ -113,12 +117,12 @@ func generateKey(name string) (key, error) {
 		return key{}, fmt.Errorf("executing %q command: %w", cmd.String(), err)
 	}
 
-	privateKey, err := ioutil.ReadFile(privateKeyFilePath)
+	privateKey, err := os.ReadFile(privateKeyFilePath)
 	if err != nil {
 		return key{}, fmt.Errorf("reading private key file %q: %w", privateKeyFilePath, err)
 	}
 
-	publicKey, err := ioutil.ReadFile(publicKeyFilePath)
+	publicKey, err := os.ReadFile(publicKeyFilePath)
 	if err != nil {
 		return key{}, fmt.Errorf("reading public key file %q: %w", publicKeyFilePath, err)
 	}
@@ -138,13 +142,13 @@ func createConfigFile(key key) (string, error) {
 
 	fileContent := fmt.Sprintf(sshConfig, sshdPort, key.PrivateKeyPath)
 
-	configDir, err := ioutil.TempDir("", "sshd-config")
+	configDir, err := os.CreateTemp("", "sshd-config")
 	if err != nil {
 		return "", fmt.Errorf("creating key storage directory: %w", err)
 	}
 
-	configFilePath := filepath.Join(configDir, "sshd_config")
-	err = ioutil.WriteFile(configFilePath, []byte(fileContent), 0600)
+	configFilePath := filepath.Join(configDir.Name(), "sshd_config")
+	err = os.WriteFile(configFilePath, []byte(fileContent), 0o600)
 	if err != nil {
 		return "", fmt.Errorf("writing configuration file %q: %w", configFilePath, err)
 	}
@@ -156,12 +160,12 @@ func writeAuthorizedKeys(key key) error {
 	fmt.Printf("Creating %q file\n", authorizedKeysFilePath)
 
 	authorizedKeysPath := filepath.Dir(authorizedKeysFilePath)
-	err := os.MkdirAll(authorizedKeysPath, 0700)
+	err := os.MkdirAll(authorizedKeysPath, 0o700)
 	if err != nil {
 		return fmt.Errorf("creating authorized keys directory %q: %w", authorizedKeysPath, err)
 	}
 
-	err = ioutil.WriteFile(authorizedKeysFilePath, key.PublicKey, 0600)
+	err = os.WriteFile(authorizedKeysFilePath, key.PublicKey, 0o600)
 	if err != nil {
 		return fmt.Errorf("writing authorized keys file %q: %w", authorizedKeysFilePath, err)
 	}
