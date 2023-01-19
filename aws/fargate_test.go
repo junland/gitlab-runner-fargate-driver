@@ -227,6 +227,7 @@ func TestWaitUntilTaskRunning(t *testing.T) {
 					"WaitUntilTasksRunningWithContext",
 					mock.AnythingOfType("*context.emptyCtx"),
 					mock.AnythingOfType("*ecs.DescribeTasksInput"),
+					mock.AnythingOfType("WaiterOption"),
 				).
 					Return(tt.awsError).
 					Once()
@@ -239,7 +240,11 @@ func TestWaitUntilTaskRunning(t *testing.T) {
 				fargate.(*awsFargate).ec2Svc = mockEC2
 			}
 
-			err := fargate.WaitUntilTaskRunning(context.Background(), "param1", "param2")
+			waitConfig := TaskWaitConfig{
+				MaxAttempts: 100,
+				WaitTimeout: 6,
+			}
+			err := fargate.WaitUntilTaskRunning(context.Background(), "param1", "param2", waitConfig)
 
 			if tt.expectedError != nil {
 				assertions.ErrorIs(t, err, tt.expectedError)

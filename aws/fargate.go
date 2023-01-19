@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
@@ -31,7 +32,7 @@ type Fargate interface {
 
 	// WaitUntilTaskRunning blocks the request until the task is in "running"
 	// state or failed to reach this state
-	WaitUntilTaskRunning(ctx context.Context, taskARN string, cluster string) error
+	WaitUntilTaskRunning(ctx context.Context, taskARN string, cluster string, taskWaitConfig TaskWaitConfig) error
 
 	// RunTask stops a specified Fargate task
 	StopTask(ctx context.Context, taskARN string, cluster string) error
@@ -49,6 +50,11 @@ type TaskSettings struct {
 	TaskDefinition       string
 	PlatformVersion      string
 	EnvironmentVariables map[string]string
+}
+
+type TaskWaitConfig struct {
+	MaxAttempts int
+	WaitTimeout int
 }
 
 // ConnectionSettings centralizes attributes related to the task's network configuration
@@ -210,7 +216,7 @@ func (a *awsFargate) processEnvVariablesToInject(envVars map[string]string) *ecs
 	return taskOverride
 }
 
-func (a *awsFargate) WaitUntilTaskRunning(ctx context.Context, taskARN string, cluster string) error {
+func (a *awsFargate) WaitUntilTaskRunning(ctx context.Context, taskARN string, cluster string, taskWaitConfig TaskWaitConfig) error {
 	err := a.errIfNotInitialized()
 	if err != nil {
 		return fmt.Errorf("could not wait AWS Fargate task: %w", err)
@@ -225,7 +231,14 @@ func (a *awsFargate) WaitUntilTaskRunning(ctx context.Context, taskARN string, c
 		Tasks:   []*string{&taskARN},
 	}
 
-	err = a.ecsSvc.WaitUntilTasksRunningWithContext(ctx, &input)
+	var waiter = func(w *request.Waiter) {
+		w.MaxAttempts = taskWaitConfig.MaxAttempts
+		w.Delay = request.ConstantWaiterDelay(time.Duration(taskWaitConfig.WaitTimeout) * time.Second)
+	}
+	var opts []request.WaiterOption
+	opts = append(opts, waiter)
+
+	err = a.ecsSvc.WaitUntilTasksRunningWithContext(ctx, &input, opts...)
 	if err != nil {
 		return fmt.Errorf(`error waiting AWS Fargate Task %q to be in "Running" state: %w`, taskARN, err)
 	}

@@ -26,6 +26,7 @@ type Fargate struct {
 	Subnet          string
 	SecurityGroup   string
 	TaskDefinition  string
+	TaskWaitConfig  TaskWaitConfig
 }
 
 type TaskMetadata struct {
@@ -35,6 +36,24 @@ type TaskMetadata struct {
 type SSH struct {
 	Username string
 	Port     int
+}
+
+type TaskWaitConfig struct {
+	MaxAttempts int
+	WaitTimeout int
+}
+
+func (global *Global) fill_config_defaults() {
+
+	// setting default values
+	// if no values present
+	if global.Fargate.TaskWaitConfig.MaxAttempts < 1 {
+		global.Fargate.TaskWaitConfig.MaxAttempts = 100
+	}
+
+	if global.Fargate.TaskWaitConfig.WaitTimeout < 1 {
+		global.Fargate.TaskWaitConfig.WaitTimeout = 6
+	}
 }
 
 func LoadFromFile(file string) (Global, error) {
@@ -53,6 +72,8 @@ func LoadFromFile(file string) (Global, error) {
 	if !cfg.Fargate.EnablePublicIP && cfg.Fargate.UsePublicIP {
 		return Global{}, fmt.Errorf("can't use public IP to communicate if EnablePublicIP is not enabled in configuration file: %w", err)
 	}
+
+	cfg.fill_config_defaults()
 
 	return cfg, nil
 }

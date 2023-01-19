@@ -268,11 +268,17 @@ func setExpectationForFargateWaitTask(mockAwsFargate *aws.MockFargate, testParam
 		return
 	}
 
+	expectedTaskWaitConfig := aws.TaskWaitConfig{
+		MaxAttempts: 100,
+		WaitTimeout: 6,
+	}
+
 	mockAwsFargate.On(
 		"WaitUntilTaskRunning",
 		testParams.context,
 		*testParams.taskARN,
 		testParams.fargateConfig.Cluster,
+		expectedTaskWaitConfig,
 	).
 		Return(testParams.fargateWaitTaskError).
 		Once()
