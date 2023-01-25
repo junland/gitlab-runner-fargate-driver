@@ -188,6 +188,7 @@ func TestInit(t *testing.T) {
 
 func TestWaitUntilTaskRunning(t *testing.T) {
 	testError := errors.New("simulated error")
+	waitAttemptsExceedError := errors.New("ResourceNotReady: exceeded wait attempts")
 	logger := createTestLogger()
 
 	tests := map[string]struct {
@@ -209,6 +210,11 @@ func TestWaitUntilTaskRunning(t *testing.T) {
 			initializeAdapter: false,
 			awsError:          nil,
 			expectedError:     ErrNotInitialized,
+		},
+		"ECS Task exceeded wait attempts": {
+			initializeAdapter: true,
+			awsError:          waitAttemptsExceedError,
+			expectedError:     waitAttemptsExceedError,
 		},
 	}
 
