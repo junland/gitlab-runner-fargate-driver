@@ -70,8 +70,8 @@ func LoadFromFile(file string) (Global, error) {
 	cfg := Global{
 		Fargate: Fargate{
 			TaskWaitConfig: TaskWaitConfig{
-				MaxAttempts: 100,
-				WaitTimeout: 6,
+				MaxAttempts: AWSWaitDefaultMaxAttempts,
+				WaitTimeout: AWSWaitDefaultTimeoutSeconds,
 			},
 		},
 	}
