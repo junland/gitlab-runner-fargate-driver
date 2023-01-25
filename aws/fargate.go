@@ -231,14 +231,11 @@ func (a *awsFargate) WaitUntilTaskRunning(ctx context.Context, taskARN string, c
 		Tasks:   []*string{&taskARN},
 	}
 
-	var waiter = func(w *request.Waiter) {
+	waiter := func(w *request.Waiter) {
 		w.MaxAttempts = taskWaitConfig.MaxAttempts
 		w.Delay = request.ConstantWaiterDelay(time.Duration(taskWaitConfig.WaitTimeout) * time.Second)
 	}
-	var opts []request.WaiterOption
-	opts = append(opts, waiter)
-
-	err = a.ecsSvc.WaitUntilTasksRunningWithContext(ctx, &input, opts...)
+	err = a.ecsSvc.WaitUntilTasksRunningWithContext(ctx, &input, waiter)
 	if err != nil {
 		return fmt.Errorf(`error waiting AWS Fargate Task %q to be in "Running" state: %w`, taskARN, err)
 	}

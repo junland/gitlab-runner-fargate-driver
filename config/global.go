@@ -62,7 +62,14 @@ func LoadFromFile(file string) (Global, error) {
 		return Global{}, fmt.Errorf("couldn't read configuration file %q: %w", file, err)
 	}
 
-	var cfg Global
+	cfg := Global{
+		Fargate: Fargate{
+			TaskWaitConfig: TaskWaitConfig{
+				MaxAttempts: 100,
+				WaitTimeout: 6,
+			},
+		},
+	}
 
 	err = toml.Unmarshal(data, &cfg)
 	if err != nil {
