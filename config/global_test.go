@@ -13,7 +13,7 @@ func Test_LoadFromFile(t *testing.T) {
 	}{
 		"wait config set to zero": {
 			filename: "testdata/waitconfig-zero.toml",
-			want:     TaskWaitConfig{100, 6},
+			want:     TaskWaitConfig{0, 0},
 		},
 		"wait config not set": {
 			filename: "testdata/no-waitconfig.toml",

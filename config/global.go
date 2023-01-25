@@ -48,19 +48,6 @@ const (
 	AWSWaitDefaultTimeoutSeconds = 6
 )
 
-func (global *Global) fill_config_defaults() {
-
-	// setting default values
-	// if no values present
-	if global.Fargate.TaskWaitConfig.MaxAttempts < 1 {
-		global.Fargate.TaskWaitConfig.MaxAttempts = AWSWaitDefaultMaxAttempts
-	}
-
-	if global.Fargate.TaskWaitConfig.WaitTimeout < 1 {
-		global.Fargate.TaskWaitConfig.WaitTimeout = AWSWaitDefaultTimeoutSeconds
-	}
-}
-
 func LoadFromFile(file string) (Global, error) {
 	data, err := os.ReadFile(file)
 	if err != nil {
@@ -84,8 +71,6 @@ func LoadFromFile(file string) (Global, error) {
 	if !cfg.Fargate.EnablePublicIP && cfg.Fargate.UsePublicIP {
 		return Global{}, fmt.Errorf("can't use public IP to communicate if EnablePublicIP is not enabled in configuration file: %w", err)
 	}
-
-	cfg.fill_config_defaults()
 
 	return cfg, nil
 }
