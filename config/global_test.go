@@ -15,6 +15,10 @@ func Test_LoadFromFile(t *testing.T) {
 			filename: "testdata/waitconfig-zero.toml",
 			want:     TaskWaitConfig{100, 6},
 		},
+		"wait config not set": {
+			filename: "testdata/no-waitconfig.toml",
+			want:     TaskWaitConfig{100, 6},
+		},
 	}
 
 	for name, test := range tests {
