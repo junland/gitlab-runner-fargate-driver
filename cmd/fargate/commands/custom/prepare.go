@@ -55,11 +55,6 @@ type PrepareCommand struct {
 	newKeyFactory      func(logger logging.Logger) ssh.KeyFactory
 }
 
-const (
-	AWSWaitDefaultMaxAttempts    = 100
-	AWSWaitDefaultTimeoutSeconds = 6
-)
-
 // CustomExecute is the "core" of the implementation for the "prepare" stage
 func (c *PrepareCommand) CustomExecute(ctx *cli.Context) error {
 	err := c.init(ctx)
@@ -188,8 +183,8 @@ func (c *PrepareCommand) waitFargateTaskReady(ctx *cli.Context, taskARN string) 
 	var containerIP string
 
 	taskWaitConfig := aws.TaskWaitConfig{
-		MaxAttempts: AWSWaitDefaultMaxAttempts,
-		WaitTimeout: AWSWaitDefaultTimeoutSeconds,
+		MaxAttempts: config.AWSWaitDefaultMaxAttempts,
+		WaitTimeout: config.AWSWaitDefaultTimeoutSeconds,
 	}
 	if c.cfg.Fargate.TaskWaitConfig.MaxAttempts > 1 {
 		taskWaitConfig.MaxAttempts = c.cfg.Fargate.TaskWaitConfig.MaxAttempts

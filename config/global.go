@@ -43,16 +43,21 @@ type TaskWaitConfig struct {
 	WaitTimeout int
 }
 
+const (
+	AWSWaitDefaultMaxAttempts    = 100
+	AWSWaitDefaultTimeoutSeconds = 6
+)
+
 func (global *Global) fill_config_defaults() {
 
 	// setting default values
 	// if no values present
 	if global.Fargate.TaskWaitConfig.MaxAttempts < 1 {
-		global.Fargate.TaskWaitConfig.MaxAttempts = 100
+		global.Fargate.TaskWaitConfig.MaxAttempts = AWSWaitDefaultMaxAttempts
 	}
 
 	if global.Fargate.TaskWaitConfig.WaitTimeout < 1 {
-		global.Fargate.TaskWaitConfig.WaitTimeout = 6
+		global.Fargate.TaskWaitConfig.WaitTimeout = AWSWaitDefaultTimeoutSeconds
 	}
 }
 
