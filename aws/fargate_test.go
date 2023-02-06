@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/config"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/assertions"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging/test"
@@ -246,7 +247,7 @@ func TestWaitUntilTaskRunning(t *testing.T) {
 				fargate.(*awsFargate).ec2Svc = mockEC2
 			}
 
-			waitConfig := TaskWaitConfig{
+			waitConfig := config.TaskWaitConfig{
 				MaxAttempts: 100,
 				WaitTimeout: 6,
 			}

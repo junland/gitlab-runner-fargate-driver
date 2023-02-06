@@ -182,18 +182,8 @@ func (c *PrepareCommand) waitFargateTaskReady(ctx *cli.Context, taskARN string) 
 
 	var containerIP string
 
-	taskWaitConfig := aws.TaskWaitConfig{
-		MaxAttempts: config.AWSWaitDefaultMaxAttempts,
-		WaitTimeout: config.AWSWaitDefaultTimeoutSeconds,
-	}
-	if c.cfg.Fargate.TaskWaitConfig.MaxAttempts > 1 {
-		taskWaitConfig.MaxAttempts = c.cfg.Fargate.TaskWaitConfig.MaxAttempts
-	}
-	if c.cfg.Fargate.TaskWaitConfig.WaitTimeout > 1 {
-		taskWaitConfig.WaitTimeout = c.cfg.Fargate.TaskWaitConfig.WaitTimeout
-	}
 	// Wait for the task to be in "running" state
-	err := c.awsFargate.WaitUntilTaskRunning(ctx.Ctx, taskARN, c.cfg.Fargate.Cluster, taskWaitConfig)
+	err := c.awsFargate.WaitUntilTaskRunning(ctx.Ctx, taskARN, c.cfg.Fargate.Cluster, c.cfg.Fargate.TaskWaitConfig)
 	if err != nil {
 		return containerIP, fmt.Errorf("waiting for Fargate task to be in running state: %w", err)
 	}
