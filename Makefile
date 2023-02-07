@@ -8,7 +8,7 @@ export GOPATH ?= ".go/"
 export BUILD_PLATFORMS ?= -osarch 'linux/amd64 linux/386 linux/arm linux/arm64'
 
 export goJunitReport ?= $(GOPATH)/bin/go-junit-report
-MOCKERY_VERSION = 2.12.3
+MOCKERY_VERSION = 2.18.0
 MOCKERY = .tmp/mockery-$(MOCKERY_VERSION)
 gox ?= $(GOPATH)/bin/gox
 
