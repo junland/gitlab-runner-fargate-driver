@@ -4,7 +4,7 @@ export BRANCH ?= $(shell git show-ref | grep "$(REVISION)" | grep -v HEAD | awk 
 export BUILT ?= $(shell date -u +%Y-%m-%dT%H:%M:%S%z)
 export LATEST_STABLE_TAG := $(shell git -c versionsort.prereleaseSuffix="-rc" tag -l "v*.*.*" --sort=-v:refname | awk '!/rc/' | head -n 1)
 export CGO_ENABLED ?= 0
-export GOPATH ?= ".go/"
+export GOPATH ?= $(shell (go env GOPATH))
 export BUILD_PLATFORMS ?= -osarch 'linux/amd64 linux/386 linux/arm linux/arm64'
 
 export goJunitReport ?= $(GOPATH)/bin/go-junit-report
