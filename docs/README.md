@@ -135,6 +135,13 @@ LogFormat = "text"
 | `UsePublicIP` | bool   | Yes      | This flag dictates whether the the runner should use the public IP address to communicate with Fargate tasks.|
 | `PlatformVersion` | string   | No      | Fargate Platform Version. See the list of [available versions](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/platform_versions.html). Note that this setting is overriden if a different value is provided by the `platform-version` command line argument or by the `CUSTOM_ENV_FARGATE_PLATFORM_VERSION` environment variable. |
 
+#### The `[Fargate.TaskWaitConfig]` section
+
+| Settings         | Type   | Required | Description                                                                                                                                                                                                                   |
+| ---------------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MaxAttempts`        | integer | No      | The maximum retry attempts for the WaiterOption when calling WaitUntilTasksRunningWithContext. Defaults to 100 which is the AWS default.                                                                                                                                                                       |
+| `WaitTimeout`        | integer | No      | The WaiterDelay between retries for the WaiterOption when calling WaitUntilTasksRunningWithContext. Defaults to 6 which is the AWS default.                                                                                                                                                                      |
+
 ```toml
 [Fargate]
   Cluster = "cluster-name"
@@ -145,6 +152,9 @@ LogFormat = "text"
   EnablePublicIP = true
   UsePublicIP = false
   PlatformVersion = "1.4.0"
+  [Fargate.TaskWaitConfig]
+    MaxAttempts = 100
+    WaitTimeout = 6
 ```
 
 Evaluation logic for communication between the Gitlab Runner and the Fargate tasks:

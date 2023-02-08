@@ -183,7 +183,7 @@ func (c *PrepareCommand) waitFargateTaskReady(ctx *cli.Context, taskARN string) 
 	var containerIP string
 
 	// Wait for the task to be in "running" state
-	err := c.awsFargate.WaitUntilTaskRunning(ctx.Ctx, taskARN, c.cfg.Fargate.Cluster)
+	err := c.awsFargate.WaitUntilTaskRunning(ctx.Ctx, taskARN, c.cfg.Fargate.Cluster, c.cfg.Fargate.TaskWaitConfig)
 	if err != nil {
 		return containerIP, fmt.Errorf("waiting for Fargate task to be in running state: %w", err)
 	}

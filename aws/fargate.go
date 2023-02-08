@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
@@ -12,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ecs"
 
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/config"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
 )
 
@@ -31,7 +33,7 @@ type Fargate interface {
 
 	// WaitUntilTaskRunning blocks the request until the task is in "running"
 	// state or failed to reach this state
-	WaitUntilTaskRunning(ctx context.Context, taskARN string, cluster string) error
+	WaitUntilTaskRunning(ctx context.Context, taskARN string, cluster string, taskWaitConfig config.TaskWaitConfig) error
 
 	// RunTask stops a specified Fargate task
 	StopTask(ctx context.Context, taskARN string, cluster string) error
@@ -210,7 +212,7 @@ func (a *awsFargate) processEnvVariablesToInject(envVars map[string]string) *ecs
 	return taskOverride
 }
 
-func (a *awsFargate) WaitUntilTaskRunning(ctx context.Context, taskARN string, cluster string) error {
+func (a *awsFargate) WaitUntilTaskRunning(ctx context.Context, taskARN string, cluster string, taskWaitConfig config.TaskWaitConfig) error {
 	err := a.errIfNotInitialized()
 	if err != nil {
 		return fmt.Errorf("could not wait AWS Fargate task: %w", err)
@@ -225,7 +227,11 @@ func (a *awsFargate) WaitUntilTaskRunning(ctx context.Context, taskARN string, c
 		Tasks:   []*string{&taskARN},
 	}
 
-	err = a.ecsSvc.WaitUntilTasksRunningWithContext(ctx, &input)
+	waiter := func(w *request.Waiter) {
+		w.MaxAttempts = taskWaitConfig.MaxAttempts
+		w.Delay = request.ConstantWaiterDelay(time.Duration(taskWaitConfig.WaitTimeout) * time.Second)
+	}
+	err = a.ecsSvc.WaitUntilTasksRunningWithContext(ctx, &input, waiter)
 	if err != nil {
 		return fmt.Errorf(`error waiting AWS Fargate Task %q to be in "Running" state: %w`, taskARN, err)
 	}

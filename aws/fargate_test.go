@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/config"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/assertions"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging/test"
@@ -188,6 +189,7 @@ func TestInit(t *testing.T) {
 
 func TestWaitUntilTaskRunning(t *testing.T) {
 	testError := errors.New("simulated error")
+	waitAttemptsExceedError := errors.New("ResourceNotReady: exceeded wait attempts")
 	logger := createTestLogger()
 
 	tests := map[string]struct {
@@ -210,6 +212,11 @@ func TestWaitUntilTaskRunning(t *testing.T) {
 			awsError:          nil,
 			expectedError:     ErrNotInitialized,
 		},
+		"ECS Task exceeded wait attempts": {
+			initializeAdapter: true,
+			awsError:          waitAttemptsExceedError,
+			expectedError:     waitAttemptsExceedError,
+		},
 	}
 
 	for tn, tt := range tests {
@@ -227,6 +234,7 @@ func TestWaitUntilTaskRunning(t *testing.T) {
 					"WaitUntilTasksRunningWithContext",
 					mock.AnythingOfType("*context.emptyCtx"),
 					mock.AnythingOfType("*ecs.DescribeTasksInput"),
+					mock.AnythingOfType("WaiterOption"),
 				).
 					Return(tt.awsError).
 					Once()
@@ -239,7 +247,11 @@ func TestWaitUntilTaskRunning(t *testing.T) {
 				fargate.(*awsFargate).ec2Svc = mockEC2
 			}
 
-			err := fargate.WaitUntilTaskRunning(context.Background(), "param1", "param2")
+			waitConfig := config.TaskWaitConfig{
+				MaxAttempts: 100,
+				WaitTimeout: 6,
+			}
+			err := fargate.WaitUntilTaskRunning(context.Background(), "param1", "param2", waitConfig)
 
 			if tt.expectedError != nil {
 				assertions.ErrorIs(t, err, tt.expectedError)
