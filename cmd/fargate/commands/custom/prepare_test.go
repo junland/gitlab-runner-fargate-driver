@@ -174,6 +174,9 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 				tt.taskARN = &testTaskARN
 			}
 
+			tt.fargateConfig.TaskWaitConfig.MaxAttempts = 6
+			tt.fargateConfig.TaskWaitConfig.WaitTimeout = 100
+
 			mockKeyFactory := new(ssh.MockKeyFactory)
 			defer mockKeyFactory.AssertExpectations(t)
 
@@ -268,11 +271,17 @@ func setExpectationForFargateWaitTask(mockAwsFargate *aws.MockFargate, testParam
 		return
 	}
 
+	expectedTaskWaitConfig := config.TaskWaitConfig{
+		MaxAttempts: 6,
+		WaitTimeout: 100,
+	}
+
 	mockAwsFargate.On(
 		"WaitUntilTaskRunning",
 		testParams.context,
 		*testParams.taskARN,
 		testParams.fargateConfig.Cluster,
+		expectedTaskWaitConfig,
 	).
 		Return(testParams.fargateWaitTaskError).
 		Once()
