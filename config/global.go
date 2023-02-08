@@ -26,6 +26,7 @@ type Fargate struct {
 	Subnet          string
 	SecurityGroup   string
 	TaskDefinition  string
+	TaskWaitConfig  TaskWaitConfig
 }
 
 type TaskMetadata struct {
@@ -37,13 +38,30 @@ type SSH struct {
 	Port     int
 }
 
+type TaskWaitConfig struct {
+	MaxAttempts int
+	WaitTimeout int
+}
+
+const (
+	AWSWaitDefaultMaxAttempts    = 100
+	AWSWaitDefaultTimeoutSeconds = 6
+)
+
 func LoadFromFile(file string) (Global, error) {
 	data, err := os.ReadFile(file)
 	if err != nil {
 		return Global{}, fmt.Errorf("couldn't read configuration file %q: %w", file, err)
 	}
 
-	var cfg Global
+	cfg := Global{
+		Fargate: Fargate{
+			TaskWaitConfig: TaskWaitConfig{
+				MaxAttempts: AWSWaitDefaultMaxAttempts,
+				WaitTimeout: AWSWaitDefaultTimeoutSeconds,
+			},
+		},
+	}
 
 	err = toml.Unmarshal(data, &cfg)
 	if err != nil {
