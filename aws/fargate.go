@@ -144,6 +144,8 @@ func (a *awsFargate) RunTask(ctx context.Context, taskSettings TaskSettings, con
 		PlatformVersion: platformVersion,
 	}
 
+	taskInput = *taskInput.SetEnableECSManagedTags(true)
+
 	taskOutput, err := a.ecsSvc.RunTaskWithContext(ctx, &taskInput)
 	if err != nil {
 		return "", fmt.Errorf("error starting AWS Fargate Task: %w", err)
