@@ -72,7 +72,7 @@ func (c *CleanupCommand) CustomExecute(ctx *cli.Context) error {
 
 	logger := c.logger.WithField("taskARN", taskData.TaskARN)
 	logger.Info("Stopping Fargate task")
-	err = c.awsFargate.StopTask(ctx.Ctx, taskData.TaskARN, c.cfg.Fargate.Cluster)
+	err = c.awsFargate.StopTask(ctx.Ctx, taskData.TaskARN, c.cfg.Fargate.Cluster, "[GitLab] Task stopped due to cleanup process.")
 	if err != nil {
 		return fmt.Errorf("stopping Fargate Task %q: %w", taskData.TaskARN, err)
 	}

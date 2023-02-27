@@ -155,7 +155,7 @@ func (c *PrepareCommand) stopFargateTaskOnError(ctx *cli.Context, taskARN string
 	logger.WithError(err).
 		Error(logMessage)
 
-	stopErr := c.awsFargate.StopTask(ctx.Ctx, taskARN, c.cfg.Fargate.Cluster)
+	stopErr := c.awsFargate.StopTask(ctx.Ctx, taskARN, c.cfg.Fargate.Cluster, logMessage)
 	if stopErr != nil {
 		logger.WithError(stopErr).
 			Error("Error during stop task")

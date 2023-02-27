@@ -36,7 +36,7 @@ type Fargate interface {
 	WaitUntilTaskRunning(ctx context.Context, taskARN string, cluster string, taskWaitConfig config.TaskWaitConfig) error
 
 	// RunTask stops a specified Fargate task
-	StopTask(ctx context.Context, taskARN string, cluster string) error
+	StopTask(ctx context.Context, taskARN string, cluster string, stopReason string) error
 
 	// GetContainerIP returns the IP of the container related to the specified task
 	GetContainerIP(ctx context.Context, taskARN string, cluster string, enablePublicIP bool, usePublicIP bool) (string, error)
@@ -243,7 +243,7 @@ func (a *awsFargate) WaitUntilTaskRunning(ctx context.Context, taskARN string, c
 	return nil
 }
 
-func (a *awsFargate) StopTask(ctx context.Context, taskARN string, cluster string) error {
+func (a *awsFargate) StopTask(ctx context.Context, taskARN string, cluster string, stopReason string) error {
 	err := a.errIfNotInitialized()
 	if err != nil {
 		return fmt.Errorf("could not stop AWS Fargate Task: %w", err)
@@ -256,6 +256,7 @@ func (a *awsFargate) StopTask(ctx context.Context, taskARN string, cluster strin
 	input := ecs.StopTaskInput{
 		Cluster: &cluster,
 		Task:    &taskARN,
+		Reason:  &stopReason,
 	}
 
 	_, err = a.ecsSvc.StopTaskWithContext(ctx, &input)

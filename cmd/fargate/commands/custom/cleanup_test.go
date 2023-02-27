@@ -27,6 +27,8 @@ type cleanupCommandTestCase struct {
 	clearMetadataError   error
 
 	expectedError error
+
+	stopReason string
 }
 
 func TestNewCleanupCommand(t *testing.T) {
@@ -49,10 +51,13 @@ func TestCustomExecuteCleanup(t *testing.T) {
 	testError := errors.New("simulated error")
 
 	tests := map[string]cleanupCommandTestCase{
-		"Execute cleanup with success": {},
+		"Execute cleanup with success": {
+			stopReason: "[GitLab] Task stopped due to cleanup process.",
+		},
 		"Error during Fargate init": {
 			fargateInitError: testError,
 			expectedError:    testError,
+			stopReason:       "[GitLab] Task stopped due to cleanup process.",
 		},
 		"Error reading task metadata": {
 			obtainTaskDataError: testError,
@@ -61,10 +66,12 @@ func TestCustomExecuteCleanup(t *testing.T) {
 		"Error stopping Fargate task": {
 			fargateStopTaskError: testError,
 			expectedError:        testError,
+			stopReason:           "[GitLab] Task stopped due to cleanup process.",
 		},
 		"Error deleting task metadata": {
 			clearMetadataError: testError,
 			expectedError:      testError,
+			stopReason:         "[GitLab] Task stopped due to cleanup process.",
 		},
 	}
 
@@ -138,6 +145,7 @@ func setExpectationForStopTask(mockAwsFargate *aws.MockFargate, shouldCall bool,
 		testParams.context,
 		testParams.taskData.TaskARN,
 		testParams.fargateConfig.Cluster,
+		testParams.stopReason,
 	).
 		Return(testParams.fargateStopTaskError).
 		Once()
