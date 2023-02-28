@@ -134,6 +134,7 @@ LogFormat = "text"
 | `EnablePublicIP` | bool   | Yes      | This flag dictates whether the Fargate task should be created providing an external IP.|
 | `UsePublicIP` | bool   | Yes      | This flag dictates whether the the runner should use the public IP address to communicate with Fargate tasks.|
 | `PlatformVersion` | string   | No      | Fargate Platform Version. See the list of [available versions](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/platform_versions.html). Note that this setting is overriden if a different value is provided by the `platform-version` command line argument or by the `CUSTOM_ENV_FARGATE_PLATFORM_VERSION` environment variable. |
+| `PropagateTags`  | bool   | No      | When set to true, the tags from the task definition would be propogated. Given that this task won't run in an ECS service, the only two options to propagate the tags are `TASK_DEFINITION` and `NONE`. |
 
 #### The `[Fargate.TaskWaitConfig]` section
 
@@ -152,6 +153,7 @@ LogFormat = "text"
   EnablePublicIP = true
   UsePublicIP = false
   PlatformVersion = "1.4.0"
+  PropagateTags = true
   [Fargate.TaskWaitConfig]
     MaxAttempts = 100
     WaitTimeout = 6
