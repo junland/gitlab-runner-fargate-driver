@@ -126,6 +126,7 @@ func (c *PrepareCommand) startNewFargateTask(ctx *cli.Context, publicKey []byte)
 		Cluster:         c.cfg.Fargate.Cluster,
 		TaskDefinition:  c.cfg.Fargate.TaskDefinition,
 		PlatformVersion: c.cfg.Fargate.PlatformVersion,
+		PropagateTags:   c.cfg.Fargate.PropagateTags,
 		EnvironmentVariables: map[string]string{
 			"SSH_PUBLIC_KEY": string(publicKey),
 		},
