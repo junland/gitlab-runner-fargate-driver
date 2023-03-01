@@ -37,6 +37,7 @@ func TestRunTask(t *testing.T) {
 		expectedARN        string
 		expectedError      error
 		expectedRunFailure string
+		propagateTags      bool
 	}{
 		"Fargate API returning success": {
 			initializeAdapter:  true,
@@ -104,7 +105,17 @@ func TestRunTask(t *testing.T) {
 				mockECS.On(
 					"RunTaskWithContext",
 					testContext,
-					mock.AnythingOfType("*ecs.RunTaskInput"),
+					mock.MatchedBy(func(rti *ecs.RunTaskInput) bool {
+						overrides := (fargate.(*awsFargate)).processEnvVariablesToInject(tt.environmentVars)
+						return *rti.Cluster == "cluster-name" &&
+							*rti.TaskDefinition == "task-def" &&
+							((tt.propagateTags && *rti.PropagateTags == "TASK_DEFINITION") || rti.PropagateTags == nil) &&
+							assert.Equal(t, rti.Overrides, overrides, "%v", overrides) &&
+							((tt.platformVersion != "" && *rti.PlatformVersion == tt.platformVersion) || rti.PlatformVersion == nil) &&
+							*rti.NetworkConfiguration.AwsvpcConfiguration.AssignPublicIp == "ENABLED" &&
+							*rti.NetworkConfiguration.AwsvpcConfiguration.Subnets[0] == "subnet-name" &&
+							*rti.NetworkConfiguration.AwsvpcConfiguration.SecurityGroups[0] == "security-group-name"
+					}),
 				).
 					Return(output, tt.awsError).
 					Once()
