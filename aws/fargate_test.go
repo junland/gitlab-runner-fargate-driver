@@ -44,6 +44,12 @@ func TestRunTask(t *testing.T) {
 			expectedARN:        taskARN,
 			expectedRunFailure: "",
 		},
+		"Fargate API returning success when propagating tags": {
+			initializeAdapter:  true,
+			expectedARN:        taskARN,
+			expectedRunFailure: "",
+			propagateTags:      true,
+		},
 		"Fargate API returning success when overriding env variables": {
 			initializeAdapter: true,
 			environmentVars:   testEnvVar,
@@ -91,6 +97,7 @@ func TestRunTask(t *testing.T) {
 				TaskDefinition:       "task-def",
 				PlatformVersion:      tt.platformVersion,
 				EnvironmentVariables: tt.environmentVars,
+				PropagateTags:        tt.propagateTags,
 			}
 
 			if tt.initializeAdapter {
