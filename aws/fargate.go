@@ -147,7 +147,7 @@ func (a *awsFargate) RunTask(ctx context.Context, taskSettings TaskSettings, con
 	}
 
 	if taskSettings.PropagateTags {
-		taskInput = *taskInput.SetPropagateTags(ecs.PropagateTagsTaskDefinition)
+		taskInput.SetPropagateTags(ecs.PropagateTagsTaskDefinition)
 	}
 
 	taskOutput, err := a.ecsSvc.RunTaskWithContext(ctx, &taskInput)
