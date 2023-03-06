@@ -51,6 +51,8 @@ type TaskSettings struct {
 	TaskDefinition       string
 	PlatformVersion      string
 	EnvironmentVariables map[string]string
+	// Indicates whether to propagate the tags from the task definition to the running task
+	PropagateTags bool
 }
 
 // ConnectionSettings centralizes attributes related to the task's network configuration
@@ -112,6 +114,7 @@ func (a *awsFargate) Init() error {
 	return nil
 }
 
+//nolint:gocyclo
 func (a *awsFargate) RunTask(ctx context.Context, taskSettings TaskSettings, connection ConnectionSettings) (string, error) {
 	err := a.errIfNotInitialized()
 	if err != nil {
@@ -142,6 +145,10 @@ func (a *awsFargate) RunTask(ctx context.Context, taskSettings TaskSettings, con
 		},
 		Overrides:       a.processEnvVariablesToInject(taskSettings.EnvironmentVariables),
 		PlatformVersion: platformVersion,
+	}
+
+	if taskSettings.PropagateTags {
+		taskInput.SetPropagateTags(ecs.PropagateTagsTaskDefinition)
 	}
 
 	taskOutput, err := a.ecsSvc.RunTaskWithContext(ctx, &taskInput)
