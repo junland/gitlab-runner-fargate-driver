@@ -19,6 +19,7 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging/test"
 )
 
+//nolint:gocyclo
 func TestRunTask(t *testing.T) {
 	testContext, cancel := context.WithCancel(context.Background())
 	defer cancel()

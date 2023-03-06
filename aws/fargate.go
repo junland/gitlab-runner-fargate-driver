@@ -114,6 +114,7 @@ func (a *awsFargate) Init() error {
 	return nil
 }
 
+//nolint:gocyclo
 func (a *awsFargate) RunTask(ctx context.Context, taskSettings TaskSettings, connection ConnectionSettings) (string, error) {
 	err := a.errIfNotInitialized()
 	if err != nil {
