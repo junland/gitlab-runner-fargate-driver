@@ -52,12 +52,12 @@ func TestCustomExecuteCleanup(t *testing.T) {
 
 	tests := map[string]cleanupCommandTestCase{
 		"Execute cleanup with success": {
-			stopReason: "[GitLab] Task stopped due to cleanup process.",
+			stopReason: "Task stopped by driver cleanup action.",
 		},
 		"Error during Fargate init": {
 			fargateInitError: testError,
 			expectedError:    testError,
-			stopReason:       "[GitLab] Task stopped due to cleanup process.",
+			stopReason:       "Task stopped by driver cleanup action.",
 		},
 		"Error reading task metadata": {
 			obtainTaskDataError: testError,
@@ -66,12 +66,12 @@ func TestCustomExecuteCleanup(t *testing.T) {
 		"Error stopping Fargate task": {
 			fargateStopTaskError: testError,
 			expectedError:        testError,
-			stopReason:           "[GitLab] Task stopped due to cleanup process.",
+			stopReason:           "Task stopped by driver cleanup action.",
 		},
 		"Error deleting task metadata": {
 			clearMetadataError: testError,
 			expectedError:      testError,
-			stopReason:         "[GitLab] Task stopped due to cleanup process.",
+			stopReason:         "Task stopped by driver cleanup action.",
 		},
 	}
 
