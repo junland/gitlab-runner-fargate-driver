@@ -324,7 +324,9 @@ func TestStopTask(t *testing.T) {
 				mockECS.On(
 					"StopTaskWithContext",
 					mock.AnythingOfType("*context.emptyCtx"),
-					mock.AnythingOfType("*ecs.StopTaskInput"),
+					mock.MatchedBy(func(sti *ecs.StopTaskInput) bool {
+						return assert.Equal(t, &tt.stopReason, sti.Reason)
+					}),
 				).
 					Return(tt.awsTaskOutput, tt.awsError).
 					Once()
