@@ -320,12 +320,16 @@ func TestStopTask(t *testing.T) {
 
 			fargate := NewFargate(logger, "us-east-1")
 
+			clusterName := "ecs-cluster-name"
+			taskArn := "arn:task:mock"
 			if tt.initializeAdapter {
 				mockECS.On(
 					"StopTaskWithContext",
 					mock.AnythingOfType("*context.emptyCtx"),
 					mock.MatchedBy(func(sti *ecs.StopTaskInput) bool {
-						return assert.Equal(t, &tt.stopReason, sti.Reason)
+						return *sti.Cluster == clusterName &&
+							*sti.Task == taskArn &&
+							assert.Equal(t, &tt.stopReason, sti.Reason)
 					}),
 				).
 					Return(tt.awsTaskOutput, tt.awsError).
@@ -339,7 +343,7 @@ func TestStopTask(t *testing.T) {
 				fargate.(*awsFargate).ec2Svc = mockEC2
 			}
 
-			err := fargate.StopTask(context.Background(), "param1", "param2", tt.stopReason)
+			err := fargate.StopTask(context.Background(), taskArn, clusterName, tt.stopReason)
 
 			if tt.expectedError != nil {
 				assertions.ErrorIs(t, err, tt.expectedError)
