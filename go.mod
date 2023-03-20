@@ -13,7 +13,7 @@ require (
 	github.com/urfave/cli v1.22.2
 	gitlab.com/ayufan/golang-cli-helpers v0.0.0-20171103152739-a7cf72d604cd
 	gitlab.com/gitlab-org/gitlab-runner v12.5.0+incompatible
-	golang.org/x/crypto v0.0.0-20200214034016-1d94cc7ab1c6
+	golang.org/x/crypto v0.6.0
 )
 
 require (
@@ -26,7 +26,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/stretchr/objx v0.1.1 // indirect
-	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
-	golang.org/x/text v0.3.0 // indirect
+	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c // indirect
 )

@@ -26,7 +26,9 @@ type Fargate struct {
 	Subnet          string
 	SecurityGroup   string
 	TaskDefinition  string
-	TaskWaitConfig  TaskWaitConfig
+	// PropagateTags indicates whether to propagate the tags from the task definition to the running task
+	PropagateTags  bool
+	TaskWaitConfig TaskWaitConfig
 }
 
 type TaskMetadata struct {

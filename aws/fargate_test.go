@@ -19,6 +19,7 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging/test"
 )
 
+//nolint:gocyclo
 func TestRunTask(t *testing.T) {
 	testContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -37,11 +38,18 @@ func TestRunTask(t *testing.T) {
 		expectedARN        string
 		expectedError      error
 		expectedRunFailure string
+		propagateTags      bool
 	}{
 		"Fargate API returning success": {
 			initializeAdapter:  true,
 			expectedARN:        taskARN,
 			expectedRunFailure: "",
+		},
+		"Fargate API returning success when propagating tags": {
+			initializeAdapter:  true,
+			expectedARN:        taskARN,
+			expectedRunFailure: "",
+			propagateTags:      true,
 		},
 		"Fargate API returning success when overriding env variables": {
 			initializeAdapter: true,
@@ -90,6 +98,7 @@ func TestRunTask(t *testing.T) {
 				TaskDefinition:       "task-def",
 				PlatformVersion:      tt.platformVersion,
 				EnvironmentVariables: tt.environmentVars,
+				PropagateTags:        tt.propagateTags,
 			}
 
 			if tt.initializeAdapter {
@@ -104,7 +113,17 @@ func TestRunTask(t *testing.T) {
 				mockECS.On(
 					"RunTaskWithContext",
 					testContext,
-					mock.AnythingOfType("*ecs.RunTaskInput"),
+					mock.MatchedBy(func(rti *ecs.RunTaskInput) bool {
+						overrides := (fargate.(*awsFargate)).processEnvVariablesToInject(tt.environmentVars)
+						return *rti.Cluster == "cluster-name" &&
+							*rti.TaskDefinition == "task-def" &&
+							((tt.propagateTags && *rti.PropagateTags == "TASK_DEFINITION") || rti.PropagateTags == nil) &&
+							assert.Equal(t, rti.Overrides, overrides, "%v", overrides) &&
+							((tt.platformVersion != "" && *rti.PlatformVersion == tt.platformVersion) || rti.PlatformVersion == nil) &&
+							*rti.NetworkConfiguration.AwsvpcConfiguration.AssignPublicIp == "ENABLED" &&
+							*rti.NetworkConfiguration.AwsvpcConfiguration.Subnets[0] == "subnet-name" &&
+							*rti.NetworkConfiguration.AwsvpcConfiguration.SecurityGroups[0] == "security-group-name"
+					}),
 				).
 					Return(output, tt.awsError).
 					Once()
