@@ -71,13 +71,13 @@ func (_m *MockFargate) RunTask(ctx context.Context, taskSettings TaskSettings, c
 	return r0, r1
 }
 
-// StopTask provides a mock function with given fields: ctx, taskARN, cluster
-func (_m *MockFargate) StopTask(ctx context.Context, taskARN string, cluster string) error {
-	ret := _m.Called(ctx, taskARN, cluster)
+// StopTask provides a mock function with given fields: ctx, taskARN, cluster, stopReason
+func (_m *MockFargate) StopTask(ctx context.Context, taskARN string, cluster string, stopReason string) error {
+	ret := _m.Called(ctx, taskARN, cluster, stopReason)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
-		r0 = rf(ctx, taskARN, cluster)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) error); ok {
+		r0 = rf(ctx, taskARN, cluster, stopReason)
 	} else {
 		r0 = ret.Error(0)
 	}

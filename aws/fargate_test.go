@@ -291,6 +291,7 @@ func TestStopTask(t *testing.T) {
 		awsTaskOutput     *ecs.StopTaskOutput
 		awsError          error
 		expectedError     error
+		stopReason        string
 	}{
 		"Fargate API returning success": {
 			initializeAdapter: true,
@@ -298,23 +299,33 @@ func TestStopTask(t *testing.T) {
 			awsError:          nil,
 			expectedError:     nil,
 		},
+		"Fargate API returning success with stop reason": {
+			initializeAdapter: true,
+			awsTaskOutput:     &ecs.StopTaskOutput{},
+			awsError:          nil,
+			expectedError:     nil,
+			stopReason:        "Task stopped by user",
+		},
 		"Fargate API returning error and task output": {
 			initializeAdapter: true,
 			awsTaskOutput:     &ecs.StopTaskOutput{},
 			awsError:          testError,
 			expectedError:     testError,
+			stopReason:        "",
 		},
 		"Fargate API returning error without task output": {
 			initializeAdapter: true,
 			awsTaskOutput:     nil,
 			awsError:          testError,
 			expectedError:     testError,
+			stopReason:        "",
 		},
 		"Fargate adapter not initialized error": {
 			initializeAdapter: false,
 			awsTaskOutput:     nil,
 			awsError:          nil,
 			expectedError:     ErrNotInitialized,
+			stopReason:        "",
 		},
 	}
 
@@ -328,11 +339,17 @@ func TestStopTask(t *testing.T) {
 
 			fargate := NewFargate(logger, "us-east-1")
 
+			clusterName := "ecs-cluster-name"
+			taskArn := "arn:task:mock"
 			if tt.initializeAdapter {
 				mockECS.On(
 					"StopTaskWithContext",
 					mock.AnythingOfType("*context.emptyCtx"),
-					mock.AnythingOfType("*ecs.StopTaskInput"),
+					mock.MatchedBy(func(sti *ecs.StopTaskInput) bool {
+						return *sti.Cluster == clusterName &&
+							*sti.Task == taskArn &&
+							assert.Equal(t, &tt.stopReason, sti.Reason)
+					}),
 				).
 					Return(tt.awsTaskOutput, tt.awsError).
 					Once()
@@ -345,7 +362,7 @@ func TestStopTask(t *testing.T) {
 				fargate.(*awsFargate).ec2Svc = mockEC2
 			}
 
-			err := fargate.StopTask(context.Background(), "param1", "param2")
+			err := fargate.StopTask(context.Background(), taskArn, clusterName, tt.stopReason)
 
 			if tt.expectedError != nil {
 				assertions.ErrorIs(t, err, tt.expectedError)
