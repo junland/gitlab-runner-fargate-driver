@@ -25,6 +25,8 @@ type prepareCommandTestCase struct {
 	containerIP    string
 	keyPair        ssh.KeyPair
 
+	taskStopReason string
+
 	createKeyPairError      error
 	fargateInitError        error
 	fargateRunTaskError     error
@@ -44,6 +46,13 @@ type prepareCommandTestCase struct {
 
 	expectedError error
 }
+
+const (
+	taskWaitStopReason   = "Error when waiting for task initialization. Will stop the task for cleanup"
+	taskPersistARNReason = "Error when persisting the task ARN. Will stop the task for cleanup"
+	taskPersistIPReason  = "Error persisting container IP. Will stop the task for cleanup"
+	tastStartReason      = "Error when starting a new Fargate task. Will stop the task for cleanup"
+)
 
 func TestNewPrepareCommand(t *testing.T) {
 	cmd := NewPrepareCommand()
@@ -91,6 +100,7 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 			shouldNotPersistARN:         true,
 			shouldNotPersistIP:          true,
 			expectedError:               testError,
+			taskStopReason:              tastStartReason,
 		},
 		"Error during create Public / Private Key Pair": {
 			createKeyPairError:          testError,
@@ -101,6 +111,7 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 			shouldNotPersistARN:         true,
 			shouldNotPersistIP:          true,
 			expectedError:               testError,
+			taskStopReason:              taskWaitStopReason,
 		},
 
 		"Error during Fargate Run Task": {
@@ -110,6 +121,7 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 			shouldNotPersistARN:         true,
 			shouldNotPersistIP:          true,
 			expectedError:               testError,
+			taskStopReason:              tastStartReason,
 		},
 		"Error during Fargate Run Task - when no taskARN was provided": {
 			taskARN:                     func(s string) *string { return &s }(""),
@@ -120,12 +132,14 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 			shouldNotPersistARN:         true,
 			shouldNotPersistIP:          true,
 			expectedError:               testError,
+			taskStopReason:              taskWaitStopReason,
 		},
 		"Error during Fargate Wait Task": {
 			fargateWaitTaskError:        testError,
 			shouldNotCallGetContainerIP: true,
 			shouldNotPersistIP:          true,
 			expectedError:               testError,
+			taskStopReason:              taskWaitStopReason,
 		},
 		"Error during Fargate Wait Task and Stop Task": {
 			fargateWaitTaskError:        testError,
@@ -133,11 +147,13 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 			shouldNotCallGetContainerIP: true,
 			shouldNotPersistIP:          true,
 			expectedError:               testError,
+			taskStopReason:              taskWaitStopReason,
 		},
 		"Error during Fargate Get Container IP": {
 			fargateContainerIPError: testError,
 			shouldNotPersistIP:      true,
 			expectedError:           testError,
+			taskStopReason:          taskWaitStopReason,
 		},
 		"Error during persisting task ARN": {
 			persistARNError:             testError,
@@ -145,6 +161,7 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 			shouldNotCallGetContainerIP: true,
 			shouldNotPersistIP:          true,
 			expectedError:               testError,
+			taskStopReason:              taskPersistARNReason,
 		},
 		"Error during persisting ARN and stop task": {
 			persistARNError:             testError,
@@ -153,10 +170,12 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 			shouldNotCallGetContainerIP: true,
 			shouldNotPersistIP:          true,
 			expectedError:               testError,
+			taskStopReason:              taskPersistARNReason,
 		},
 		"Error during persisting container IP": {
 			persistIPError: testError,
 			expectedError:  testError,
+			taskStopReason: taskPersistIPReason,
 		},
 		"Execute prepare with success": {
 			shouldNotCallStopTask: true,
@@ -313,6 +332,7 @@ func setExpectationForFargateStopTask(mockAwsFargate *aws.MockFargate, testParam
 		testParams.context,
 		*testParams.taskARN,
 		testParams.fargateConfig.Cluster,
+		testParams.taskStopReason,
 	).
 		Return(testParams.fargateStopTaskError).
 		Once()
