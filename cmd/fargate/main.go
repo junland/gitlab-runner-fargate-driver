@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"os"
+	"strings"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/cmd/fargate/commands/custom"
@@ -28,6 +29,8 @@ type globalFlags struct {
 
 	TaskDefinition  string `long:"task-def" description:"Task definition" env:"CUSTOM_ENV_FARGATE_TASK_DEFINITION"`
 	PlatformVersion string `long:"platform-version" description:"Fargate platform version" env:"CUSTOM_ENV_FARGATE_PLATFORM_VERSION"`
+	Subnets         string `long:"subnets" description:"Task level subnets" env:"CUSTOM_ENV_FARGATE_SUBNETS"`
+	SecurityGroups  string `long:"security-groups" description:"Task level security groups" env:"CUSTOM_ENV_FARGATE_SECURITY_GROUPS"`
 }
 
 var (
@@ -122,9 +125,26 @@ func loadCliArgsEnvVars(ctx *cli.Context) error {
 		config.Fargate.PlatformVersion = global.PlatformVersion
 	}
 
+	if global.Subnets != "" {
+		config.Fargate.Subnets = splitStringToStringArray(global.Subnets)
+	}
+
+	if global.SecurityGroups != "" {
+		config.Fargate.SecurityGroups = splitStringToStringArray(global.SecurityGroups)
+	}
+
 	ctx.SetConfig(config)
 
 	return nil
+}
+
+func splitStringToStringArray(val string) []string {
+	strArray := strings.Split(val, ",")
+
+	for i := range strArray {
+		strArray[i] = strings.TrimSpace(strArray[i])
+	}
+	return strArray
 }
 
 func updateLogLevel(ctx *cli.Context) error {

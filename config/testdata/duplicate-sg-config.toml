@@ -1,0 +1,14 @@
+[Fargate]
+  Cluster = "cluster-name"
+  Region = "us-east-1"
+  Subnet = ""
+  Subnets = ["subnet-XYZ","subnet-ZYX"]
+  SecurityGroup = "sg-XYZ"
+  SecurityGroups = ["sg-XYZ","sg-ZXY"]
+  TaskDefinition = "my-task-definition:1"
+  EnablePublicIP = true
+  UsePublicIP = false
+  PlatformVersion = "1.4.0"
+  [Fargate.TaskWaitConfig]
+    MaxAttempts = 0
+    WaitTimeout = 0
