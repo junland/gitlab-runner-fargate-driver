@@ -88,8 +88,8 @@ func TestRunTask(t *testing.T) {
 			fargate := NewFargate(logger, "us-east-1")
 
 			connectionSettings := ConnectionSettings{
-				Subnet:         "subnet-name",
-				SecurityGroup:  "security-group-name",
+				Subnets:        []string{"subnet-name"},
+				SecurityGroups: []string{"security-group-name"},
 				EnablePublicIP: true,
 				UsePublicIP:    true,
 			}

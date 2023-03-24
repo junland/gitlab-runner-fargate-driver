@@ -261,8 +261,8 @@ func setExpectationForFargateRunTask(mockAwsFargate *aws.MockFargate, testParams
 	}
 
 	expectedConnectionSettings := aws.ConnectionSettings{
-		Subnet:         testParams.fargateConfig.Subnet,
-		SecurityGroup:  testParams.fargateConfig.SecurityGroup,
+		Subnets:        testParams.fargateConfig.Subnets,
+		SecurityGroups: testParams.fargateConfig.SecurityGroups,
 		EnablePublicIP: testParams.fargateConfig.EnablePublicIP,
 		UsePublicIP:    testParams.fargateConfig.UsePublicIP,
 	}

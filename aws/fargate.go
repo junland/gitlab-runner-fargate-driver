@@ -57,8 +57,8 @@ type TaskSettings struct {
 
 // ConnectionSettings centralizes attributes related to the task's network configuration
 type ConnectionSettings struct {
-	Subnet         string
-	SecurityGroup  string
+	Subnets        []string
+	SecurityGroups []string
 	EnablePublicIP bool
 	UsePublicIP    bool
 }
@@ -133,13 +133,16 @@ func (a *awsFargate) RunTask(ctx context.Context, taskSettings TaskSettings, con
 		platformVersion = &taskSettings.PlatformVersion
 	}
 
+	subnets := stringArrayToPointerArray(connection.Subnets)
+	securityGroups := stringArrayToPointerArray(connection.SecurityGroups)
+
 	taskInput := ecs.RunTaskInput{
 		TaskDefinition: &taskSettings.TaskDefinition,
 		Cluster:        &taskSettings.Cluster,
 		NetworkConfiguration: &ecs.NetworkConfiguration{
 			AwsvpcConfiguration: &ecs.AwsVpcConfiguration{
-				SecurityGroups: []*string{&connection.SecurityGroup},
-				Subnets:        []*string{&connection.Subnet},
+				SecurityGroups: securityGroups,
+				Subnets:        subnets,
 				AssignPublicIp: &publicIP,
 			},
 		},
@@ -374,4 +377,13 @@ func (a *awsFargate) getPublicIP(ctx context.Context, networkInterfaceID string)
 		Debug("[getPublicIP] Finished fetching the public IP")
 
 	return publicIP, nil
+}
+
+func stringArrayToPointerArray(strArray []string) []*string {
+	ptrArray := make([]*string, 0)
+
+	for i := range strArray {
+		ptrArray = append(ptrArray, &strArray[i])
+	}
+	return ptrArray
 }
