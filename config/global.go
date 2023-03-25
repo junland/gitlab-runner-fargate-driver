@@ -98,5 +98,9 @@ func LoadFromFile(file string) (Global, error) {
 		cfg.Fargate.SecurityGroup = ""
 	}
 
+	if len(cfg.Fargate.SecurityGroups) > 5 {
+		return Global{}, fmt.Errorf("A maximum of 5 security groups can be specified for awsvpcConfiguration.")
+	}
+
 	return cfg, nil
 }

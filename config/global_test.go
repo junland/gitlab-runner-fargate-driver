@@ -74,6 +74,11 @@ func Test_LoadSubnetConfigFromFile(t *testing.T) {
 			want:        expectedConfig,
 			expectError: nil,
 		},
+		"fail when securitygroups limit exceeded": {
+			filename:    "testdata/invalid-security-groups-limit.toml",
+			want:        Fargate{},
+			expectError: errors.New("A maximum of 5 security groups can be specified for awsvpcConfiguration."),
+		},
 	}
 
 	for name, test := range tests {
