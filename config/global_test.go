@@ -79,6 +79,16 @@ func Test_LoadSubnetConfigFromFile(t *testing.T) {
 			want:        Fargate{},
 			expectError: errors.New("A maximum of 5 security groups can be specified for awsvpcConfiguration."),
 		},
+		"fail when cluster omitted": {
+			filename:    "testdata/invalid-config-no-cluser.toml",
+			want:        Fargate{},
+			expectError: errors.New("Cluster name not specified in configuration file."),
+		},
+		"fail when region omitted": {
+			filename:    "testdata/invalid-config-no-region.toml",
+			want:        Fargate{},
+			expectError: errors.New("Region not specified in configuration file."),
+		},
 	}
 
 	for name, test := range tests {
