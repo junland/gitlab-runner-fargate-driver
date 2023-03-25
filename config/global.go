@@ -74,6 +74,15 @@ func LoadFromFile(file string) (Global, error) {
 		return Global{}, fmt.Errorf("couldn't parse TOML content of the configuration file: %w", err)
 	}
 
+	if len(cfg.Fargate.Cluster) < 1 {
+		return Global{}, fmt.Errorf("Cluster name not specified in configuration file.")
+	}
+
+	if len(cfg.Fargate.Region) < 1 {
+		// this driver should perhaps assume the region the runner is deployed to when no region is specified.
+		return Global{}, fmt.Errorf("Region not specified in configuration file.")
+	}
+
 	if !cfg.Fargate.EnablePublicIP && cfg.Fargate.UsePublicIP {
 		return Global{}, fmt.Errorf("can't use public IP to communicate if EnablePublicIP is not enabled in configuration file: %w", err)
 	}
