@@ -22,6 +22,8 @@ var (
 
 	// ErrNotInitialized is returned when the fargate methods are invoked without initialization
 	ErrNotInitialized = errors.New("fargate adapter is not initialized")
+	ErrValFailCluster = errors.New("Required Cluster name not specified.")
+	ErrValFailTaskDef = errors.New("Required TaskDefinition arn not specified.")
 	ErrTaskRunFailure = errors.New("fargate task run failure")
 	ErrNoTaskRun      = errors.New("fargate no tasks could be run")
 )
@@ -57,8 +59,8 @@ type TaskSettings struct {
 
 // ConnectionSettings centralizes attributes related to the task's network configuration
 type ConnectionSettings struct {
-	Subnets        []string
-	SecurityGroups []string
+	Subnets        []*string
+	SecurityGroups []*string
 	EnablePublicIP bool
 	UsePublicIP    bool
 }
@@ -121,6 +123,11 @@ func (a *awsFargate) RunTask(ctx context.Context, taskSettings TaskSettings, con
 		return "", fmt.Errorf("could not start AWS Fargate Task: %w", err)
 	}
 
+	err = taskSettings.ValidateRequiredFields()
+	if err != nil {
+		return "", fmt.Errorf("could not start AWS Fargate Task: %w", err)
+	}
+
 	a.logger.Debug("[RunTask] Will start a new Fargate Task")
 
 	publicIP := "DISABLED"
@@ -133,16 +140,13 @@ func (a *awsFargate) RunTask(ctx context.Context, taskSettings TaskSettings, con
 		platformVersion = &taskSettings.PlatformVersion
 	}
 
-	subnets := stringArrayToPointerArray(connection.Subnets)
-	securityGroups := stringArrayToPointerArray(connection.SecurityGroups)
-
 	taskInput := ecs.RunTaskInput{
 		TaskDefinition: &taskSettings.TaskDefinition,
 		Cluster:        &taskSettings.Cluster,
 		NetworkConfiguration: &ecs.NetworkConfiguration{
 			AwsvpcConfiguration: &ecs.AwsVpcConfiguration{
-				SecurityGroups: securityGroups,
-				Subnets:        subnets,
+				SecurityGroups: connection.SecurityGroups,
+				Subnets:        connection.Subnets,
 				AssignPublicIp: &publicIP,
 			},
 		},
@@ -191,6 +195,18 @@ func (a *awsFargate) errIfNotInitialized() error {
 	}
 
 	return ErrNotInitialized
+}
+
+func (a *TaskSettings) ValidateRequiredFields() error {
+	if a.Cluster == "" {
+		return ErrValFailCluster
+	}
+
+	if a.TaskDefinition == "" {
+		return ErrValFailTaskDef
+	}
+
+	return nil
 }
 
 func (a *awsFargate) processEnvVariablesToInject(envVars map[string]string) *ecs.TaskOverride {
@@ -377,13 +393,4 @@ func (a *awsFargate) getPublicIP(ctx context.Context, networkInterfaceID string)
 		Debug("[getPublicIP] Finished fetching the public IP")
 
 	return publicIP, nil
-}
-
-func stringArrayToPointerArray(strArray []string) []*string {
-	ptrArray := make([]*string, 0)
-
-	for i := range strArray {
-		ptrArray = append(ptrArray, &strArray[i])
-	}
-	return ptrArray
 }

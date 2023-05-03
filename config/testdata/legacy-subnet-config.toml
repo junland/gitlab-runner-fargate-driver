@@ -2,7 +2,7 @@
   Cluster = "cluster-name"
   Region = "us-east-1"
   Subnet = "subnet-XYZ"
-  SecurityGroups = ["sg-XYZ"]
+  SecurityGroup = "sg-XYZ"
   TaskDefinition = "my-task-definition:1"
   EnablePublicIP = true
   UsePublicIP = false

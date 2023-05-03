@@ -29,6 +29,8 @@ func TestRunTask(t *testing.T) {
 	taskARN := "my-task-arn"
 	logger := createTestLogger()
 	testEnvVar := map[string]string{"MY_ENV_VAR": "testing"}
+	cluster := "cluster-name"
+	taskDefinition := "task-def"
 
 	tests := map[string]struct {
 		initializeAdapter  bool
@@ -39,41 +41,69 @@ func TestRunTask(t *testing.T) {
 		expectedError      error
 		expectedRunFailure string
 		propagateTags      bool
+		taskDefinition     string
+		clusterName        string
 	}{
 		"Fargate API returning success": {
 			initializeAdapter:  true,
 			expectedARN:        taskARN,
 			expectedRunFailure: "",
+			clusterName:        cluster,
+			taskDefinition:     taskDefinition,
 		},
 		"Fargate API returning success when propagating tags": {
 			initializeAdapter:  true,
 			expectedARN:        taskARN,
 			expectedRunFailure: "",
 			propagateTags:      true,
+			clusterName:        cluster,
+			taskDefinition:     taskDefinition,
 		},
 		"Fargate API returning success when overriding env variables": {
 			initializeAdapter: true,
 			environmentVars:   testEnvVar,
 			expectedARN:       taskARN,
+			clusterName:       cluster,
+			taskDefinition:    taskDefinition,
 		},
 		"Fargate API returning success overriding platform version": {
 			initializeAdapter: true,
 			platformVersion:   "1.4.0",
 			expectedARN:       taskARN,
+			clusterName:       cluster,
+			taskDefinition:    taskDefinition,
 		},
 		"Fargate API returning error": {
 			initializeAdapter: true,
 			awsError:          testError,
 			expectedError:     testError,
+			clusterName:       cluster,
+			taskDefinition:    taskDefinition,
 		},
 		"Fargate API returning no error but failures running task": {
 			initializeAdapter:  true,
 			platformVersion:    "1.4.0",
 			expectedError:      ErrTaskRunFailure,
 			expectedRunFailure: testFailure,
+			clusterName:        cluster,
+			taskDefinition:     taskDefinition,
 		},
 		"Fargate adapter not initialized error": {
-			expectedError: ErrNotInitialized,
+			expectedError:  ErrNotInitialized,
+			clusterName:    cluster,
+			taskDefinition: taskDefinition,
+		},
+		"Fargate adapter fails validation on cluster name not supplied": {
+			initializeAdapter: true,
+			expectedError:     ErrValFailCluster,
+			clusterName:       "",
+			taskDefinition:    taskDefinition,
+		},
+		"Fargate adapter fails validation on task definition not supplied": {
+			initializeAdapter: true,
+			expectedError:     ErrValFailTaskDef,
+			clusterName:       cluster,
+			taskDefinition:    "",
 		},
 	}
 
@@ -87,15 +117,18 @@ func TestRunTask(t *testing.T) {
 
 			fargate := NewFargate(logger, "us-east-1")
 
+			subnet := "subnet-name"
+			securityGroup := "security-group-name"
+
 			connectionSettings := ConnectionSettings{
-				Subnets:        []string{"subnet-name"},
-				SecurityGroups: []string{"security-group-name"},
+				Subnets:        []*string{&subnet},
+				SecurityGroups: []*string{&securityGroup},
 				EnablePublicIP: true,
 				UsePublicIP:    true,
 			}
 			taskSettings := TaskSettings{
-				Cluster:              "cluster-name",
-				TaskDefinition:       "task-def",
+				Cluster:              tt.clusterName,
+				TaskDefinition:       tt.taskDefinition,
 				PlatformVersion:      tt.platformVersion,
 				EnvironmentVariables: tt.environmentVars,
 				PropagateTags:        tt.propagateTags,
@@ -110,23 +143,25 @@ func TestRunTask(t *testing.T) {
 					output.Failures = []*ecs.Failure{{Reason: &tt.expectedRunFailure}}
 				}
 
-				mockECS.On(
-					"RunTaskWithContext",
-					testContext,
-					mock.MatchedBy(func(rti *ecs.RunTaskInput) bool {
-						overrides := (fargate.(*awsFargate)).processEnvVariablesToInject(tt.environmentVars)
-						return *rti.Cluster == "cluster-name" &&
-							*rti.TaskDefinition == "task-def" &&
-							((tt.propagateTags && *rti.PropagateTags == "TASK_DEFINITION") || rti.PropagateTags == nil) &&
-							assert.Equal(t, rti.Overrides, overrides, "%v", overrides) &&
-							((tt.platformVersion != "" && *rti.PlatformVersion == tt.platformVersion) || rti.PlatformVersion == nil) &&
-							*rti.NetworkConfiguration.AwsvpcConfiguration.AssignPublicIp == "ENABLED" &&
-							*rti.NetworkConfiguration.AwsvpcConfiguration.Subnets[0] == "subnet-name" &&
-							*rti.NetworkConfiguration.AwsvpcConfiguration.SecurityGroups[0] == "security-group-name"
-					}),
-				).
-					Return(output, tt.awsError).
-					Once()
+				if tt.clusterName != "" && tt.taskDefinition != "" {
+					mockECS.On(
+						"RunTaskWithContext",
+						testContext,
+						mock.MatchedBy(func(rti *ecs.RunTaskInput) bool {
+							overrides := (fargate.(*awsFargate)).processEnvVariablesToInject(tt.environmentVars)
+							return *rti.Cluster == "cluster-name" &&
+								*rti.TaskDefinition == "task-def" &&
+								((tt.propagateTags && *rti.PropagateTags == "TASK_DEFINITION") || rti.PropagateTags == nil) &&
+								assert.Equal(t, rti.Overrides, overrides, "%v", overrides) &&
+								((tt.platformVersion != "" && *rti.PlatformVersion == tt.platformVersion) || rti.PlatformVersion == nil) &&
+								*rti.NetworkConfiguration.AwsvpcConfiguration.AssignPublicIp == "ENABLED" &&
+								*rti.NetworkConfiguration.AwsvpcConfiguration.Subnets[0] == "subnet-name" &&
+								*rti.NetworkConfiguration.AwsvpcConfiguration.SecurityGroups[0] == "security-group-name"
+						}),
+					).
+						Return(output, tt.awsError).
+						Once()
+				}
 
 				err := fargate.Init()
 				require.NoError(t, err)

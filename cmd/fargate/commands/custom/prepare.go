@@ -133,8 +133,8 @@ func (c *PrepareCommand) startNewFargateTask(ctx *cli.Context, publicKey []byte)
 	}
 
 	connection := aws.ConnectionSettings{
-		Subnets:        c.cfg.Fargate.Subnets,
-		SecurityGroups: c.cfg.Fargate.SecurityGroups,
+		Subnets:        c.cfg.Fargate.Subnets(),
+		SecurityGroups: c.cfg.Fargate.SecurityGroups(),
 		EnablePublicIP: c.cfg.Fargate.EnablePublicIP,
 		UsePublicIP:    c.cfg.Fargate.UsePublicIP,
 	}

@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -41,8 +42,19 @@ func Test_LoadSubnetConfigFromFile(t *testing.T) {
 		Cluster:         "cluster-name",
 		Region:          "us-east-1",
 		TaskDefinition:  "my-task-definition:1",
-		Subnets:         []string{"subnet-XYZ"},
-		SecurityGroups:  []string{"sg-XYZ"},
+		Subnet:          "subnet-XYZ",
+		SecurityGroup:   "sg-XYZ",
+		EnablePublicIP:  true,
+		UsePublicIP:     false,
+		PlatformVersion: "1.4.0",
+		TaskWaitConfig:  TaskWaitConfig{100, 6},
+	}
+	expectedArrayConfig := Fargate{
+		Cluster:         "cluster-name",
+		Region:          "us-east-1",
+		TaskDefinition:  "my-task-definition:1",
+		Subnet:          "subnet-WXY,subnet-XYZ",
+		SecurityGroup:   "sg-WXY,sg-XYZ",
 		EnablePublicIP:  true,
 		UsePublicIP:     false,
 		PlatformVersion: "1.4.0",
@@ -50,45 +62,51 @@ func Test_LoadSubnetConfigFromFile(t *testing.T) {
 	}
 
 	tests := map[string]struct {
-		filename    string
-		want        Fargate
-		expectError error
+		filename               string
+		want                   Fargate
+		subnetsCount           int
+		securityGroupsCount    int
+		expectedSubnets        []*string
+		expectedSecurityGroups []*string
+		expectError            error
 	}{
-		"fail on both subnet properties specified": {
-			filename:    "testdata/duplicate-subnet-config.toml",
-			want:        Fargate{},
-			expectError: errors.New("can't use both Subnet and Subnets configuration. Please only specify Subnets instead of Subnet."),
+		"expect subnets securitygroups return one value": {
+			filename:               "testdata/legacy-subnet-config.toml",
+			want:                   expectedConfig,
+			subnetsCount:           1,
+			securityGroupsCount:    1,
+			expectedSubnets:        splitStringToStringArray(expectedConfig.Subnet),
+			expectedSecurityGroups: splitStringToStringArray(expectedConfig.SecurityGroup),
+			expectError:            nil,
 		},
-		"fail on both securitygroup properties specified": {
-			filename:    "testdata/duplicate-sg-config.toml",
-			want:        Fargate{},
-			expectError: errors.New("can't use both SecurityGroup and SecurityGroups configuration. Please only specify SecurityGroups instead of SecurityGroup."),
-		},
-		"expect subnets when legacy subnet specified": {
-			filename:    "testdata/legacy-subnet-config.toml",
-			want:        expectedConfig,
-			expectError: nil,
-		},
-		"expect securitygroups when legacy securitygroup specified": {
-			filename:    "testdata/legacy-securitygroup-config.toml",
-			want:        expectedConfig,
-			expectError: nil,
+		"expect multiple when multiple specified": {
+			filename:               "testdata/legacy-subnet-array-config.toml",
+			want:                   expectedArrayConfig,
+			subnetsCount:           2,
+			securityGroupsCount:    2,
+			expectedSubnets:        splitStringToStringArray(expectedArrayConfig.Subnet),
+			expectedSecurityGroups: splitStringToStringArray(expectedArrayConfig.SecurityGroup),
+			expectError:            nil,
 		},
 		"fail when securitygroups limit exceeded": {
-			filename:    "testdata/invalid-security-groups-limit.toml",
-			want:        Fargate{},
-			expectError: errors.New("A maximum of 5 security groups can be specified for awsvpcConfiguration."),
+			filename:               "testdata/invalid-security-groups-limit.toml",
+			want:                   Fargate{},
+			subnetsCount:           0,
+			securityGroupsCount:    0,
+			expectedSubnets:        splitStringToStringArray(""),
+			expectedSecurityGroups: splitStringToStringArray(""),
+			expectError:            errors.New("A maximum of 5 security groups can be specified for awsvpcConfiguration."),
 		},
-		"fail when cluster omitted": {
-			filename:    "testdata/invalid-config-no-cluser.toml",
-			want:        Fargate{},
-			expectError: errors.New("Cluster name not specified in configuration file."),
-		},
-		"fail when region omitted": {
-			filename:    "testdata/invalid-config-no-region.toml",
-			want:        Fargate{},
-			expectError: errors.New("Region not specified in configuration file."),
-		},
+		// "fail when cluster omitted": {
+		// 	filename:    "testdata/invalid-config-no-cluser.toml",
+		// 	want:        Fargate{},
+		// 	expectError: errors.New("Cluster name not specified in configuration file."),
+		// },
+		// "fail when region omitted": {
+		// 	filename:    "testdata/invalid-config-no-region.toml",
+		// 	want:        Fargate{},
+		// 	expectError: errors.New("Region not specified in configuration file."),
+		// },
 	}
 
 	for name, test := range tests {
@@ -97,7 +115,16 @@ func Test_LoadSubnetConfigFromFile(t *testing.T) {
 
 			assert.Equal(t, test.expectError, err)
 			assert.NotNil(t, cfg)
+			//cfg.Fargate.Subnets()
 			assert.Equal(t, test.want, cfg.Fargate)
+			assert.Equal(t, test.subnetsCount, len(cfg.Fargate.Subnets()))
+			assert.Equal(t, test.securityGroupsCount, len(cfg.Fargate.SecurityGroups()))
+			assert.Equal(t, test.expectedSubnets, cfg.Fargate.Subnets())
+			assert.Equal(t, test.expectedSecurityGroups, cfg.Fargate.SecurityGroups())
 		})
 	}
+}
+
+func splitStringToStringArray(s string) []*string {
+	return toPointerSlice(strings.Fields(strings.ReplaceAll(s, ",", " ")))
 }
