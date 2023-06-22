@@ -1,7 +1,7 @@
 [Fargate]
   Cluster = "cluster-name"
-  Subnets = ["subnet-XYZ"]
-  SecurityGroups = ["sg-XYZ1", "sg-XYZ2", "sg-XYZ3", "sg-XYZ4", "sg-XYZ5"]
+  Subnet = "subnet-XYZ"
+  SecurityGroup = "sg-XYZ1, sg-XYZ2, sg-XYZ3, sg-XYZ4, sg-XYZ5"
   TaskDefinition = "my-task-definition:1"
   EnablePublicIP = true
   UsePublicIP = false

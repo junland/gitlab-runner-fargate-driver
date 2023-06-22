@@ -128,10 +128,8 @@ LogFormat = "text"
 | ---------------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Cluster`        | string | Yes      | The AWS cluster name where the tasks should be started.                                                                                                                                                                       |
 | `Region`         | string | Yes      | The AWS region to send requests to.                                                                                                                                                                                           |
-| `Subnet`         | string | Yes      | [Deprecated] The AWS subnet ID where the task should be created. This property will be removed in a future release in favour of Subnets.                                                                                                                                                                           |
-| `Subnets`        | []string | Yes      | The AWS subnet ID's where the task should be created.                                                                                                                                                                           |
-| `SecurityGroup`  | string | Yes      | [Deprecated] The AWS security group ID where the task should be created. This property will be removed in a future release in favour of SecurityGroups.                                                                                                                                                                  |
-| `SecurityGroups`  | []string | Yes      | The AWS security group ID's for the running task. A maximum number of 5 can be specified for awsvpcConfiguration, see https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-quotas.html.                                                                                                                                                                  |
+| `Subnet`         | string | Yes      | The AWS subnet ID's where the task should be created.                                                                                                                                                                           |
+| `SecurityGroup`  | string | Yes      | The AWS security group ID where the task should be created.                                                                                                                                                                  |
 | `TaskDefinition` | string | Yes      | The family and revision (family:revision) or full ARN of the task definition to be used for starting the task. Note that this setting is overriden if a different value is provided by the `task-def` command line argument or by the `CUSTOM_ENV_FARGATE_TASK_DEFINITION` environment variable. |
 | `EnablePublicIP` | bool   | Yes      | This flag dictates whether the Fargate task should be created providing an external IP.|
 | `UsePublicIP` | bool   | Yes      | This flag dictates whether the the runner should use the public IP address to communicate with Fargate tasks.|
@@ -149,8 +147,8 @@ LogFormat = "text"
 [Fargate]
   Cluster = "cluster-name"
   Region = "us-east-1"
-  Subnets = ["subnet-XYZ"]
-  SecurityGroups = ["sg-XYZ"]
+  Subnet = "subnet-XYZ"
+  SecurityGroup = "sg-XYZ"
   TaskDefinition = "my-task-definition:1"
   EnablePublicIP = true
   UsePublicIP = false
@@ -269,8 +267,8 @@ LogFormat = "text"
 [Fargate]
   Cluster = "fargate"
   Region = "us-east-1"
-  Subnets = ["subnet-xxxxxxxx"]
-  SecurityGroups = ["sg-xxxxxxxx"]
+  Subnet = "subnet-xxxxxxxx"
+  SecurityGroup = "sg-xxxxxxxx"
   TaskDefinition = "fargateExecutor:1"
   EnablePublicIP = false
   UsePublicIP = false
