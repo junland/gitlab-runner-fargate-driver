@@ -22,8 +22,8 @@ var (
 
 	// ErrNotInitialized is returned when the fargate methods are invoked without initialization
 	ErrNotInitialized = errors.New("fargate adapter is not initialized")
-	ErrValFailCluster = errors.New("Required Cluster name not specified.")
-	ErrValFailTaskDef = errors.New("Required TaskDefinition arn not specified.")
+	ErrValFailCluster = errors.New("required Cluster name not specified.")
+	ErrValFailTaskDef = errors.New("required TaskDefinition arn not specified.")
 	ErrTaskRunFailure = errors.New("fargate task run failure")
 	ErrNoTaskRun      = errors.New("fargate no tasks could be run")
 )
