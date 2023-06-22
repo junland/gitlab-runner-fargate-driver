@@ -88,7 +88,7 @@ func LoadFromFile(file string) (Global, error) {
 	}
 
 	if len(cfg.Fargate.Cluster) < 1 {
-		return Global{}, fmt.Errorf("Cluster name not specified in configuration file.")
+		return Global{}, fmt.Errorf("cluster name not specified in configuration file.")
 	}
 
 	if len(cfg.Fargate.Region) < 1 {

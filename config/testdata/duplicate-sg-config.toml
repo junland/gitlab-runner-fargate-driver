@@ -1,10 +1,8 @@
 [Fargate]
   Cluster = "cluster-name"
   Region = "us-east-1"
-  Subnet = ""
-  Subnets = ["subnet-XYZ","subnet-ZYX"]
-  SecurityGroup = "sg-XYZ"
-  SecurityGroups = ["sg-XYZ","sg-ZXY"]
+  Subnet = "subnet-XYZ,subnet-ZYX"
+  SecurityGroup = "sg-XYZ,sg-ZXY"
   TaskDefinition = "my-task-definition:1"
   EnablePublicIP = true
   UsePublicIP = false
