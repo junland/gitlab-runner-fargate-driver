@@ -28,8 +28,8 @@ type globalFlags struct {
 
 	TaskDefinition  string `long:"task-def" description:"Task definition" env:"CUSTOM_ENV_FARGATE_TASK_DEFINITION"`
 	PlatformVersion string `long:"platform-version" description:"Fargate platform version" env:"CUSTOM_ENV_FARGATE_PLATFORM_VERSION"`
-	Subnet          string `long:"subnet" description:"Task level subnets" env:"CUSTOM_ENV_FARGATE_SUBNETS"`
-	SecurityGroup   string `long:"security-group" description:"Task level security groups" env:"CUSTOM_ENV_FARGATE_SECURITY_GROUPS"`
+	Subnet          string `long:"subnet" description:"Task level subnets" env:"CUSTOM_ENV_FARGATE_SUBNET"`
+	SecurityGroup   string `long:"security-group" description:"Task level security groups" env:"CUSTOM_ENV_FARGATE_SECURITY_GROUP"`
 }
 
 var (
