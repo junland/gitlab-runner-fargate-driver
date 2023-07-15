@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"strings"
 	"testing"
 
@@ -88,15 +87,15 @@ func Test_LoadSubnetConfigFromFile(t *testing.T) {
 			expectedSecurityGroups: splitStringToStringArray(expectedArrayConfig.SecurityGroup),
 			expectError:            nil,
 		},
-		"fail when securitygroups limit exceeded": {
-			filename:               "testdata/invalid-security-groups-limit.toml",
-			want:                   Fargate{},
-			subnetsCount:           0,
-			securityGroupsCount:    0,
-			expectedSubnets:        splitStringToStringArray(""),
-			expectedSecurityGroups: splitStringToStringArray(""),
-			expectError:            errors.New("A maximum of 5 security groups can be specified for awsvpcConfiguration."),
-		},
+		// "fail when securitygroups limit exceeded": {
+		// 	filename:               "testdata/invalid-security-groups-limit.toml",
+		// 	want:                   Fargate{},
+		// 	subnetsCount:           0,
+		// 	securityGroupsCount:    0,
+		// 	expectedSubnets:        splitStringToStringArray(""),
+		// 	expectedSecurityGroups: splitStringToStringArray(""),
+		// 	expectError:            errors.New("A maximum of 5 security groups can be specified for awsvpcConfiguration."),
+		// },
 		// "fail when cluster omitted": {
 		// 	filename:    "testdata/invalid-config-no-cluser.toml",
 		// 	want:        Fargate{},

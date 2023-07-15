@@ -87,22 +87,39 @@ func LoadFromFile(file string) (Global, error) {
 		return Global{}, fmt.Errorf("couldn't parse TOML content of the configuration file: %w", err)
 	}
 
-	if len(cfg.Fargate.Cluster) < 1 {
-		return Global{}, fmt.Errorf("cluster name not specified in configuration file.")
-	}
-
-	if len(cfg.Fargate.Region) < 1 {
-		// this driver should perhaps assume the region the runner is deployed to when no region is specified.
-		return Global{}, fmt.Errorf("Region not specified in configuration file.")
-	}
-
-	if !cfg.Fargate.EnablePublicIP && cfg.Fargate.UsePublicIP {
-		return Global{}, fmt.Errorf("can't use public IP to communicate if EnablePublicIP is not enabled in configuration file: %w", err)
-	}
-
-	if len(cfg.Fargate.SecurityGroups()) > 5 {
-		return Global{}, fmt.Errorf("A maximum of 5 security groups can be specified for awsvpcConfiguration.")
-	}
-
 	return cfg, nil
+}
+
+func (g *Global) AssertRequiredConfig() error {
+	if len(g.Fargate.Cluster) < 1 {
+		return fmt.Errorf("cluster name not specified in configuration file.")
+	}
+
+	if len(g.Fargate.TaskDefinition) < 1 {
+		return fmt.Errorf("required TaskDefinition arn not specified.")
+	}
+
+	if len(g.Fargate.Region) < 1 {
+		// this driver should perhaps assume the region the runner is deployed to when no region is specified.
+		return fmt.Errorf("Region not specified in configuration file.")
+	}
+
+	if !g.Fargate.EnablePublicIP && g.Fargate.UsePublicIP {
+		return fmt.Errorf("can't use public IP to communicate if EnablePublicIP is not enabled in configuration file")
+	}
+
+	// we only care about the security group and subnet config if running under awsvpc network mode
+	if len(g.Fargate.SecurityGroups()) < 1 {
+		return fmt.Errorf("at leat 1 subnet must be specified for awsvpcConfiguration.")
+	}
+
+	if len(g.Fargate.Subnets()) < 1 {
+		return fmt.Errorf("at leat 1 security group must be specified for awsvpcConfiguration.")
+	}
+
+	if len(g.Fargate.SecurityGroups()) > 5 {
+		return fmt.Errorf("a maximum of 5 security groups can be specified for awsvpcConfiguration.")
+	}
+
+	return nil
 }

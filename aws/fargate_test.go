@@ -93,18 +93,6 @@ func TestRunTask(t *testing.T) {
 			clusterName:    cluster,
 			taskDefinition: taskDefinition,
 		},
-		"Fargate adapter fails validation on cluster name not supplied": {
-			initializeAdapter: true,
-			expectedError:     ErrValFailCluster,
-			clusterName:       "",
-			taskDefinition:    taskDefinition,
-		},
-		"Fargate adapter fails validation on task definition not supplied": {
-			initializeAdapter: true,
-			expectedError:     ErrValFailTaskDef,
-			clusterName:       cluster,
-			taskDefinition:    "",
-		},
 	}
 
 	for tn, tt := range tests {

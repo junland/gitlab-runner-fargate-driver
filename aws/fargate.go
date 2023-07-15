@@ -22,8 +22,6 @@ var (
 
 	// ErrNotInitialized is returned when the fargate methods are invoked without initialization
 	ErrNotInitialized = errors.New("fargate adapter is not initialized")
-	ErrValFailCluster = errors.New("required Cluster name not specified.")
-	ErrValFailTaskDef = errors.New("required TaskDefinition arn not specified.")
 	ErrTaskRunFailure = errors.New("fargate task run failure")
 	ErrNoTaskRun      = errors.New("fargate no tasks could be run")
 )
@@ -123,11 +121,6 @@ func (a *awsFargate) RunTask(ctx context.Context, taskSettings TaskSettings, con
 		return "", fmt.Errorf("could not start AWS Fargate Task: %w", err)
 	}
 
-	err = taskSettings.ValidateRequiredFields()
-	if err != nil {
-		return "", fmt.Errorf("could not start AWS Fargate Task: %w", err)
-	}
-
 	a.logger.Debug("[RunTask] Will start a new Fargate Task")
 
 	publicIP := "DISABLED"
@@ -195,18 +188,6 @@ func (a *awsFargate) errIfNotInitialized() error {
 	}
 
 	return ErrNotInitialized
-}
-
-func (a *TaskSettings) ValidateRequiredFields() error {
-	if a.Cluster == "" {
-		return ErrValFailCluster
-	}
-
-	if a.TaskDefinition == "" {
-		return ErrValFailTaskDef
-	}
-
-	return nil
 }
 
 func (a *awsFargate) processEnvVariablesToInject(envVars map[string]string) *ecs.TaskOverride {
