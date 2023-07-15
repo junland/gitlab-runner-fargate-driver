@@ -74,6 +74,7 @@ func setUpApplication(ctx context.Context, logger logging.Logger) *cli.App {
 	})
 	a.AddBeforeFunc(loadConfigurationFile)
 	a.AddBeforeFunc(loadCliArgsEnvVars)
+	a.AddBeforeFunc(assertRequiredConfig)
 	a.AddBeforeFunc(updateLogLevel)
 	a.AddBeforeFunc(updateLogFormat)
 	a.AddBeforeFunc(setLoggingToFile)
@@ -133,6 +134,19 @@ func loadCliArgsEnvVars(ctx *cli.Context) error {
 	}
 
 	ctx.SetConfig(config)
+
+	return nil
+}
+
+func assertRequiredConfig(ctx *cli.Context) error {
+	// once we loaded the config from the config file and the cli/ENV
+	// we now assert the config for required values to ensure we can
+	// safely start the driver
+	config := ctx.Config()
+
+	if err := config.AssertRequiredConfig(); err != nil {
+		return err
+	}
 
 	return nil
 }
