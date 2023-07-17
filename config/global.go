@@ -90,6 +90,7 @@ func LoadFromFile(file string) (Global, error) {
 	return cfg, nil
 }
 
+//nolint:gocyclo
 func (g *Global) AssertRequiredConfig() error {
 	if len(g.Fargate.Cluster) < 1 {
 		return fmt.Errorf("required cluster name not specified")

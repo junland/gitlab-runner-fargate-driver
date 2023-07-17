@@ -278,7 +278,7 @@ func (a *awsFargate) StopTask(ctx context.Context, taskARN, cluster, stopReason 
 	return nil
 }
 
-func (a *awsFargate) GetContainerIP(ctx context.Context, taskARN string, cluster string, enablePublicIP bool, usePublicIP bool) (string, error) {
+func (a *awsFargate) GetContainerIP(ctx context.Context, taskARN string, cluster string, _ bool, usePublicIP bool) (string, error) {
 	err := a.errIfNotInitialized()
 	if err != nil {
 		return "", fmt.Errorf("could not get container IP: %w", err)
