@@ -92,16 +92,16 @@ func LoadFromFile(file string) (Global, error) {
 
 func (g *Global) AssertRequiredConfig() error {
 	if len(g.Fargate.Cluster) < 1 {
-		return fmt.Errorf("required cluster name not specified.")
+		return fmt.Errorf("required cluster name not specified")
 	}
 
 	if len(g.Fargate.TaskDefinition) < 1 {
-		return fmt.Errorf("required TaskDefinition arn not specified.")
+		return fmt.Errorf("required TaskDefinition arn not specified")
 	}
 
 	if len(g.Fargate.Region) < 1 {
 		// this driver should perhaps assume the region the runner is deployed to when no region is specified.
-		return fmt.Errorf("region not specified in configuration file.")
+		return fmt.Errorf("region not specified in configuration file")
 	}
 
 	if !g.Fargate.EnablePublicIP && g.Fargate.UsePublicIP {
@@ -110,15 +110,15 @@ func (g *Global) AssertRequiredConfig() error {
 
 	// we only care about the security group and subnet config if running under awsvpc network mode
 	if len(g.Fargate.SecurityGroups()) < 1 {
-		return fmt.Errorf("at leat 1 security group must be specified for awsvpcConfiguration.")
+		return fmt.Errorf("at leat 1 security group must be specified for awsvpcConfiguration")
 	}
 
 	if len(g.Fargate.Subnets()) < 1 {
-		return fmt.Errorf("at leat 1 subnet must be specified for awsvpcConfiguration.")
+		return fmt.Errorf("at leat 1 subnet must be specified for awsvpcConfiguration")
 	}
 
 	if len(g.Fargate.SecurityGroups()) > 5 {
-		return fmt.Errorf("a maximum of 5 security groups can be specified for awsvpcConfiguration.")
+		return fmt.Errorf("a maximum of 5 security groups can be specified for awsvpcConfiguration")
 	}
 
 	return nil
