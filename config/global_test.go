@@ -96,7 +96,6 @@ func Test_LoadSubnetConfigFromFile(t *testing.T) {
 
 			assert.Equal(t, test.expectError, err)
 			assert.NotNil(t, cfg)
-			//cfg.Fargate.Subnets()
 			assert.Equal(t, test.want, cfg.Fargate)
 			assert.Equal(t, test.subnetsCount, len(cfg.Fargate.Subnets()))
 			assert.Equal(t, test.securityGroupsCount, len(cfg.Fargate.SecurityGroups()))
