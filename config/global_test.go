@@ -145,11 +145,6 @@ func Test_AssertRequiredConfig(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			// cfg, err := LoadFromFile("")
-			// if err != nil {
-			// 	assert.Fail(t, "loading the config shouldn't return errors")
-			// }
-
 			cfg := test.global
 			err := cfg.AssertRequiredConfig()
 			assert.Equal(t, test.expectError, err)
