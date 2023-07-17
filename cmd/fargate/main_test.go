@@ -131,6 +131,29 @@ func TestLoadCliArgsEnvVars(t *testing.T) {
 	}
 }
 
+func TestAssertRequiredConfig(t *testing.T) {
+	originalTaskDefinition := "default-task-def:1"
+	originalPlatformVersion := "LATEST"
+	originalSubnet := "subnet-1"
+	originalSecurityGroup := "sg-123456"
+	originalCluster := "my-cluster"
+
+	cliCtx := new(cli.Context)
+	cliCtx.SetConfig(config.Global{
+		Fargate: config.Fargate{
+			Cluster:         originalCluster,
+			Region:          "eu-west-1",
+			PlatformVersion: originalPlatformVersion,
+			SecurityGroup:   originalSecurityGroup,
+			Subnet:          originalSubnet,
+			TaskDefinition:  originalTaskDefinition,
+		},
+	})
+
+	err := assertRequiredConfig(cliCtx)
+	assert.NoError(t, err)
+}
+
 func createCliContextForTests(taskDefinition string, platformVersion string, subnet string, securityGroup string) *cli.Context {
 	cliCtx := new(cli.Context)
 	cliCtx.SetConfig(config.Global{

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -87,25 +88,6 @@ func Test_LoadSubnetConfigFromFile(t *testing.T) {
 			expectedSecurityGroups: splitStringToStringArray(expectedArrayConfig.SecurityGroup),
 			expectError:            nil,
 		},
-		// "fail when securitygroups limit exceeded": {
-		// 	filename:               "testdata/invalid-security-groups-limit.toml",
-		// 	want:                   Fargate{},
-		// 	subnetsCount:           0,
-		// 	securityGroupsCount:    0,
-		// 	expectedSubnets:        splitStringToStringArray(""),
-		// 	expectedSecurityGroups: splitStringToStringArray(""),
-		// 	expectError:            errors.New("A maximum of 5 security groups can be specified for awsvpcConfiguration."),
-		// },
-		// "fail when cluster omitted": {
-		// 	filename:    "testdata/invalid-config-no-cluser.toml",
-		// 	want:        Fargate{},
-		// 	expectError: errors.New("Cluster name not specified in configuration file."),
-		// },
-		// "fail when region omitted": {
-		// 	filename:    "testdata/invalid-config-no-region.toml",
-		// 	want:        Fargate{},
-		// 	expectError: errors.New("Region not specified in configuration file."),
-		// },
 	}
 
 	for name, test := range tests {
@@ -120,6 +102,58 @@ func Test_LoadSubnetConfigFromFile(t *testing.T) {
 			assert.Equal(t, test.securityGroupsCount, len(cfg.Fargate.SecurityGroups()))
 			assert.Equal(t, test.expectedSubnets, cfg.Fargate.Subnets())
 			assert.Equal(t, test.expectedSecurityGroups, cfg.Fargate.SecurityGroups())
+		})
+	}
+}
+
+func Test_AssertRequiredConfig(t *testing.T) {
+	tests := map[string]struct {
+		global      Global
+		expectError error
+	}{
+		"valid minimal config for awsvpc": {
+			global: Global{"debug", "", "json", Fargate{Cluster: "mycluster", TaskDefinition: "task:arn", Region: "eu-west-1", Subnet: "subnet-xyz", SecurityGroup: "sg-123"}, TaskMetadata{}, SSH{}},
+		},
+		"cluster name not specified": {
+			global:      Global{"debug", "", "json", Fargate{TaskDefinition: "task:arn", Region: "eu-west-1"}, TaskMetadata{}, SSH{}},
+			expectError: errors.New("required cluster name not specified."),
+		},
+		"task definition not specified": {
+			global:      Global{"debug", "", "json", Fargate{Cluster: "mycluster", Region: "eu-west-1"}, TaskMetadata{}, SSH{}},
+			expectError: errors.New("required TaskDefinition arn not specified."),
+		},
+		"region not specified": {
+			global:      Global{"debug", "", "json", Fargate{Cluster: "mycluster", TaskDefinition: "task:arn"}, TaskMetadata{}, SSH{}},
+			expectError: errors.New("region not specified in configuration file."),
+		},
+		"enabled public api with enabling its use": {
+			global:      Global{"debug", "", "json", Fargate{Cluster: "mycluster", TaskDefinition: "task:arn", Region: "eu-west-1", UsePublicIP: true}, TaskMetadata{}, SSH{}},
+			expectError: errors.New("can't use public IP to communicate if EnablePublicIP is not enabled in configuration file"),
+		},
+		"at least one securitygroup should be specified for awsvpc": {
+			global:      Global{"debug", "", "json", Fargate{Cluster: "mycluster", TaskDefinition: "task:arn", Region: "eu-west-1", Subnet: "subnet-xyz"}, TaskMetadata{}, SSH{}},
+			expectError: errors.New("at leat 1 security group must be specified for awsvpcConfiguration."),
+		},
+		"at least one subnet should be specified for awsvpc": {
+			global:      Global{"debug", "", "json", Fargate{Cluster: "mycluster", TaskDefinition: "task:arn", Region: "eu-west-1", SecurityGroup: "sg-1231"}, TaskMetadata{}, SSH{}},
+			expectError: errors.New("at leat 1 subnet must be specified for awsvpcConfiguration."),
+		},
+		"too many securitygroups specified for awsvpc": {
+			global:      Global{"debug", "", "json", Fargate{Cluster: "mycluster", TaskDefinition: "task:arn", Region: "eu-west-1", Subnet: "subnet-xyz", SecurityGroup: "sg-1231, sg-1232, sg-1233, sg-1234, sg-1235, sg-1236"}, TaskMetadata{}, SSH{}},
+			expectError: errors.New("a maximum of 5 security groups can be specified for awsvpcConfiguration."),
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			// cfg, err := LoadFromFile("")
+			// if err != nil {
+			// 	assert.Fail(t, "loading the config shouldn't return errors")
+			// }
+
+			cfg := test.global
+			err := cfg.AssertRequiredConfig()
+			assert.Equal(t, test.expectError, err)
 		})
 	}
 }
