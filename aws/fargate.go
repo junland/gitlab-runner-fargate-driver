@@ -57,8 +57,8 @@ type TaskSettings struct {
 
 // ConnectionSettings centralizes attributes related to the task's network configuration
 type ConnectionSettings struct {
-	Subnet         string
-	SecurityGroup  string
+	Subnets        []*string
+	SecurityGroups []*string
 	EnablePublicIP bool
 	UsePublicIP    bool
 }
@@ -138,8 +138,8 @@ func (a *awsFargate) RunTask(ctx context.Context, taskSettings TaskSettings, con
 		Cluster:        &taskSettings.Cluster,
 		NetworkConfiguration: &ecs.NetworkConfiguration{
 			AwsvpcConfiguration: &ecs.AwsVpcConfiguration{
-				SecurityGroups: []*string{&connection.SecurityGroup},
-				Subnets:        []*string{&connection.Subnet},
+				SecurityGroups: connection.SecurityGroups,
+				Subnets:        connection.Subnets,
 				AssignPublicIp: &publicIP,
 			},
 		},
@@ -278,7 +278,7 @@ func (a *awsFargate) StopTask(ctx context.Context, taskARN, cluster, stopReason 
 	return nil
 }
 
-func (a *awsFargate) GetContainerIP(ctx context.Context, taskARN string, cluster string, enablePublicIP bool, usePublicIP bool) (string, error) {
+func (a *awsFargate) GetContainerIP(ctx context.Context, taskARN string, cluster string, _ bool, usePublicIP bool) (string, error) {
 	err := a.errIfNotInitialized()
 	if err != nil {
 		return "", fmt.Errorf("could not get container IP: %w", err)

@@ -16,7 +16,7 @@ func NewBuildFailureError(err error) *BuildFailureError {
 	}
 }
 
-func (e *BuildFailureError) Format(s fmt.State, v rune) {
+func (e *BuildFailureError) Format(s fmt.State, _ rune) {
 	_, _ = fmt.Fprintf(s, "%s: %v", e.msg, e.err)
 }
 

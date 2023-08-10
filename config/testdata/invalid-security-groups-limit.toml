@@ -1,0 +1,9 @@
+[Fargate]
+  Cluster = "cluster-name"
+  Region = "us-east-1"
+  Subnet = "subnet-XYZ"
+  SecurityGroup = "sg-XYZ1, sg-XYZ2, sg-XYZ3, sg-XYZ4, sg-XYZ5, sg-XYZ6"
+  TaskDefinition = "my-task-definition:1"
+  EnablePublicIP = true
+  UsePublicIP = false
+  PlatformVersion = "1.4.0"
