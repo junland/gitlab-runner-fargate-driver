@@ -28,6 +28,8 @@ type globalFlags struct {
 
 	TaskDefinition  string `long:"task-def" description:"Task definition" env:"CUSTOM_ENV_FARGATE_TASK_DEFINITION"`
 	PlatformVersion string `long:"platform-version" description:"Fargate platform version" env:"CUSTOM_ENV_FARGATE_PLATFORM_VERSION"`
+	Subnet          string `long:"subnet" description:"Task level subnets" env:"CUSTOM_ENV_FARGATE_SUBNET"`
+	SecurityGroup   string `long:"security-group" description:"Task level security groups" env:"CUSTOM_ENV_FARGATE_SECURITY_GROUP"`
 }
 
 var (
@@ -72,6 +74,7 @@ func setUpApplication(ctx context.Context, logger logging.Logger) *cli.App {
 	})
 	a.AddBeforeFunc(loadConfigurationFile)
 	a.AddBeforeFunc(loadCliArgsEnvVars)
+	a.AddBeforeFunc(assertRequiredConfig)
 	a.AddBeforeFunc(updateLogLevel)
 	a.AddBeforeFunc(updateLogFormat)
 	a.AddBeforeFunc(setLoggingToFile)
@@ -122,9 +125,25 @@ func loadCliArgsEnvVars(ctx *cli.Context) error {
 		config.Fargate.PlatformVersion = global.PlatformVersion
 	}
 
+	if global.Subnet != "" {
+		config.Fargate.Subnet = global.Subnet
+	}
+
+	if global.SecurityGroup != "" {
+		config.Fargate.SecurityGroup = global.SecurityGroup
+	}
+
 	ctx.SetConfig(config)
 
 	return nil
+}
+
+func assertRequiredConfig(ctx *cli.Context) error {
+	// once we loaded the config from the config file and the cli/ENV
+	// we now assert the config for required values to ensure we can
+	// safely start the driver
+	cfg := ctx.Config()
+	return cfg.AssertRequiredConfig()
 }
 
 func updateLogLevel(ctx *cli.Context) error {
