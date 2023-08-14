@@ -147,8 +147,8 @@ LogFormat = "text"
 [Fargate]
   Cluster = "cluster-name"
   Region = "us-east-1"
-  Subnet = "subnet-XYZ"
-  SecurityGroup = "sg-XYZ"
+  Subnet = "subnet-XYZ,subnet-ABC"
+  SecurityGroup = "sg-XYZ,sg-ABC"
   TaskDefinition = "my-task-definition:1"
   EnablePublicIP = true
   UsePublicIP = false
