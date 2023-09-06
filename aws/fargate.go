@@ -35,6 +35,10 @@ type Fargate interface {
 	// state or failed to reach this state
 	WaitUntilTaskRunning(ctx context.Context, taskARN string, cluster string, taskWaitConfig config.TaskWaitConfig) error
 
+	// WaitUntilTaskHealthy blocks the request until the task is in "healthy"
+	// state or failed to reach this state if a healthcheck is defined
+	WaitUntilTaskHealthy(ctx context.Context, taskARN string, cluster string, taskWaitConfig config.TaskWaitConfig) error
+
 	// RunTask stops a specified Fargate task
 	StopTask(ctx context.Context, taskARN, cluster, stopReason string) error
 
@@ -64,14 +68,21 @@ type ConnectionSettings struct {
 }
 
 type ecsClient interface {
+	DescribeTasksRequest(input *ecs.DescribeTasksInput) (req *request.Request, output *ecs.DescribeTasksOutput)
+	WaitUntilTasksHealthy(ctx aws.Context, input *ecs.DescribeTasksInput, opts ...request.WaiterOption) error
 	RunTaskWithContext(aws.Context, *ecs.RunTaskInput, ...request.Option) (*ecs.RunTaskOutput, error)
 	WaitUntilTasksRunningWithContext(aws.Context, *ecs.DescribeTasksInput, ...request.WaiterOption) error
 	StopTaskWithContext(aws.Context, *ecs.StopTaskInput, ...request.Option) (*ecs.StopTaskOutput, error)
 	DescribeTasksWithContext(aws.Context, *ecs.DescribeTasksInput, ...request.Option) (*ecs.DescribeTasksOutput, error)
+	DescribeTaskDefinitionWithContext(ctx aws.Context, input *ecs.DescribeTaskDefinitionInput, opts ...request.Option) (*ecs.DescribeTaskDefinitionOutput, error)
 }
 
 type ec2Client interface {
 	DescribeNetworkInterfacesWithContext(aws.Context, *ec2.DescribeNetworkInterfacesInput, ...request.Option) (*ec2.DescribeNetworkInterfacesOutput, error)
+}
+
+type extendedEcsSvc struct {
+	*ecs.ECS
 }
 
 type awsFargate struct {
@@ -108,7 +119,7 @@ func (a *awsFargate) Init() error {
 		return fmt.Errorf("couldn't create AWS session: %w", err)
 	}
 
-	a.ecsSvc = ecs.New(sess)
+	a.ecsSvc = extendedEcsSvc{ecs.New(sess)}
 	a.ec2Svc = ec2.New(sess)
 
 	return nil
@@ -250,6 +261,47 @@ func (a *awsFargate) WaitUntilTaskRunning(ctx context.Context, taskARN string, c
 	return nil
 }
 
+func (a *awsFargate) WaitUntilTaskHealthy(ctx context.Context, taskARN string, cluster string, taskWaitConfig config.TaskWaitConfig) error {
+	taskDetails, err := a.getTaskDetails(ctx, taskARN, cluster)
+	if err != nil {
+		return fmt.Errorf("error accessing information about the task %q: %w", taskARN, err)
+	}
+	taskDefinitionARN := *taskDetails.Tasks[0].TaskDefinitionArn
+	taskDefinitionDetails, err := a.getTaskDefinitionDetails(ctx, taskDefinitionARN)
+	if err != nil {
+		return fmt.Errorf("error accessing information about the task definition %q: %w", taskDefinitionARN, err)
+	}
+
+	healthCheck := a.extractHealthCheck(taskDefinitionDetails)
+
+	if healthCheck == nil {
+		a.logger.
+			WithField("task-arn", taskARN).
+			Debug(`[WaitUntilTaskHealthy] Skipped wait until Fargate task health is in "Healthy" state due to missing healthcheck in container definition`)
+		return nil
+	}
+
+	input := ecs.DescribeTasksInput{
+		Cluster: &cluster,
+		Tasks:   []*string{&taskARN},
+	}
+
+	waiter := func(w *request.Waiter) {
+		w.MaxAttempts = taskWaitConfig.MaxAttempts
+		w.Delay = request.ConstantWaiterDelay(time.Duration(taskWaitConfig.WaitTimeout) * time.Second)
+	}
+	a.logger.
+		WithField("task-arn", taskARN).
+		Debug(`[WaitUntilTaskHealthy] Will wait until Fargate task health is in "Healthy" state`)
+	err = a.ecsSvc.WaitUntilTasksHealthy(ctx, &input, waiter)
+
+	if err != nil {
+		return fmt.Errorf(`error waiting AWS Fargate Task health %q to be in "Healthy" state: %w`, taskARN, err)
+	}
+
+	return nil
+}
+
 func (a *awsFargate) StopTask(ctx context.Context, taskARN, cluster, stopReason string) error {
 	err := a.errIfNotInitialized()
 	if err != nil {
@@ -309,6 +361,22 @@ func (a *awsFargate) GetContainerIP(ctx context.Context, taskARN string, cluster
 	return publicIP, nil
 }
 
+func (a *awsFargate) getTaskDefinitionDetails(ctx context.Context, taskDefinitionARN string) (*ecs.DescribeTaskDefinitionOutput, error) {
+	dt, err := a.ecsSvc.DescribeTaskDefinitionWithContext(
+		ctx,
+		&ecs.DescribeTaskDefinitionInput{
+			TaskDefinition: &taskDefinitionARN,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error during call to describe fargate task definition: %w", err)
+	}
+
+	a.logger.Debug("[getTaskDefinitionDetails] Finished fetching the task definition details")
+
+	return dt, nil
+}
+
 func (a *awsFargate) getTaskDetails(ctx context.Context, taskARN string, cluster string) (*ecs.DescribeTasksOutput, error) {
 	dt, err := a.ecsSvc.DescribeTasksWithContext(
 		ctx,
@@ -324,6 +392,16 @@ func (a *awsFargate) getTaskDetails(ctx context.Context, taskARN string, cluster
 	a.logger.Debug("[getTaskDetails] Finished fetching the task details")
 
 	return dt, nil
+}
+
+func (a *awsFargate) extractHealthCheck(descOut *ecs.DescribeTaskDefinitionOutput) *ecs.HealthCheck {
+	healthCheck := descOut.TaskDefinition.ContainerDefinitions[0].HealthCheck
+
+	a.logger.
+		WithField("health-check", healthCheck).
+		Debug("[extractHasHealthCheck] Finished extracting the container health check")
+
+	return healthCheck
 }
 
 func (a *awsFargate) extractPrivateIP(descOut *ecs.DescribeTasksOutput) string {
@@ -374,4 +452,45 @@ func (a *awsFargate) getPublicIP(ctx context.Context, networkInterfaceID string)
 		Debug("[getPublicIP] Finished fetching the public IP")
 
 	return publicIP, nil
+}
+
+func (client extendedEcsSvc) WaitUntilTasksHealthy(ctx aws.Context, input *ecs.DescribeTasksInput, opts ...request.WaiterOption) error {
+	w := request.Waiter{
+		Name:        "WaitUntilTasksHealthy",
+		MaxAttempts: 100,
+		Delay:       request.ConstantWaiterDelay(6 * time.Second),
+		Acceptors: []request.WaiterAcceptor{
+			{
+				State:   request.FailureWaiterState,
+				Matcher: request.PathAnyWaiterMatch, Argument: "tasks[].healthStatus",
+				Expected: "UNHEALTHY",
+			},
+			{
+				State:   request.FailureWaiterState,
+				Matcher: request.PathAnyWaiterMatch, Argument: "failures[].reason",
+				Expected: "UNKNOWN",
+			},
+			{
+				State:   request.SuccessWaiterState,
+				Matcher: request.PathAllWaiterMatch, Argument: "tasks[].healthStatus",
+				Expected: "HEALTHY",
+			},
+		},
+		Logger: aws.NewDefaultLogger(),
+		NewRequest: func(opts []request.Option) (*request.Request, error) {
+			var inCpy *ecs.DescribeTasksInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := client.DescribeTasksRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	w.ApplyOptions(opts...)
+
+	return w.WaitWithContext(ctx)
 }

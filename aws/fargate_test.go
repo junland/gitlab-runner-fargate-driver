@@ -280,6 +280,14 @@ func TestWaitUntilTaskRunning(t *testing.T) {
 				).
 					Return(tt.awsError).
 					Once()
+				mockECS.On(
+					"WaitUntilTasksHealthy",
+					mock.AnythingOfType("*context.emptyCtx"),
+					mock.AnythingOfType("*ecs.DescribeTasksInput"),
+					mock.AnythingOfType("WaiterOption"),
+				).
+					Return(tt.awsError).
+					Maybe()
 
 				err := fargate.Init()
 				require.NoError(t, err)
