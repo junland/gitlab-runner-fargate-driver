@@ -135,6 +135,30 @@ LogFormat = "text"
 | `UsePublicIP` | bool   | Yes      | This flag dictates whether the the runner should use the public IP address to communicate with Fargate tasks.|
 | `PlatformVersion` | string   | No      | Fargate Platform Version. See the list of [available versions](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/platform_versions.html). Note that this setting is overriden if a different value is provided by the `platform-version` command line argument or by the `CUSTOM_ENV_FARGATE_PLATFORM_VERSION` environment variable. |
 | `PropagateTags`  | bool   | No      | When set to true, the tags from the associated the task definition will be propagated to the executing task. |
+| `EvaluateTaskHealth` | bool | No | When set to true, the driver will evaluate the task health until it becomes 'healthy' before continuing. Note that this setting is overriden if a different value is provided by the `evaluate-task-health` command line argument or by the `CUSTOM_ENV_FARGATE_EVALUATE_TASK_HEALTH` environment variable.
+
+#### The `[Fargate.TaskHealthWaitConfig]` section
+
+| Settings         | Type   | Required | Description                                                                                                                                                                                                                   |
+| ---------------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MaxAttempts`        | integer | No      | The maximum retry attempts for the WaiterOption when calling WaitUntilTasksHealthy. Defaults to 100.                                                                                                                                                                    |
+| `WaitTimeout`        | integer | No      | The WaiterDelay between retries for the WaiterOption when calling WaitUntilTasksHealthy. Defaults to 6.                                                                                                                                                                      |
+```toml
+[Fargate]
+  Cluster = "cluster-name"
+  Region = "us-east-1"
+  Subnet = "subnet-XYZ"
+  SecurityGroup = "sg-XYZ"
+  TaskDefinition = "my-task-definition:1"
+  EnablePublicIP = true
+  UsePublicIP = false
+  PlatformVersion = "1.4.0"
+  PropagateTags = true
+  EvaluateTaskHealth = true
+  [Fargate.TaskHealthWaitConfig]
+    MaxAttempts = 100
+    WaitTimeout = 6
+```                                                                       
 
 #### The `[Fargate.TaskWaitConfig]` section
 

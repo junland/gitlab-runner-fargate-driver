@@ -28,8 +28,11 @@ type Fargate struct {
 	SecurityGroup   string
 	TaskDefinition  string
 	// PropagateTags indicates whether to propagate the tags from the task definition to the running task
-	PropagateTags  bool
-	TaskWaitConfig TaskWaitConfig
+	PropagateTags bool
+	// EvaluateTaskHealth indicates whether to wait for the task to be healthy before attempting to run commands
+	EvaluateTaskHealth   bool
+	TaskWaitConfig       TaskWaitConfig
+	TaskHealthWaitConfig TaskWaitConfig
 }
 
 func (f *Fargate) Subnets() []*string {
@@ -75,7 +78,12 @@ func LoadFromFile(file string) (Global, error) {
 
 	cfg := Global{
 		Fargate: Fargate{
+			EvaluateTaskHealth: false,
 			TaskWaitConfig: TaskWaitConfig{
+				MaxAttempts: AWSWaitDefaultMaxAttempts,
+				WaitTimeout: AWSWaitDefaultTimeoutSeconds,
+			},
+			TaskHealthWaitConfig: TaskWaitConfig{
 				MaxAttempts: AWSWaitDefaultMaxAttempts,
 				WaitTimeout: AWSWaitDefaultTimeoutSeconds,
 			},

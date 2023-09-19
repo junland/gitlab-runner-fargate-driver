@@ -26,10 +26,11 @@ type globalFlags struct {
 
 	ConfigFile string `long:"config" description:"Path to configuration file"`
 
-	TaskDefinition  string `long:"task-def" description:"Task definition" env:"CUSTOM_ENV_FARGATE_TASK_DEFINITION"`
-	PlatformVersion string `long:"platform-version" description:"Fargate platform version" env:"CUSTOM_ENV_FARGATE_PLATFORM_VERSION"`
-	Subnet          string `long:"subnet" description:"Task level subnets" env:"CUSTOM_ENV_FARGATE_SUBNET"`
-	SecurityGroup   string `long:"security-group" description:"Task level security groups" env:"CUSTOM_ENV_FARGATE_SECURITY_GROUP"`
+	EvaluateTaskHealth bool   `long:"evaluate-task-health" description:"Whether to evaluate task health" env:"CUSTOM_ENV_FARGATE_EVALUATE_TASK_HEALTH"`
+	TaskDefinition     string `long:"task-def" description:"Task definition" env:"CUSTOM_ENV_FARGATE_TASK_DEFINITION"`
+	PlatformVersion    string `long:"platform-version" description:"Fargate platform version" env:"CUSTOM_ENV_FARGATE_PLATFORM_VERSION"`
+	Subnet             string `long:"subnet" description:"Task level subnets" env:"CUSTOM_ENV_FARGATE_SUBNET"`
+	SecurityGroup      string `long:"security-group" description:"Task level security groups" env:"CUSTOM_ENV_FARGATE_SECURITY_GROUP"`
 }
 
 var (
@@ -131,6 +132,10 @@ func loadCliArgsEnvVars(ctx *cli.Context) error {
 
 	if global.SecurityGroup != "" {
 		config.Fargate.SecurityGroup = global.SecurityGroup
+	}
+
+	if global.EvaluateTaskHealth {
+		config.Fargate.EvaluateTaskHealth = global.EvaluateTaskHealth
 	}
 
 	ctx.SetConfig(config)
