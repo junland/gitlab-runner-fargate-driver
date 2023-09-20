@@ -39,26 +39,30 @@ func Test_LoadWaitConfigFromFile(t *testing.T) {
 
 func Test_LoadSubnetConfigFromFile(t *testing.T) {
 	expectedConfig := Fargate{
-		Cluster:         "cluster-name",
-		Region:          "us-east-1",
-		TaskDefinition:  "my-task-definition:1",
-		Subnet:          "subnet-XYZ",
-		SecurityGroup:   "sg-XYZ",
-		EnablePublicIP:  true,
-		UsePublicIP:     false,
-		PlatformVersion: "1.4.0",
-		TaskWaitConfig:  TaskWaitConfig{100, 6},
+		Cluster:              "cluster-name",
+		Region:               "us-east-1",
+		TaskDefinition:       "my-task-definition:1",
+		Subnet:               "subnet-XYZ",
+		SecurityGroup:        "sg-XYZ",
+		EnablePublicIP:       true,
+		UsePublicIP:          false,
+		PlatformVersion:      "1.4.0",
+		EvaluateTaskHealth:   false,
+		TaskWaitConfig:       TaskWaitConfig{100, 6},
+		TaskHealthWaitConfig: TaskWaitConfig{100, 6},
 	}
 	expectedArrayConfig := Fargate{
-		Cluster:         "cluster-name",
-		Region:          "us-east-1",
-		TaskDefinition:  "my-task-definition:1",
-		Subnet:          "subnet-WXY,subnet-XYZ",
-		SecurityGroup:   "sg-WXY,sg-XYZ",
-		EnablePublicIP:  true,
-		UsePublicIP:     false,
-		PlatformVersion: "1.4.0",
-		TaskWaitConfig:  TaskWaitConfig{100, 6},
+		Cluster:              "cluster-name",
+		Region:               "us-east-1",
+		TaskDefinition:       "my-task-definition:1",
+		Subnet:               "subnet-WXY,subnet-XYZ",
+		SecurityGroup:        "sg-WXY,sg-XYZ",
+		EnablePublicIP:       true,
+		UsePublicIP:          false,
+		PlatformVersion:      "1.4.0",
+		EvaluateTaskHealth:   false,
+		TaskWaitConfig:       TaskWaitConfig{100, 6},
+		TaskHealthWaitConfig: TaskWaitConfig{100, 6},
 	}
 
 	tests := map[string]struct {

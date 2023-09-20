@@ -39,7 +39,6 @@ type prepareCommandTestCase struct {
 	shouldNotCallCreateKeyPair  bool
 	shouldNotCallRunTask        bool
 	shouldNotCallWaitTask       bool
-	shouldNotCallWaitHealthy    bool
 	shouldNotCallGetContainerIP bool
 	shouldNotCallStopTask       bool
 	shouldNotPersistARN         bool
@@ -137,7 +136,6 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 		},
 		"Error during Fargate Wait Task": {
 			fargateWaitTaskError:        testError,
-			shouldNotCallWaitHealthy:    true,
 			shouldNotCallGetContainerIP: true,
 			shouldNotPersistIP:          true,
 			expectedError:               testError,
@@ -146,7 +144,6 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 		"Error during Fargate Wait Task and Stop Task": {
 			fargateWaitTaskError:        testError,
 			fargateStopTaskError:        testErrorStopTask,
-			shouldNotCallWaitHealthy:    true,
 			shouldNotCallGetContainerIP: true,
 			shouldNotPersistIP:          true,
 			expectedError:               testError,
@@ -300,20 +297,6 @@ func setExpectationForFargateWaitTask(mockAwsFargate *aws.MockFargate, testParam
 
 	mockAwsFargate.On(
 		"WaitUntilTaskRunning",
-		testParams.context,
-		*testParams.taskARN,
-		testParams.fargateConfig.Cluster,
-		expectedTaskWaitConfig,
-	).
-		Return(testParams.fargateWaitTaskError).
-		Once()
-
-	if testParams.shouldNotCallWaitHealthy {
-		return
-	}
-
-	mockAwsFargate.On(
-		"WaitUntilTaskHealthy",
 		testParams.context,
 		*testParams.taskARN,
 		testParams.fargateConfig.Cluster,
