@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -49,7 +50,7 @@ func Test_LoadSubnetConfigFromFile(t *testing.T) {
 		PlatformVersion:      "1.4.0",
 		EvaluateTaskHealth:   false,
 		TaskWaitConfig:       TaskWaitConfig{100, 6},
-		TaskHealthWaitConfig: TaskWaitConfig{100, 6},
+		TaskHealthWaitConfig: TaskHealthWaitConfig{3, time.Duration(30) * time.Second},
 	}
 	expectedArrayConfig := Fargate{
 		Cluster:              "cluster-name",
@@ -62,7 +63,7 @@ func Test_LoadSubnetConfigFromFile(t *testing.T) {
 		PlatformVersion:      "1.4.0",
 		EvaluateTaskHealth:   false,
 		TaskWaitConfig:       TaskWaitConfig{100, 6},
-		TaskHealthWaitConfig: TaskWaitConfig{100, 6},
+		TaskHealthWaitConfig: TaskHealthWaitConfig{3, time.Duration(30) * time.Second},
 	}
 
 	tests := map[string]struct {

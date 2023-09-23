@@ -134,9 +134,7 @@ func loadCliArgsEnvVars(ctx *cli.Context) error {
 		config.Fargate.SecurityGroup = global.SecurityGroup
 	}
 
-	if global.EvaluateTaskHealth {
-		config.Fargate.EvaluateTaskHealth = global.EvaluateTaskHealth
-	}
+	config.Fargate.EvaluateTaskHealth = global.EvaluateTaskHealth
 
 	ctx.SetConfig(config)
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/BurntSushi/toml"
 )
@@ -32,7 +33,7 @@ type Fargate struct {
 	// EvaluateTaskHealth indicates whether to wait for the task to be healthy before attempting to run commands
 	EvaluateTaskHealth   bool
 	TaskWaitConfig       TaskWaitConfig
-	TaskHealthWaitConfig TaskWaitConfig
+	TaskHealthWaitConfig TaskHealthWaitConfig
 }
 
 func (f *Fargate) Subnets() []*string {
@@ -65,9 +66,19 @@ type TaskWaitConfig struct {
 	WaitTimeout int
 }
 
+type TaskHealthWaitConfig struct {
+	Retries       int
+	CheckInterval time.Duration
+}
+
 const (
 	AWSWaitDefaultMaxAttempts    = 100
 	AWSWaitDefaultTimeoutSeconds = 6
+)
+
+const (
+	AWSWaitTaskHealthDefaultRetries       = 3
+	AWSWaitTaskHealthDefaultCheckInterval = time.Duration(30) * time.Second
 )
 
 func LoadFromFile(file string) (Global, error) {
@@ -83,9 +94,9 @@ func LoadFromFile(file string) (Global, error) {
 				MaxAttempts: AWSWaitDefaultMaxAttempts,
 				WaitTimeout: AWSWaitDefaultTimeoutSeconds,
 			},
-			TaskHealthWaitConfig: TaskWaitConfig{
-				MaxAttempts: AWSWaitDefaultMaxAttempts,
-				WaitTimeout: AWSWaitDefaultTimeoutSeconds,
+			TaskHealthWaitConfig: TaskHealthWaitConfig{
+				Retries:       AWSWaitTaskHealthDefaultRetries,
+				CheckInterval: AWSWaitTaskHealthDefaultCheckInterval,
 			},
 		},
 	}

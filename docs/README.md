@@ -139,10 +139,15 @@ LogFormat = "text"
 
 #### The `[Fargate.TaskHealthWaitConfig]` section
 
-| Settings         | Type   | Required | Description                                                                                                                                                                                                                   |
-| ---------------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MaxAttempts`        | integer | No      | The maximum retry attempts for the WaiterOption when calling WaitUntilTasksHealthy. Defaults to 100.                                                                                                                                                                    |
-| `WaitTimeout`        | integer | No      | The WaiterDelay between retries for the WaiterOption when calling WaitUntilTasksHealthy. Defaults to 6.                                                                                                                                                                      |
+| Settings         | Type   | Required | Default | Description                                                                                                                                                                                                                   |
+| ---------------- | ------ | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Retries`        | integer | No      | 3 |The maximum API retry attempts when  waiting for the task  to be healthy.                                                                                                                                                           |
+| `CheckInterval`        | string | No      | 30s |The WaiterDelay between retries for the WaiterOption when calling WaitUntilTaskHealthy. Negative or zero values use the default instead. See the documentation for [time.ParseDuration](https://pkg.go.dev/time#ParseDuration) for more examples of possbile values.                                                                                                                |
+>Note:
+**The maximum amount of time that the driver will wait is equal to `CheckInterval * Retries`.**<br>
+Using the default configuration as an example, the maximum amount of time waited is **30s * 3 = 90 seconds.**
+
+
 ```toml
 [Fargate]
   Cluster = "cluster-name"
@@ -156,8 +161,8 @@ LogFormat = "text"
   PropagateTags = true
   EvaluateTaskHealth = true
   [Fargate.TaskHealthWaitConfig]
-    MaxAttempts = 100
-    WaitTimeout = 6
+    Retries = 30
+    CheckInterval = 3
 ```                                                                       
 
 #### The `[Fargate.TaskWaitConfig]` section

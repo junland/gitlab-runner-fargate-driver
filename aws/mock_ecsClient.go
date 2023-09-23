@@ -161,8 +161,8 @@ func (_m *mockEcsClient) StopTaskWithContext(_a0 context.Context, _a1 *ecs.StopT
 	return r0, r1
 }
 
-// WaitUntilTasksHealthy provides a mock function with given fields: ctx, input, opts
-func (_m *mockEcsClient) WaitUntilTasksHealthy(ctx context.Context, input *ecs.DescribeTasksInput, opts ...request.WaiterOption) error {
+// WaitUntilTaskHealthyWithContext provides a mock function with given fields: ctx, input, opts
+func (_m *mockEcsClient) WaitUntilTaskHealthyWithContext(ctx context.Context, input *ecs.DescribeTasksInput, opts ...request.WaiterOption) error {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]

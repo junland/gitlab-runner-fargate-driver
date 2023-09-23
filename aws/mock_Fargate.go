@@ -85,13 +85,13 @@ func (_m *MockFargate) StopTask(ctx context.Context, taskARN string, cluster str
 	return r0
 }
 
-// WaitUntilTaskHealthy provides a mock function with given fields: ctx, taskARN, cluster, taskWaitConfig
-func (_m *MockFargate) WaitUntilTaskHealthy(ctx context.Context, taskARN string, cluster string, taskWaitConfig config.TaskWaitConfig) error {
-	ret := _m.Called(ctx, taskARN, cluster, taskWaitConfig)
+// WaitUntilTaskHealthy provides a mock function with given fields: ctx, taskARN, cluster, taskHealthWaitConfig
+func (_m *MockFargate) WaitUntilTaskHealthy(ctx context.Context, taskARN string, cluster string, taskHealthWaitConfig config.TaskHealthWaitConfig) error {
+	ret := _m.Called(ctx, taskARN, cluster, taskHealthWaitConfig)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, config.TaskWaitConfig) error); ok {
-		r0 = rf(ctx, taskARN, cluster, taskWaitConfig)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, config.TaskHealthWaitConfig) error); ok {
+		r0 = rf(ctx, taskARN, cluster, taskHealthWaitConfig)
 	} else {
 		r0 = ret.Error(0)
 	}
