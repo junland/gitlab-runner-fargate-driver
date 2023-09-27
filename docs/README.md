@@ -114,7 +114,7 @@ remove the temporary configuration file.
 | ----------- | ----------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `LogLevel`  | info | The logging level. Available levels are: `debug`, `info`, `warn`, `error`, `fatal`, or `panic`. This setting is overridden if a different level is set by the `--debug` or `--log-level` command line arguments. |
 | `LogFormat` | text | The format of the logs. The supported formats are `text` or `json`. This setting is overridden if a different level is set by the `--log-format` command line argument.                                          |
-| `LogFile`   | STDOUT | The path to the file to direct logs to.                                                                                                                         |
+| `LogFile`   | STDOUT | The file path to direct logs to.                                                                                                                         |
 
 ```toml
 LogLevel = "debug"
@@ -131,8 +131,8 @@ LogFormat = "text"
 | `Subnet`         | string | Yes      | - |The AWS subnet ID's where the task should be created. Multiple values must be specified as a comma-seperated list. This setting is overriden if a different value is provided by the `subnet` command line argument or by the `CUSTOM_ENV_FARGATE_SUBNET` environment variable.|
 | `SecurityGroup`  | string | Yes      | - |The AWS security group ID where the task should be created. Multiple values must be specified as a comma-seperated list. This setting is overriden if a different value is provided by the `security-group` command line argument or by the `CUSTOM_ENV_FARGATE_SECURITY_GROUP` environment variable.|
 | `TaskDefinition` | string | Yes      | - |The family and revision (family:revision) or full ARN of the task definition to be used for starting the task. Note that this setting is overriden if a different value is provided by the `task-def` command line argument or by the `CUSTOM_ENV_FARGATE_TASK_DEFINITION` environment variable. |
-| `EnablePublicIP` | bool   | Yes      | - |This flag dictates whether the Fargate task should be created providing an external IP.|
-| `UsePublicIP` | bool   | Yes      | - |This flag dictates whether the the runner should use the public IP address to communicate with Fargate tasks.|
+| `EnablePublicIP` | bool   | No    | false |This flag dictates whether the Fargate task should be created providing an external IP.|
+| `UsePublicIP` | bool   | No       | false |This flag dictates whether the the runner should use the public IP address to communicate with Fargate tasks.|
 | `PlatformVersion` | string   | No      |  LATEST |Fargate Platform Version. See the list of [available versions](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/platform_versions.html). Note that this setting is overriden if a different value is provided by the `platform-version` command line argument or by the `CUSTOM_ENV_FARGATE_PLATFORM_VERSION` environment variable. |
 | `PropagateTags`  | bool   | No      | false |When set to true, the tags from the associated the task definition will be propagated to the executing task. |
 | `EvaluateTaskHealth` | bool | No | false |When set to true, the driver will evaluate the task health until it becomes 'healthy' before continuing. Note that this setting is overriden if a different value is provided by the `evaluate-task-health` command line argument or by the `CUSTOM_ENV_FARGATE_EVALUATE_TASK_HEALTH` environment variable.
@@ -161,8 +161,8 @@ Using the default configuration as an example, the maximum amount of time waited
   PropagateTags = true
   EvaluateTaskHealth = true
   [Fargate.TaskHealthWaitConfig]
-    Retries = 30
-    CheckInterval = 3
+    Retries = 3
+    CheckInterval = 30s
 ```                                                                       
 
 #### The `[Fargate.TaskWaitConfig]` section

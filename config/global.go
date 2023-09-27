@@ -78,7 +78,7 @@ const (
 
 const (
 	AWSWaitTaskHealthDefaultRetries       = 3
-	AWSWaitTaskHealthDefaultCheckInterval = time.Duration(30) * time.Second
+	AWSWaitTaskHealthDefaultCheckInterval = 30 * time.Second
 )
 
 func LoadFromFile(file string) (Global, error) {

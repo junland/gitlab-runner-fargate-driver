@@ -35,7 +35,7 @@ type Fargate interface {
 	// state or failed to reach this state
 	WaitUntilTaskRunning(ctx context.Context, taskARN string, cluster string, taskWaitConfig config.TaskWaitConfig) error
 
-	// WaitUntilTaskHealthy blocks until the task is in "healthy" if a
+	// WaitUntilTaskHealthy blocks until the task is in "healthy" state if a
 	// healthcheck is defined. It returns an error if the task failed to reach
 	// a healthy state in the allotted time.
 	WaitUntilTaskHealthy(ctx context.Context, taskARN string, cluster string, taskHealthWaitConfig config.TaskHealthWaitConfig) error
@@ -84,7 +84,7 @@ type ec2Client interface {
 
 // We do this for the time being because
 // `github.com/aws/aws-sdk-go/service/ecs.ECS` does not have a
-// `WaitUntilTaskHealthy` API, so we have to implement it here.
+// `WaitUntilTaskHealthyWithContext` API, so we have to implement it here.
 type extendedEcsSvc struct {
 	*ecs.ECS
 }
@@ -413,9 +413,7 @@ func (a *awsFargate) extractHealthCheck(descOut *ecs.DescribeTaskDefinitionOutpu
 		return nil, fmt.Errorf("no container definition found in task %q", *descOut.TaskDefinition.TaskDefinitionArn)
 	}
 
-	healthCheck := descOut.TaskDefinition.ContainerDefinitions[0].HealthCheck
-
-	return healthCheck, nil
+	return descOut.TaskDefinition.ContainerDefinitions[0].HealthCheck, nil
 }
 
 func (a *awsFargate) extractPrivateIP(descOut *ecs.DescribeTasksOutput) string {
