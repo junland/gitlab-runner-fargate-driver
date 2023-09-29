@@ -168,6 +168,7 @@ func (c *PrepareCommand) persistDataForLaterStages(taskDetails task.Data) error 
 		WithField("taskARN", taskDetails.TaskARN).
 		Info("Persisting data that will be used by other commands")
 
+	// metadate persisted here...
 	err := c.metadataManager.Persist(taskDetails)
 	if err != nil {
 		return fmt.Errorf("persisting metadata: %w", err)

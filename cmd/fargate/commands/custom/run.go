@@ -134,6 +134,7 @@ func (c *RunCommand) readFileContent(filePath string) ([]byte, error) {
 func (c *RunCommand) obtainTaskData() (task.Data, error) {
 	c.logger.Info("Fetching task data from metadata storage")
 
+	// metadate read here...
 	fargateTaskData, err := c.metadataManager.Get()
 	if err != nil {
 		return fargateTaskData, fmt.Errorf("fetching data from metadata storage: %w", err)

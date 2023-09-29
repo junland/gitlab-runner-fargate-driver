@@ -61,6 +61,7 @@ func NewMetadataManager(logger logging.Logger, filesDir string) MetadataManager 
 	return manager
 }
 
+// metadata persist impl...
 func (f *fsMetadataManager) Persist(data Data) error {
 	f.logger.Debug("[Persist] Will persist metadata")
 
@@ -84,6 +85,7 @@ func (f *fsMetadataManager) getFullFilePath() string {
 	return filepath.Join(f.directory, fmt.Sprintf("%s.json", f.filename))
 }
 
+// metadata read impl...
 func (f *fsMetadataManager) Get() (Data, error) {
 	f.logger.Debug("[Get] Will get existing metadata")
 
