@@ -22,8 +22,8 @@ func NewRunCommand() cli.Command {
 	cmd := new(RunCommand)
 	cmd.abstractCustomCommand.customCommand = cmd
 
-	cmd.newMetadataManager = func(logger logging.Logger, directory string) task.MetadataManager {
-		return task.NewMetadataManager(logger, directory)
+	cmd.newMetadataManager = func(logger logging.Logger, _ string) task.MetadataManager {
+		return task.NewJobResponseMetadataManager(logger)
 	}
 	cmd.newExecutor = func(logger logging.Logger) executors.Executor {
 		return ssh.NewExecutor(logger)
