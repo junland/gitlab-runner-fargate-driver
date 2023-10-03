@@ -17,8 +17,10 @@ func NewPrepareCommand() cli.Command {
 	cmd.abstractCustomCommand.customCommand = cmd
 
 	cmd.newFargate = aws.NewFargate
-	cmd.newMetadataManager = task.NewMetadataManager
 	cmd.newKeyFactory = ssh.NewKeyFactory
+	cmd.newMetadataManager = func(logger logging.Logger, _ string) task.MetadataManager {
+		return task.NewJobResponseMetadataManager(logger)
+	}
 
 	return cli.Command{
 		Handler: cmd,
@@ -168,6 +170,7 @@ func (c *PrepareCommand) persistDataForLaterStages(taskDetails task.Data) error 
 		WithField("taskARN", taskDetails.TaskARN).
 		Info("Persisting data that will be used by other commands")
 
+	// metadate persisted here...
 	err := c.metadataManager.Persist(taskDetails)
 	if err != nil {
 		return fmt.Errorf("persisting metadata: %w", err)

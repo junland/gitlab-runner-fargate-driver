@@ -18,8 +18,8 @@ func NewCleanupCommand() cli.Command {
 	cmd.newFargate = func(logger logging.Logger, awsRegion string) aws.Fargate {
 		return aws.NewFargate(logger, awsRegion)
 	}
-	cmd.newMetadataManager = func(logger logging.Logger, directory string) task.MetadataManager {
-		return task.NewMetadataManager(logger, directory)
+	cmd.newMetadataManager = func(logger logging.Logger, _ string) task.MetadataManager {
+		return task.NewJobResponseMetadataManager(logger)
 	}
 
 	return cli.Command{
@@ -65,6 +65,7 @@ func (c *CleanupCommand) CustomExecute(ctx *cli.Context) error {
 	c.logger.Info("Executing the command")
 
 	c.logger.Info("Fetching task data from metadata storage")
+	// metadate read here...
 	taskData, err := c.metadataManager.Get()
 	if err != nil {
 		return fmt.Errorf("obtaining information about the running task: %w", err)
@@ -78,6 +79,7 @@ func (c *CleanupCommand) CustomExecute(ctx *cli.Context) error {
 	}
 
 	logger.Info("Clear metadata related to the stopped Fargate Task")
+	// metadate cleared here...
 	err = c.metadataManager.Clear()
 	if err != nil {
 		return fmt.Errorf("deleting metadata related to the stopped Fargate Task %q: %w", taskData.TaskARN, err)
