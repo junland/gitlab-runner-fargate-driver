@@ -20,7 +20,7 @@ tests race:
   extends:
   - .merge_request_pipelines
   stage: test
-  image: golang:${GO_VERSION}-buster
+  image: golang:${GO_VERSION}-bookworm
   variables:
     CGO_ENABLED: 1
   script:
