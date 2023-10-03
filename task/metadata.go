@@ -13,32 +13,33 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/runner"
 )
 
-// MetadataManager represents a repository to store temporary data related to task information
-type MetadataManager interface {
-	// Persist stores the desired data
-	Persist(data Data) error
+type (
+	// MetadataManager represents a repository to store temporary data related to task information
+	MetadataManager interface {
+		// Persist stores the desired data
+		Persist(data Data) error
 
-	// Get fetches existing data from the metadata storage
-	Get() (Data, error)
+		// Get fetches existing data from the metadata storage
+		Get() (Data, error)
 
-	// Clear removes existing data
-	Clear() error
-}
+		// Clear removes existing data
+		Clear() error
+	}
 
-// Data centralizes attributes that should be persisted in the metadata storage
-type Data struct {
-	TaskARN     string
-	ContainerIP string
-	PrivateKey  []byte
-}
+	// Data centralizes attributes that should be persisted in the metadata storage
+	Data struct {
+		TaskARN     string
+		ContainerIP string
+		PrivateKey  []byte
+	}
 
-type fsMetadataManager struct {
-	logger    logging.Logger
-	fs        fs.FS
-	encoder   encoding.Encoder
-	directory string
-	filename  string
-}
+	fsMetadataManager struct {
+		logger    logging.Logger
+		fs        fs.FS
+		encoder   encoding.Encoder
+		directory string
+		filename  string
+)
 
 // NewMetadataManager is a constructor for the concrete type of the MetadataManager interface
 func NewMetadataManager(logger logging.Logger, filesDir string) MetadataManager {
