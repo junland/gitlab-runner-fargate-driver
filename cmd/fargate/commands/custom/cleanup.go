@@ -18,8 +18,8 @@ func NewCleanupCommand() cli.Command {
 	cmd.newFargate = func(logger logging.Logger, awsRegion string) aws.Fargate {
 		return aws.NewFargate(logger, awsRegion)
 	}
-	cmd.newMetadataManager = func(logger logging.Logger, directory string) task.MetadataManager {
-		return task.NewMetadataManager(logger, directory)
+	cmd.newMetadataManager = func(logger logging.Logger, _ string) task.MetadataManager {
+		return task.NewJobResponseMetadataManager(logger)
 	}
 
 	return cli.Command{
