@@ -28,9 +28,9 @@ type (
 
 	// Data centralizes attributes that should be persisted in the metadata storage
 	Data struct {
-		TaskARN     string
-		ContainerIP string
-		PrivateKey  []byte
+		TaskARN     string `json:"task_arn,omitempty"`
+		ContainerIP string `json:"container_ip,omitempty"`
+		PrivateKey  []byte `json:"private_key,omitempty"`
 	}
 
 	fsMetadataManager struct {
@@ -39,6 +39,11 @@ type (
 		encoder   encoding.Encoder
 		directory string
 		filename  string
+	}
+
+	JobResponse struct {
+		Fargate Data `json:"fargate,omitempty"`
+	}
 )
 
 // NewMetadataManager is a constructor for the concrete type of the MetadataManager interface
