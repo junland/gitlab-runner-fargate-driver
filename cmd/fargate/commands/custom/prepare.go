@@ -17,8 +17,10 @@ func NewPrepareCommand() cli.Command {
 	cmd.abstractCustomCommand.customCommand = cmd
 
 	cmd.newFargate = aws.NewFargate
-	cmd.newMetadataManager = task.NewMetadataManager
 	cmd.newKeyFactory = ssh.NewKeyFactory
+	cmd.newMetadataManager = func(logger logging.Logger, _ string) task.MetadataManager {
+		return task.NewJobResponseMetadataManager(logger)
+	}
 
 	return cli.Command{
 		Handler: cmd,
