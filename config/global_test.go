@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	logging "gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging/test"
 )
 
 func Test_LoadWaitConfigFromFile(t *testing.T) {
@@ -151,7 +152,7 @@ func Test_AssertRequiredConfig(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			cfg := test.global
-			err := cfg.AssertRequiredConfig()
+			err := cfg.AssertRequiredConfig(logging.NewNullLogger())
 			assert.Equal(t, test.expectError, err)
 		})
 	}

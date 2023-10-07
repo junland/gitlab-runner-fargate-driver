@@ -7,6 +7,7 @@ import (
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/config"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/cli"
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging/test"
 )
 
 func TestLoadCliArgsEnvVars(t *testing.T) {
@@ -139,6 +140,7 @@ func TestAssertRequiredConfig(t *testing.T) {
 	originalCluster := "my-cluster"
 
 	cliCtx := new(cli.Context)
+	cliCtx.SetLogger(test.NewNullLogger())
 	cliCtx.SetConfig(config.Global{
 		Fargate: config.Fargate{
 			Cluster:         originalCluster,
