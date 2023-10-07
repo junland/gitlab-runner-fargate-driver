@@ -277,13 +277,13 @@ func (a *awsFargate) WaitUntilTaskHealthy(ctx context.Context, taskARN string, c
 		return fmt.Errorf("error accessing task definition details %q: %w", taskDefinitionARN, err)
 	}
 
-	healthCheck, err := a.extractHealthCheck(taskDefinitionDetails)
+	hasHealthCheck, err := a.IsTaskDefinitionWithHealthCheckDefined(taskDefinitionDetails)
 
 	if err != nil {
 		return fmt.Errorf("error extracting health check: %w", err)
 	}
 
-	if healthCheck == nil {
+	if !hasHealthCheck {
 		a.logger.
 			WithField("task-arn", taskARN).
 			Info(`[WaitUntilTaskHealthy] No healthcheck container definition specified; skipping waiting for "Healthy" status`)
@@ -408,12 +408,17 @@ func (a *awsFargate) getTaskDetails(ctx context.Context, taskARN string, cluster
 	return dt, nil
 }
 
-func (a *awsFargate) extractHealthCheck(descOut *ecs.DescribeTaskDefinitionOutput) (*ecs.HealthCheck, error) {
+func (a *awsFargate) IsTaskDefinitionWithHealthCheckDefined(descOut *ecs.DescribeTaskDefinitionOutput) (bool, error) {
 	if len(descOut.TaskDefinition.ContainerDefinitions) == 0 {
-		return nil, fmt.Errorf("no container definition found in task %q", *descOut.TaskDefinition.TaskDefinitionArn)
+		return false, fmt.Errorf("no container definition found in task %q", *descOut.TaskDefinition.TaskDefinitionArn)
 	}
 
-	return descOut.TaskDefinition.ContainerDefinitions[0].HealthCheck, nil
+	for _, e := range descOut.TaskDefinition.ContainerDefinitions {
+		if e.HealthCheck != nil {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (a *awsFargate) extractPrivateIP(descOut *ecs.DescribeTasksOutput) string {
