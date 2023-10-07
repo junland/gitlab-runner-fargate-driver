@@ -3,7 +3,7 @@ module gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate
 go 1.18
 
 require (
-	github.com/BurntSushi/toml v0.3.1
+	github.com/BurntSushi/toml v1.3.2
 	github.com/aws/aws-sdk-go v1.29.19
 	github.com/jstemmer/go-junit-report v0.9.1
 	github.com/mitchellh/gox v1.0.1
