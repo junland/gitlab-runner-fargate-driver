@@ -12,6 +12,7 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/assertions"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/encoding"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/fs"
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/jobresponse"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging/test"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/runner"
@@ -19,6 +20,8 @@ import (
 
 func TestNewMetadataManager(t *testing.T) {
 	initializeAdapterForTesting(t)
+	clear := initializeJobResponseFileForTesting(t)
+	defer clear()
 
 	manager := NewMetadataManager(createTestLogger(), "/tmp/")
 	assert.NotNil(t, manager, "instance should have been created")
@@ -35,12 +38,21 @@ func initializeAdapterForTesting(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func initializeJobResponseFileForTesting(t *testing.T) func() {
+	require.NoError(t, os.Setenv(jobresponse.JobResponseFileVar, "../internal/jobresponse/testdata/response.json"))
+	return func() {
+		require.NoError(t, os.Unsetenv(jobresponse.JobResponseFileVar))
+	}
+}
+
 func createTestLogger() logging.Logger {
 	return test.NewNullLogger()
 }
 
 func TestPersist(t *testing.T) {
 	initializeAdapterForTesting(t)
+	clear := initializeJobResponseFileForTesting(t)
+	defer clear()
 
 	testData := Data{
 		TaskARN:     "task-arn",
@@ -127,6 +139,8 @@ func TestPersist(t *testing.T) {
 
 func TestGet(t *testing.T) {
 	initializeAdapterForTesting(t)
+	clear := initializeJobResponseFileForTesting(t)
+	defer clear()
 
 	testError := errors.New("simulated error")
 
@@ -234,6 +248,8 @@ func setExpectationForDecode(mockEncoder *encoding.MockEncoder, shouldCall bool,
 
 func TestClear(t *testing.T) {
 	initializeAdapterForTesting(t)
+	clear := initializeJobResponseFileForTesting(t)
+	defer clear()
 
 	testError := errors.New("simulated error")
 
