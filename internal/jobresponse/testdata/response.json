@@ -1,0 +1,38 @@
+{
+    "id": 123456789,
+    "token": "sdlkfjg;pi[p2309ir[093irpx2utp2985",
+    "variables": [
+        {
+            "key": "CI_PIPELINE_ID",
+            "value": "987654321",
+            "public": true,
+            "file": false,
+            "masked": false,
+            "raw": false
+        },
+        {
+            "key": "CI_JOB_ID",
+            "value": "123456789",
+            "public": true,
+            "file": false,
+            "masked": false,
+            "raw": false
+        },
+        {
+            "key": "CI_PROJECT_URL",
+            "value": "https://gitlab.com/blammo/some-awesome-project",
+            "public": true,
+            "file": false,
+            "masked": false,
+            "raw": false
+        },
+        {
+            "key": "CI_JOB_TOKEN",
+            "value": "sdlkfjg;pi[p2309ir[093irpx2utp2985",
+            "public": false,
+            "file": false,
+            "masked": true,
+            "raw": false
+        }
+    ]
+}
