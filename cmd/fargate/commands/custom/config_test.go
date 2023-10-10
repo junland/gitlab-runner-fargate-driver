@@ -12,6 +12,7 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/assertions"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/cli"
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/jobresponse"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging/test"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/runner"
 )
@@ -25,6 +26,8 @@ func TestNewConfigCommand(t *testing.T) {
 
 func TestCustomExecuteConfig(t *testing.T) {
 	initializeAdapterForTesting(t)
+	clear := initializeJobResponseFileForTesting(t)
+	defer clear()
 
 	testErrorAdapterInternal := new(errWriteConfig)
 
@@ -112,6 +115,13 @@ func initializeAdapterForTesting(t *testing.T) {
 
 	err = runner.InitAdapter()
 	require.NoError(t, err)
+}
+
+func initializeJobResponseFileForTesting(t *testing.T) func() {
+	require.NoError(t, os.Setenv(jobresponse.JobResponseFileVar, "testdata/response.json"))
+	return func() {
+		require.NoError(t, os.Unsetenv(jobresponse.JobResponseFileVar))
+	}
 }
 
 func createContextForConfigCmdTests() *cli.Context {

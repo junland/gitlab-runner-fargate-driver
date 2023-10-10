@@ -1,0 +1,38 @@
+{
+    "id": 1,
+    "token": "token",
+    "variables": [
+        {
+            "key": "CI_PIPELINE_ID",
+            "value": "1",
+            "public": true,
+            "file": false,
+            "masked": false,
+            "raw": false
+        },
+        {
+            "key": "CI_JOB_ID",
+            "value": "1",
+            "public": true,
+            "file": false,
+            "masked": false,
+            "raw": false
+        },
+        {
+            "key": "CI_PROJECT_URL",
+            "value": "project-URL",
+            "public": true,
+            "file": false,
+            "masked": false,
+            "raw": false
+        },
+        {
+            "key": "CI_JOB_TOKEN",
+            "value": "token",
+            "public": false,
+            "file": false,
+            "masked": true,
+            "raw": false
+        }
+    ]
+}
