@@ -4,5 +4,6 @@ ARG ALPINE_VERSION
 FROM golang:${GO_VERSION}-alpine${ALPINE_VERSION}
 
 RUN apk add --no-cache make git py-pip bash curl && \
-    pip install awscli
+    pip install awscli && \
+    go install github.com/goreleaser/goreleaser@latest
 
