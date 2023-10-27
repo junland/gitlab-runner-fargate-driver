@@ -162,7 +162,7 @@ Using the default configuration as an example, the maximum amount of time waited
   EvaluateTaskHealth = true
   [Fargate.TaskHealthWaitConfig]
     Retries = 3
-    CheckInterval = 30s
+    CheckInterval = "30s"
 ```                                                                       
 
 #### The `[Fargate.TaskWaitConfig]` section

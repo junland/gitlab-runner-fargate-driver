@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -419,7 +420,7 @@ func TestWaitUntilTaskHealthy(t *testing.T) {
 
 			waitConfig := config.TaskHealthWaitConfig{
 				Retries:       3,
-				CheckInterval: 30,
+				CheckInterval: 30 * time.Second,
 			}
 
 			err = fargate.WaitUntilTaskHealthy(context.Background(), "param1", "param2", waitConfig)
