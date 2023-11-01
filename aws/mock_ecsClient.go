@@ -16,6 +16,61 @@ type mockEcsClient struct {
 	mock.Mock
 }
 
+// DescribeTaskDefinitionWithContext provides a mock function with given fields: ctx, input, opts
+func (_m *mockEcsClient) DescribeTaskDefinitionWithContext(ctx context.Context, input *ecs.DescribeTaskDefinitionInput, opts ...request.Option) (*ecs.DescribeTaskDefinitionOutput, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, input)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 *ecs.DescribeTaskDefinitionOutput
+	if rf, ok := ret.Get(0).(func(context.Context, *ecs.DescribeTaskDefinitionInput, ...request.Option) *ecs.DescribeTaskDefinitionOutput); ok {
+		r0 = rf(ctx, input, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ecs.DescribeTaskDefinitionOutput)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *ecs.DescribeTaskDefinitionInput, ...request.Option) error); ok {
+		r1 = rf(ctx, input, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// DescribeTasksRequest provides a mock function with given fields: input
+func (_m *mockEcsClient) DescribeTasksRequest(input *ecs.DescribeTasksInput) (*request.Request, *ecs.DescribeTasksOutput) {
+	ret := _m.Called(input)
+
+	var r0 *request.Request
+	if rf, ok := ret.Get(0).(func(*ecs.DescribeTasksInput) *request.Request); ok {
+		r0 = rf(input)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*request.Request)
+		}
+	}
+
+	var r1 *ecs.DescribeTasksOutput
+	if rf, ok := ret.Get(1).(func(*ecs.DescribeTasksInput) *ecs.DescribeTasksOutput); ok {
+		r1 = rf(input)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*ecs.DescribeTasksOutput)
+		}
+	}
+
+	return r0, r1
+}
+
 // DescribeTasksWithContext provides a mock function with given fields: _a0, _a1, _a2
 func (_m *mockEcsClient) DescribeTasksWithContext(_a0 context.Context, _a1 *ecs.DescribeTasksInput, _a2 ...request.Option) (*ecs.DescribeTasksOutput, error) {
 	_va := make([]interface{}, len(_a2))
@@ -104,6 +159,27 @@ func (_m *mockEcsClient) StopTaskWithContext(_a0 context.Context, _a1 *ecs.StopT
 	}
 
 	return r0, r1
+}
+
+// WaitUntilTaskHealthyWithContext provides a mock function with given fields: ctx, input, opts
+func (_m *mockEcsClient) WaitUntilTaskHealthyWithContext(ctx context.Context, input *ecs.DescribeTasksInput, opts ...request.WaiterOption) error {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, input)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *ecs.DescribeTasksInput, ...request.WaiterOption) error); ok {
+		r0 = rf(ctx, input, opts...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // WaitUntilTasksRunningWithContext provides a mock function with given fields: _a0, _a1, _a2

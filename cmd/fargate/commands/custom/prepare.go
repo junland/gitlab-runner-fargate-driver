@@ -189,6 +189,15 @@ func (c *PrepareCommand) waitFargateTaskReady(ctx *cli.Context, taskARN string) 
 		return containerIP, fmt.Errorf("waiting for Fargate task to be in running state: %w", err)
 	}
 
+	if c.cfg.Fargate.EvaluateTaskHealth {
+		c.logger.
+			WithField("taskARN", taskARN).
+			Info("Fargate task is running. Waiting for Fargate task to reach healthy state")
+		if err := c.awsFargate.WaitUntilTaskHealthy(ctx.Ctx, taskARN, c.cfg.Fargate.Cluster, c.cfg.Fargate.TaskHealthWaitConfig); err != nil {
+			return containerIP, fmt.Errorf("waiting for Fargate task to be in healthy state: %w", err)
+		}
+	}
+
 	// Get the container IP
 	containerIP, err = c.awsFargate.GetContainerIP(
 		ctx.Ctx,

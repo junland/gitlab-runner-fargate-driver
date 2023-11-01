@@ -4,8 +4,10 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	logging "gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging/test"
 )
 
 func Test_LoadWaitConfigFromFile(t *testing.T) {
@@ -39,26 +41,30 @@ func Test_LoadWaitConfigFromFile(t *testing.T) {
 
 func Test_LoadSubnetConfigFromFile(t *testing.T) {
 	expectedConfig := Fargate{
-		Cluster:         "cluster-name",
-		Region:          "us-east-1",
-		TaskDefinition:  "my-task-definition:1",
-		Subnet:          "subnet-XYZ",
-		SecurityGroup:   "sg-XYZ",
-		EnablePublicIP:  true,
-		UsePublicIP:     false,
-		PlatformVersion: "1.4.0",
-		TaskWaitConfig:  TaskWaitConfig{100, 6},
+		Cluster:              "cluster-name",
+		Region:               "us-east-1",
+		TaskDefinition:       "my-task-definition:1",
+		Subnet:               "subnet-XYZ",
+		SecurityGroup:        "sg-XYZ",
+		EnablePublicIP:       true,
+		UsePublicIP:          false,
+		PlatformVersion:      "1.4.0",
+		EvaluateTaskHealth:   false,
+		TaskWaitConfig:       TaskWaitConfig{100, 6},
+		TaskHealthWaitConfig: TaskHealthWaitConfig{3, time.Duration(30) * time.Second},
 	}
 	expectedArrayConfig := Fargate{
-		Cluster:         "cluster-name",
-		Region:          "us-east-1",
-		TaskDefinition:  "my-task-definition:1",
-		Subnet:          "subnet-WXY,subnet-XYZ",
-		SecurityGroup:   "sg-WXY,sg-XYZ",
-		EnablePublicIP:  true,
-		UsePublicIP:     false,
-		PlatformVersion: "1.4.0",
-		TaskWaitConfig:  TaskWaitConfig{100, 6},
+		Cluster:              "cluster-name",
+		Region:               "us-east-1",
+		TaskDefinition:       "my-task-definition:1",
+		Subnet:               "subnet-WXY,subnet-XYZ",
+		SecurityGroup:        "sg-WXY,sg-XYZ",
+		EnablePublicIP:       true,
+		UsePublicIP:          false,
+		PlatformVersion:      "1.4.0",
+		EvaluateTaskHealth:   false,
+		TaskWaitConfig:       TaskWaitConfig{100, 6},
+		TaskHealthWaitConfig: TaskHealthWaitConfig{3, time.Duration(30) * time.Second},
 	}
 
 	tests := map[string]struct {
@@ -105,6 +111,80 @@ func Test_LoadSubnetConfigFromFile(t *testing.T) {
 	}
 }
 
+func Test_AssertRequiredConfigInvalidValues(t *testing.T) {
+	expectedGlobal := getGlobalConfiguration(
+		TaskHealthWaitConfig{
+			Retries:       AWSWaitTaskHealthDefaultRetries,
+			CheckInterval: AWSWaitTaskHealthDefaultCheckInterval,
+		},
+		TaskWaitConfig{
+			MaxAttempts: AWSWaitDefaultMaxAttempts,
+			WaitTimeout: AWSWaitDefaultTimeoutSeconds,
+		})
+	tests := map[string]struct {
+		global         Global
+		expectedGlobal Global
+	}{
+		"Invalid TaskWaitConfig.MaxAttempts": {
+			global: getGlobalConfiguration(
+				TaskHealthWaitConfig{
+					Retries:       AWSWaitTaskHealthDefaultRetries,
+					CheckInterval: AWSWaitTaskHealthDefaultCheckInterval,
+				},
+				TaskWaitConfig{
+					MaxAttempts: 0,
+					WaitTimeout: AWSWaitDefaultTimeoutSeconds,
+				}),
+			expectedGlobal: expectedGlobal,
+		},
+		"Invalid TaskWaitConfig.WaitTimeout": {
+			global: getGlobalConfiguration(
+				TaskHealthWaitConfig{
+					Retries:       AWSWaitTaskHealthDefaultRetries,
+					CheckInterval: AWSWaitTaskHealthDefaultCheckInterval,
+				},
+				TaskWaitConfig{
+					MaxAttempts: AWSWaitDefaultMaxAttempts,
+					WaitTimeout: 0,
+				}),
+			expectedGlobal: expectedGlobal,
+		},
+		"Invalid TaskHealthWaitConfig.Retries": {
+			global: getGlobalConfiguration(
+				TaskHealthWaitConfig{
+					Retries:       0,
+					CheckInterval: AWSWaitTaskHealthDefaultCheckInterval,
+				},
+				TaskWaitConfig{
+					MaxAttempts: AWSWaitDefaultMaxAttempts,
+					WaitTimeout: AWSWaitDefaultTimeoutSeconds,
+				}),
+			expectedGlobal: expectedGlobal,
+		},
+		"Invalid TaskHealthWaitConfig.CheckInterval": {
+			global: getGlobalConfiguration(
+				TaskHealthWaitConfig{
+					Retries:       AWSWaitTaskHealthDefaultRetries,
+					CheckInterval: time.Millisecond,
+				},
+				TaskWaitConfig{
+					MaxAttempts: AWSWaitDefaultMaxAttempts,
+					WaitTimeout: AWSWaitDefaultTimeoutSeconds,
+				}),
+			expectedGlobal: expectedGlobal,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			cfg := test.global
+			err := cfg.AssertRequiredConfig(logging.NewNullLogger())
+			assert.NoError(t, err)
+			assert.Equal(t, cfg, test.expectedGlobal)
+		})
+	}
+}
+
 func Test_AssertRequiredConfig(t *testing.T) {
 	tests := map[string]struct {
 		global      Global
@@ -146,7 +226,7 @@ func Test_AssertRequiredConfig(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			cfg := test.global
-			err := cfg.AssertRequiredConfig()
+			err := cfg.AssertRequiredConfig(logging.NewNullLogger())
 			assert.Equal(t, test.expectError, err)
 		})
 	}
@@ -154,4 +234,17 @@ func Test_AssertRequiredConfig(t *testing.T) {
 
 func splitStringToStringArray(s string) []*string {
 	return toPointerSlice(strings.Fields(strings.ReplaceAll(s, ",", " ")))
+}
+
+func getGlobalConfiguration(taskHealthWaitConfig TaskHealthWaitConfig, taskWaitConfig TaskWaitConfig) Global {
+	return Global{"debug", "", "json", Fargate{
+		Cluster:              "mycluster",
+		TaskDefinition:       "task:arn",
+		Region:               "eu-west-1",
+		Subnet:               "subnet-xyz",
+		TaskWaitConfig:       taskWaitConfig,
+		TaskHealthWaitConfig: taskHealthWaitConfig,
+		SecurityGroup:        "sg-123"},
+		TaskMetadata{},
+		SSH{}}
 }

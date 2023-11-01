@@ -26,10 +26,11 @@ type globalFlags struct {
 
 	ConfigFile string `long:"config" description:"Path to configuration file"`
 
-	TaskDefinition  string `long:"task-def" description:"Task definition" env:"CUSTOM_ENV_FARGATE_TASK_DEFINITION"`
-	PlatformVersion string `long:"platform-version" description:"Fargate platform version" env:"CUSTOM_ENV_FARGATE_PLATFORM_VERSION"`
-	Subnet          string `long:"subnet" description:"Task level subnets" env:"CUSTOM_ENV_FARGATE_SUBNET"`
-	SecurityGroup   string `long:"security-group" description:"Task level security groups" env:"CUSTOM_ENV_FARGATE_SECURITY_GROUP"`
+	EvaluateTaskHealth *bool  `long:"evaluate-task-health" description:"Whether to evaluate task health" env:"CUSTOM_ENV_FARGATE_EVALUATE_TASK_HEALTH"`
+	TaskDefinition     string `long:"task-def" description:"Task definition" env:"CUSTOM_ENV_FARGATE_TASK_DEFINITION"`
+	PlatformVersion    string `long:"platform-version" description:"Fargate platform version" env:"CUSTOM_ENV_FARGATE_PLATFORM_VERSION"`
+	Subnet             string `long:"subnet" description:"Task level subnets" env:"CUSTOM_ENV_FARGATE_SUBNET"`
+	SecurityGroup      string `long:"security-group" description:"Task level security groups" env:"CUSTOM_ENV_FARGATE_SECURITY_GROUP"`
 }
 
 var (
@@ -133,6 +134,10 @@ func loadCliArgsEnvVars(ctx *cli.Context) error {
 		config.Fargate.SecurityGroup = global.SecurityGroup
 	}
 
+	if global.EvaluateTaskHealth != nil {
+		config.Fargate.EvaluateTaskHealth = *global.EvaluateTaskHealth
+	}
+
 	ctx.SetConfig(config)
 
 	return nil
@@ -143,7 +148,7 @@ func assertRequiredConfig(ctx *cli.Context) error {
 	// we now assert the config for required values to ensure we can
 	// safely start the driver
 	cfg := ctx.Config()
-	return cfg.AssertRequiredConfig()
+	return cfg.AssertRequiredConfig(ctx.Logger())
 }
 
 func updateLogLevel(ctx *cli.Context) error {

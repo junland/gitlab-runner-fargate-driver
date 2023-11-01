@@ -110,11 +110,11 @@ remove the temporary configuration file.
 
 ### The global section
 
-| Setting     | Description                                                                                                                                                                                                      |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `LogLevel`  | The logging level. Available levels are: `debug`, `info`, `warn`, `error`, `fatal`, or `panic`. This setting is overridden if a different level is set by the `--debug` or `--log-level` command line arguments. |
-| `LogFormat` | The format of the logs. The supported formats are `text` or `json`. This setting is overridden if a different level is set by the `--log-format` command line argument.                                          |
-| `LogFile`   | The path to the file to direct logs to. If empty the logs will be redirected to STDOUT.                                                                                                                          |
+| Setting     | Default | Description |                                                                                                                                                                                                       |
+| ----------- | ----------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LogLevel`  | info | The logging level. Available levels are: `debug`, `info`, `warn`, `error`, `fatal`, or `panic`. This setting is overridden if a different level is set by the `--debug` or `--log-level` command line arguments. |
+| `LogFormat` | text | The format of the logs. The supported formats are `text` or `json`. This setting is overridden if a different level is set by the `--log-format` command line argument.                                          |
+| `LogFile`   | STDOUT | The file path to direct logs to.                                                                                                                         |
 
 ```toml
 LogLevel = "debug"
@@ -124,24 +124,53 @@ LogFormat = "text"
 
 ### The `[Fargate]` section
 
-| Settings         | Type   | Required | Description                                                                                                                                                                                                                   |
-| ---------------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Cluster`        | string | Yes      | The AWS cluster name where the tasks should be started.                                                                                                                                                                       |
-| `Region`         | string | Yes      | The AWS region to send requests to.                                                                                                                                                                                           |
-| `Subnet`         | string | Yes      | The AWS subnet ID's where the task should be created. Multiple values must be specified as a comma-seperated list. This setting is overriden if a different value is provided by the `subnet` command line argument or by the `CUSTOM_ENV_FARGATE_SUBNET` environment variable.|
-| `SecurityGroup`  | string | Yes      | The AWS security group ID where the task should be created. Multiple values must be specified as a comma-seperated list. This setting is overriden if a different value is provided by the `security-group` command line argument or by the `CUSTOM_ENV_FARGATE_SECURITY_GROUP` environment variable.|
-| `TaskDefinition` | string | Yes      | The family and revision (family:revision) or full ARN of the task definition to be used for starting the task. Note that this setting is overriden if a different value is provided by the `task-def` command line argument or by the `CUSTOM_ENV_FARGATE_TASK_DEFINITION` environment variable. |
-| `EnablePublicIP` | bool   | Yes      | This flag dictates whether the Fargate task should be created providing an external IP.|
-| `UsePublicIP` | bool   | Yes      | This flag dictates whether the the runner should use the public IP address to communicate with Fargate tasks.|
-| `PlatformVersion` | string   | No      | Fargate Platform Version. See the list of [available versions](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/platform_versions.html). Note that this setting is overriden if a different value is provided by the `platform-version` command line argument or by the `CUSTOM_ENV_FARGATE_PLATFORM_VERSION` environment variable. |
-| `PropagateTags`  | bool   | No      | When set to true, the tags from the associated the task definition will be propagated to the executing task. |
+| Settings         | Type   | Required | Default | Description                                                                                                                                                                                                                   |
+| ---------------- | ------ | -------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Cluster`        | string | Yes      | - |The AWS cluster name where the tasks should be started.                                                                                                                                                                       |
+| `Region`         | string | Yes      | - |The AWS region to send requests to.                                                                                                                                                                                           |
+| `Subnet`         | string | Yes      | - |The AWS subnet ID's where the task should be created. Multiple values must be specified as a comma-seperated list. This setting is overriden if a different value is provided by the `subnet` command line argument or by the `CUSTOM_ENV_FARGATE_SUBNET` environment variable.|
+| `SecurityGroup`  | string | Yes      | - |The AWS security group ID where the task should be created. Multiple values must be specified as a comma-seperated list. This setting is overriden if a different value is provided by the `security-group` command line argument or by the `CUSTOM_ENV_FARGATE_SECURITY_GROUP` environment variable.|
+| `TaskDefinition` | string | Yes      | - |The family and revision (family:revision) or full ARN of the task definition to be used for starting the task. Note that this setting is overriden if a different value is provided by the `task-def` command line argument or by the `CUSTOM_ENV_FARGATE_TASK_DEFINITION` environment variable. |
+| `EnablePublicIP` | bool   | No    | false |This flag dictates whether the Fargate task should be created providing an external IP.|
+| `UsePublicIP` | bool   | No       | false |This flag dictates whether the the runner should use the public IP address to communicate with Fargate tasks.|
+| `PlatformVersion` | string   | No      |  LATEST |Fargate Platform Version. See the list of [available versions](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/platform_versions.html). Note that this setting is overriden if a different value is provided by the `platform-version` command line argument or by the `CUSTOM_ENV_FARGATE_PLATFORM_VERSION` environment variable. |
+| `PropagateTags`  | bool   | No      | false |When set to true, the tags from the associated the task definition will be propagated to the executing task. |
+| `EvaluateTaskHealth` | bool | No | false |When set to true, the driver will evaluate the task health until it becomes 'healthy' before continuing. Note that this setting is overriden if a different value is provided by the `evaluate-task-health` command line argument or by the `CUSTOM_ENV_FARGATE_EVALUATE_TASK_HEALTH` environment variable. Enabling this option requires that your `Container Definition` specify a healthcheck. For more information on how to configure a healthcheck, refer to the [Dockerfile reference](https://docs.docker.com/engine/reference/builder/#healthcheck) and the [AWS HealthCheck API reference](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_HealthCheck.html).
+
+#### The `[Fargate.TaskHealthWaitConfig]` section
+
+| Settings         | Type   | Required | Default | Description                                                                                                                                                                                                                   |
+| ---------------- | ------ | -------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Retries`        | integer | No      | 3 |The maximum API retry attempts when  waiting for the task  to be healthy. If an invalid value is specified (Retries < 1), the default is used.                                                                                                                                                           |
+| `CheckInterval`        | string | No      | 30s |The WaiterDelay between retries for the WaiterOption when calling WaitUntilTaskHealthy. Negative or zero values use the default instead. See the documentation for [time.ParseDuration](https://pkg.go.dev/time#ParseDuration) for more examples of possbile values. If an invalid value is specified (CheckInterval < 1s), the default is used.                                                                                                                |
+>Note:
+**The maximum amount of time that the driver will wait is equal to `CheckInterval * Retries`.**<br>
+Using the default configuration as an example, the maximum amount of time waited is **30s * 3 = 90 seconds.**
+
+
+```toml
+[Fargate]
+  Cluster = "cluster-name"
+  Region = "us-east-1"
+  Subnet = "subnet-XYZ"
+  SecurityGroup = "sg-XYZ"
+  TaskDefinition = "my-task-definition:1"
+  EnablePublicIP = true
+  UsePublicIP = false
+  PlatformVersion = "1.4.0"
+  PropagateTags = true
+  EvaluateTaskHealth = true
+  [Fargate.TaskHealthWaitConfig]
+    Retries = 3
+    CheckInterval = "30s"
+```                                                                       
 
 #### The `[Fargate.TaskWaitConfig]` section
 
-| Settings         | Type   | Required | Description                                                                                                                                                                                                                   |
-| ---------------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MaxAttempts`        | integer | No      | The maximum retry attempts for the WaiterOption when calling WaitUntilTasksRunningWithContext. Defaults to 100 which is the AWS default.                                                                                                                                                                       |
-| `WaitTimeout`        | integer | No      | The WaiterDelay between retries for the WaiterOption when calling WaitUntilTasksRunningWithContext. Defaults to 6 which is the AWS default.                                                                                                                                                                      |
+| Settings         | Type   | Required | Default | Description                                                                                                                                                                                                                   |
+| ---------------- | ------ | -------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MaxAttempts`        | integer | No      | 100 |The maximum retry attempts for the WaiterOption when calling WaitUntilTasksRunningWithContext. If an invalid value is specified (MaxAttempts < 1), the default is used.                                                                                                                                                                    |
+| `WaitTimeout`        | integer | No      | 6 |The WaiterDelay between retries for the WaiterOption when calling WaitUntilTasksRunningWithContext. If an invalid value is specified (WaitTimeout < 1), the default is used.                                                                                                                                                                 |
 
 ```toml
 [Fargate]
@@ -172,9 +201,9 @@ Evaluation logic for communication between the Gitlab Runner and the Fargate tas
 
 ### The `[TaskMetadata]` section
 
-| Settings    | Type   | Required | Description                                                                                                                                                                                    |
-| ----------- | ------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Directory` | string | Yes      | The directory where the application will store metadata related to Fargate Tasks started by the driver. Metadata is created during the "prepare" stage and removed during the "cleanup" stage. |
+| Settings         | Type   | Required | Default | Description                                                                                                                                                                                                                   |
+| ----------- | ------ | -------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Directory` | string | Yes      | - | The directory where the application will store metadata related to Fargate Tasks started by the driver. Metadata is created during the "prepare" stage and removed during the "cleanup" stage. |
 
 ```toml
 [TaskMetadata]
@@ -183,10 +212,10 @@ Evaluation logic for communication between the Gitlab Runner and the Fargate tas
 
 ### The `[SSH]` section
 
-| Settings         | Type    | Required | Description                                               |
-| ---------------- | ------  | -------- | --------------------------------------------------------- |
-| `Username`       | string  | Yes      | The username to connect to the task container via SSH.    |
-| `Port`           | integer | No       | Port number of the SSH server listening in the container. If omitted, will use the default SSH port (22). |
+| Settings         | Type    | Required | Default | Description                                               |
+| ---------------- | ------  | -------- | --------- |-------------------------------------------------------- |
+| `Username`       | string  | Yes      | - | The username to connect to the task container via SSH.    |
+| `Port`           | integer | No       | 22 | Port number of the SSH server listening in the container. |
 
 ```toml
 [SSH]
