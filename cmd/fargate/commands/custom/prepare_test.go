@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -27,22 +28,24 @@ type prepareCommandTestCase struct {
 
 	taskStopReason string
 
-	createKeyPairError      error
-	fargateInitError        error
-	fargateRunTaskError     error
-	fargateWaitTaskError    error
-	fargateContainerIPError error
-	fargateStopTaskError    error
-	persistARNError         error
-	persistIPError          error
+	createKeyPairError          error
+	fargateInitError            error
+	fargateRunTaskError         error
+	fargateWaitTaskError        error
+	fargateWaitTaskHealthyError error
+	fargateContainerIPError     error
+	fargateStopTaskError        error
+	persistARNError             error
+	persistIPError              error
 
-	shouldNotCallCreateKeyPair  bool
-	shouldNotCallRunTask        bool
-	shouldNotCallWaitTask       bool
-	shouldNotCallGetContainerIP bool
-	shouldNotCallStopTask       bool
-	shouldNotPersistARN         bool
-	shouldNotPersistIP          bool
+	shouldNotCallCreateKeyPair   bool
+	shouldNotCallRunTask         bool
+	shouldNotCallWaitTask        bool
+	shouldNotCallWaitTaskHealthy bool
+	shouldNotCallGetContainerIP  bool
+	shouldNotCallStopTask        bool
+	shouldNotPersistARN          bool
+	shouldNotPersistIP           bool
 
 	expectedError error
 }
@@ -66,13 +69,14 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 	defer cancel()
 
 	testFargateConfig := config.Fargate{
-		Cluster:        "cluster",
-		Region:         "region",
-		Subnet:         "subnet",
-		SecurityGroup:  "security-group",
-		TaskDefinition: "task-definition",
-		EnablePublicIP: true,
-		UsePublicIP:    true,
+		Cluster:            "cluster",
+		Region:             "region",
+		Subnet:             "subnet",
+		SecurityGroup:      "security-group",
+		TaskDefinition:     "task-definition",
+		EnablePublicIP:     true,
+		UsePublicIP:        true,
+		EvaluateTaskHealth: true,
 	}
 	testMetadataConfig := config.TaskMetadata{
 		Directory: "directory",
@@ -91,63 +95,76 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 
 	tests := map[string]prepareCommandTestCase{
 		"Error during Fargate Init": {
-			fargateInitError:            testError,
-			shouldNotCallCreateKeyPair:  true,
-			shouldNotCallRunTask:        true,
-			shouldNotCallWaitTask:       true,
-			shouldNotCallGetContainerIP: true,
-			shouldNotCallStopTask:       true,
-			shouldNotPersistARN:         true,
-			shouldNotPersistIP:          true,
-			expectedError:               testError,
-			taskStopReason:              tastStartReason,
+			fargateInitError:             testError,
+			shouldNotCallCreateKeyPair:   true,
+			shouldNotCallRunTask:         true,
+			shouldNotCallWaitTask:        true,
+			shouldNotCallWaitTaskHealthy: true,
+			shouldNotCallGetContainerIP:  true,
+			shouldNotCallStopTask:        true,
+			shouldNotPersistARN:          true,
+			shouldNotPersistIP:           true,
+			expectedError:                testError,
+			taskStopReason:               tastStartReason,
 		},
 		"Error during create Public / Private Key Pair": {
-			createKeyPairError:          testError,
-			shouldNotCallRunTask:        true,
-			shouldNotCallWaitTask:       true,
-			shouldNotCallGetContainerIP: true,
-			shouldNotCallStopTask:       true,
-			shouldNotPersistARN:         true,
-			shouldNotPersistIP:          true,
-			expectedError:               testError,
-			taskStopReason:              taskWaitStopReason,
+			createKeyPairError:           testError,
+			shouldNotCallRunTask:         true,
+			shouldNotCallWaitTask:        true,
+			shouldNotCallWaitTaskHealthy: true,
+			shouldNotCallGetContainerIP:  true,
+			shouldNotCallStopTask:        true,
+			shouldNotPersistARN:          true,
+			shouldNotPersistIP:           true,
+			expectedError:                testError,
+			taskStopReason:               taskWaitStopReason,
 		},
 
 		"Error during Fargate Run Task": {
-			fargateRunTaskError:         testError,
-			shouldNotCallWaitTask:       true,
-			shouldNotCallGetContainerIP: true,
-			shouldNotPersistARN:         true,
-			shouldNotPersistIP:          true,
-			expectedError:               testError,
-			taskStopReason:              tastStartReason,
+			fargateRunTaskError:          testError,
+			shouldNotCallWaitTask:        true,
+			shouldNotCallWaitTaskHealthy: true,
+			shouldNotCallGetContainerIP:  true,
+			shouldNotPersistARN:          true,
+			shouldNotPersistIP:           true,
+			expectedError:                testError,
+			taskStopReason:               tastStartReason,
 		},
 		"Error during Fargate Run Task - when no taskARN was provided": {
-			taskARN:                     func(s string) *string { return &s }(""),
-			fargateRunTaskError:         testError,
-			shouldNotCallWaitTask:       true,
-			shouldNotCallGetContainerIP: true,
-			shouldNotCallStopTask:       true,
-			shouldNotPersistARN:         true,
-			shouldNotPersistIP:          true,
-			expectedError:               testError,
-			taskStopReason:              taskWaitStopReason,
+			taskARN:                      func(s string) *string { return &s }(""),
+			fargateRunTaskError:          testError,
+			shouldNotCallWaitTask:        true,
+			shouldNotCallWaitTaskHealthy: true,
+			shouldNotCallGetContainerIP:  true,
+			shouldNotCallStopTask:        true,
+			shouldNotPersistARN:          true,
+			shouldNotPersistIP:           true,
+			expectedError:                testError,
+			taskStopReason:               taskWaitStopReason,
 		},
 		"Error during Fargate Wait Task": {
-			fargateWaitTaskError:        testError,
+			fargateWaitTaskError:         testError,
+			shouldNotCallWaitTaskHealthy: true,
+			shouldNotCallGetContainerIP:  true,
+			shouldNotPersistIP:           true,
+			expectedError:                testError,
+			taskStopReason:               taskWaitStopReason,
+		},
+		"Error during Fargate Wait Task Healthy": {
+			fargateWaitTaskHealthyError: testError,
 			shouldNotCallGetContainerIP: true,
 			shouldNotPersistIP:          true,
 			expectedError:               testError,
 			taskStopReason:              taskWaitStopReason,
 		},
 		"Error during Fargate Wait Task and Stop Task": {
-			fargateWaitTaskError:        testError,
-			fargateStopTaskError:        testErrorStopTask,
-			shouldNotCallGetContainerIP: true,
-			shouldNotPersistIP:          true,
-			expectedError:               testError,
-			taskStopReason:              taskWaitStopReason,
+			fargateWaitTaskError:         testError,
+			fargateStopTaskError:         testErrorStopTask,
+			shouldNotCallWaitTaskHealthy: true,
+			shouldNotCallGetContainerIP:  true,
+			shouldNotPersistIP:           true,
+			expectedError:                testError,
+			taskStopReason:               taskWaitStopReason,
 		},
 		"Error during Fargate Get Container IP": {
 			fargateContainerIPError: testError,
@@ -156,21 +173,23 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 			taskStopReason:          taskWaitStopReason,
 		},
 		"Error during persisting task ARN": {
-			persistARNError:             testError,
-			shouldNotCallWaitTask:       true,
-			shouldNotCallGetContainerIP: true,
-			shouldNotPersistIP:          true,
-			expectedError:               testError,
-			taskStopReason:              taskPersistARNReason,
+			persistARNError:              testError,
+			shouldNotCallWaitTask:        true,
+			shouldNotCallWaitTaskHealthy: true,
+			shouldNotCallGetContainerIP:  true,
+			shouldNotPersistIP:           true,
+			expectedError:                testError,
+			taskStopReason:               taskPersistARNReason,
 		},
 		"Error during persisting ARN and stop task": {
-			persistARNError:             testError,
-			fargateStopTaskError:        testErrorStopTask,
-			shouldNotCallWaitTask:       true,
-			shouldNotCallGetContainerIP: true,
-			shouldNotPersistIP:          true,
-			expectedError:               testError,
-			taskStopReason:              taskPersistARNReason,
+			persistARNError:              testError,
+			fargateStopTaskError:         testErrorStopTask,
+			shouldNotCallWaitTask:        true,
+			shouldNotCallWaitTaskHealthy: true,
+			shouldNotCallGetContainerIP:  true,
+			shouldNotPersistIP:           true,
+			expectedError:                testError,
+			taskStopReason:               taskPersistARNReason,
 		},
 		"Error during persisting container IP": {
 			persistIPError: testError,
@@ -195,6 +214,9 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 
 			tt.fargateConfig.TaskWaitConfig.MaxAttempts = 6
 			tt.fargateConfig.TaskWaitConfig.WaitTimeout = 100
+
+			tt.fargateConfig.TaskHealthWaitConfig.CheckInterval = 30 * time.Second
+			tt.fargateConfig.TaskHealthWaitConfig.Retries = 3
 
 			mockKeyFactory := new(ssh.MockKeyFactory)
 			defer mockKeyFactory.AssertExpectations(t)
@@ -251,6 +273,7 @@ func setExpectationsForFargate(mock *aws.MockFargate, testParams prepareCommandT
 
 	setExpectationForFargateRunTask(mock, testParams)
 	setExpectationForFargateWaitTask(mock, testParams)
+	setExpectationForFargateWaitTaskHealthy(mock, testParams)
 	setExpectationForFargateGetIP(mock, testParams)
 	setExpectationForFargateStopTask(mock, testParams)
 }
@@ -303,6 +326,27 @@ func setExpectationForFargateWaitTask(mockAwsFargate *aws.MockFargate, testParam
 		expectedTaskWaitConfig,
 	).
 		Return(testParams.fargateWaitTaskError).
+		Once()
+}
+
+func setExpectationForFargateWaitTaskHealthy(mockAwsFargate *aws.MockFargate, testParams prepareCommandTestCase) {
+	if testParams.shouldNotCallWaitTaskHealthy {
+		return
+	}
+
+	expectedTaskHealthWaitConfig := config.TaskHealthWaitConfig{
+		CheckInterval: 30 * time.Second,
+		Retries:       3,
+	}
+
+	mockAwsFargate.On(
+		"WaitUntilTaskHealthy",
+		testParams.context,
+		*testParams.taskARN,
+		testParams.fargateConfig.Cluster,
+		expectedTaskHealthWaitConfig,
+	).
+		Return(testParams.fargateWaitTaskHealthyError).
 		Once()
 }
 

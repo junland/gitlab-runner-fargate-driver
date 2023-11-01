@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -280,6 +281,14 @@ func TestWaitUntilTaskRunning(t *testing.T) {
 				).
 					Return(tt.awsError).
 					Once()
+				mockECS.On(
+					"WaitUntilTasksHealthy",
+					mock.AnythingOfType("*context.emptyCtx"),
+					mock.AnythingOfType("*ecs.DescribeTasksInput"),
+					mock.AnythingOfType("WaiterOption"),
+				).
+					Return(tt.awsError).
+					Maybe()
 
 				err := fargate.Init()
 				require.NoError(t, err)
@@ -294,6 +303,127 @@ func TestWaitUntilTaskRunning(t *testing.T) {
 				WaitTimeout: 6,
 			}
 			err := fargate.WaitUntilTaskRunning(context.Background(), "param1", "param2", waitConfig)
+
+			if tt.expectedError != nil {
+				assertions.ErrorIs(t, err, tt.expectedError)
+				return
+			}
+
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestWaitUntilTaskHealthy(t *testing.T) {
+	logger := createTestLogger()
+	taskUnhealthyError := errors.New("Task unhealthy")
+	getTaskDetailsError := errors.New("Get task details error")
+	getTaskDefinitionDetailsError := errors.New("Get task definition details error")
+	tests := map[string]struct {
+		hasHealthCheck                       bool
+		getTaskDetailsError                  error
+		getTaskDefinitionDetailsError        error
+		waitUntilTaskHealthyWithContextError error
+		expectedError                        error
+	}{
+		"Waits until task healthy": {
+			hasHealthCheck:                       true,
+			getTaskDetailsError:                  nil,
+			getTaskDefinitionDetailsError:        nil,
+			waitUntilTaskHealthyWithContextError: nil,
+			expectedError:                        nil,
+		},
+		"Skipped when no healthcheck defined": {
+			hasHealthCheck:                       false,
+			getTaskDetailsError:                  nil,
+			getTaskDefinitionDetailsError:        nil,
+			waitUntilTaskHealthyWithContextError: nil,
+			expectedError:                        nil,
+		},
+		"Error when failing to get task details": {
+			hasHealthCheck:                       false,
+			getTaskDetailsError:                  getTaskDetailsError,
+			getTaskDefinitionDetailsError:        nil,
+			waitUntilTaskHealthyWithContextError: nil,
+			expectedError:                        getTaskDetailsError,
+		},
+		"Error when failing to get task definition details": {
+			hasHealthCheck:                       false,
+			getTaskDetailsError:                  nil,
+			getTaskDefinitionDetailsError:        getTaskDefinitionDetailsError,
+			waitUntilTaskHealthyWithContextError: nil,
+			expectedError:                        getTaskDefinitionDetailsError,
+		},
+		"Error when task not healthy": {
+			hasHealthCheck:                       true,
+			getTaskDetailsError:                  nil,
+			getTaskDefinitionDetailsError:        nil,
+			waitUntilTaskHealthyWithContextError: taskUnhealthyError,
+			expectedError:                        taskUnhealthyError,
+		},
+	}
+
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			mockECS := new(mockEcsClient)
+			defer mockECS.AssertExpectations(t)
+
+			mockEC2 := new(mockEc2Client)
+			defer mockEC2.AssertExpectations(t)
+
+			fargate := NewFargate(logger, "us-east-1")
+
+			mockECS.On(
+				"DescribeTasksWithContext",
+				mock.AnythingOfType("*context.emptyCtx"),
+				mock.AnythingOfType("*ecs.DescribeTasksInput"),
+			).
+				Return(&ecs.DescribeTasksOutput{
+					Tasks: []*ecs.Task{{TaskDefinitionArn: new(string)}},
+				}, tt.getTaskDetailsError).
+				Once()
+
+			var containerDefinition *ecs.ContainerDefinition
+			if tt.hasHealthCheck {
+				mockECS.On(
+					"WaitUntilTaskHealthyWithContext",
+					mock.AnythingOfType("*context.timerCtx"),
+					mock.AnythingOfType("*ecs.DescribeTasksInput"),
+					mock.AnythingOfType("request.WaiterOption"),
+				).
+					Return(tt.waitUntilTaskHealthyWithContextError).
+					Once()
+				containerDefinition = &ecs.ContainerDefinition{HealthCheck: &ecs.HealthCheck{}}
+			} else {
+				containerDefinition = &ecs.ContainerDefinition{}
+			}
+
+			mockECS.On(
+				"DescribeTaskDefinitionWithContext",
+				mock.AnythingOfType("*context.emptyCtx"),
+				mock.AnythingOfType("*ecs.DescribeTaskDefinitionInput"),
+			).
+				Return(&ecs.DescribeTaskDefinitionOutput{
+					TaskDefinition: &ecs.TaskDefinition{
+						TaskDefinitionArn:    new(string),
+						ContainerDefinitions: []*ecs.ContainerDefinition{containerDefinition},
+					},
+				}, tt.getTaskDefinitionDetailsError).
+				Maybe()
+
+			err := fargate.Init()
+			require.NoError(t, err)
+
+			// Overwrite initialized values with the mocks
+			fargate.(*awsFargate).ecsSvc = mockECS
+			fargate.(*awsFargate).ec2Svc = mockEC2
+
+			waitConfig := config.TaskHealthWaitConfig{
+				Retries:       3,
+				CheckInterval: 30 * time.Second,
+			}
+
+			err = fargate.WaitUntilTaskHealthy(context.Background(), "param1", "param2", waitConfig)
 
 			if tt.expectedError != nil {
 				assertions.ErrorIs(t, err, tt.expectedError)
