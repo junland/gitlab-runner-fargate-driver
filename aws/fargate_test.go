@@ -275,7 +275,7 @@ func TestWaitUntilTaskRunning(t *testing.T) {
 			if tt.initializeAdapter {
 				mockECS.On(
 					"WaitUntilTasksRunningWithContext",
-					mock.AnythingOfType("*context.emptyCtx"),
+					mock.AnythingOfType("backgroundCtx"),
 					mock.AnythingOfType("*ecs.DescribeTasksInput"),
 					mock.AnythingOfType("WaiterOption"),
 				).
@@ -283,7 +283,7 @@ func TestWaitUntilTaskRunning(t *testing.T) {
 					Once()
 				mockECS.On(
 					"WaitUntilTasksHealthy",
-					mock.AnythingOfType("*context.emptyCtx"),
+					mock.AnythingOfType("backgroundCtx"),
 					mock.AnythingOfType("*ecs.DescribeTasksInput"),
 					mock.AnythingOfType("WaiterOption"),
 				).
@@ -375,7 +375,7 @@ func TestWaitUntilTaskHealthy(t *testing.T) {
 
 			mockECS.On(
 				"DescribeTasksWithContext",
-				mock.AnythingOfType("*context.emptyCtx"),
+				mock.AnythingOfType("backgroundCtx"),
 				mock.AnythingOfType("*ecs.DescribeTasksInput"),
 			).
 				Return(&ecs.DescribeTasksOutput{
@@ -400,7 +400,7 @@ func TestWaitUntilTaskHealthy(t *testing.T) {
 
 			mockECS.On(
 				"DescribeTaskDefinitionWithContext",
-				mock.AnythingOfType("*context.emptyCtx"),
+				mock.AnythingOfType("backgroundCtx"),
 				mock.AnythingOfType("*ecs.DescribeTaskDefinitionInput"),
 			).
 				Return(&ecs.DescribeTaskDefinitionOutput{
@@ -497,7 +497,7 @@ func TestStopTask(t *testing.T) {
 			if tt.initializeAdapter {
 				mockECS.On(
 					"StopTaskWithContext",
-					mock.AnythingOfType("*context.emptyCtx"),
+					mock.AnythingOfType("backgroundCtx"),
 					mock.MatchedBy(func(sti *ecs.StopTaskInput) bool {
 						return *sti.Cluster == clusterName &&
 							*sti.Task == taskArn &&
@@ -634,7 +634,7 @@ func mockFargateDescribeNetworkInterfaces(shouldBeCalled bool, errorToReturn err
 	publicIP := "172.0.0.1"
 	mockEC2.On(
 		"DescribeNetworkInterfacesWithContext",
-		mock.AnythingOfType("*context.emptyCtx"),
+		mock.AnythingOfType("backgroundCtx"),
 		mock.AnythingOfType("*ec2.DescribeNetworkInterfacesInput"),
 	).
 		Return(
@@ -665,7 +665,7 @@ func mockFargateDescribeTask(shouldBeCalled bool, errorToReturn error) *mockEcsC
 	expectedNetworkIDValue := "net-id"
 	mockECS.On(
 		"DescribeTasksWithContext",
-		mock.AnythingOfType("*context.emptyCtx"),
+		mock.AnythingOfType("backgroundCtx"),
 		mock.AnythingOfType("*ecs.DescribeTasksInput"),
 	).
 		Return(

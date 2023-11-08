@@ -7,6 +7,7 @@ import (
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/config"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/cli"
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/jobresponse"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/runner"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/task"
@@ -93,12 +94,12 @@ func (c *ConfigCommand) init(ctx *cli.Context) {
 }
 
 func (c *ConfigCommand) createUniqueIdentifierForHostname() string {
-	runnerAdapter := runner.GetAdapter()
+	jobResponse := jobresponse.Load()
 	runnerData := task.RunnerData{
-		ShortToken: runnerAdapter.ShortToken(),
-		ProjectURL: runnerAdapter.ProjectURL(),
-		PipelineID: runnerAdapter.PipelineID(),
-		JobID:      runnerAdapter.JobID(),
+		ShortToken: jobResponse.ShortToken,
+		ProjectURL: jobResponse.ProjectURL(),
+		PipelineID: jobResponse.PipelineID(),
+		JobID:      jobResponse.JobID,
 	}
 	return task.GenerateFilename(runnerData)
 }

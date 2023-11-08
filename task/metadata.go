@@ -9,8 +9,8 @@ import (
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/encoding"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/fs"
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/jobresponse"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
-	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/runner"
 )
 
 // MetadataManager represents a repository to store temporary data related to task information
@@ -49,12 +49,12 @@ func NewMetadataManager(logger logging.Logger, filesDir string) MetadataManager 
 	manager.encoder = encoding.NewJSON()
 	manager.directory = filesDir
 
-	runnerAdapter := runner.GetAdapter()
+	jobResponse := jobresponse.Load()
 	runnerData := RunnerData{
-		ShortToken: runnerAdapter.ShortToken(),
-		ProjectURL: runnerAdapter.ProjectURL(),
-		PipelineID: runnerAdapter.PipelineID(),
-		JobID:      runnerAdapter.JobID(),
+		ShortToken: jobResponse.ShortToken,
+		ProjectURL: jobResponse.ProjectURL(),
+		PipelineID: jobResponse.PipelineID(),
+		JobID:      jobResponse.JobID,
 	}
 	manager.filename = GenerateFilename(runnerData)
 
