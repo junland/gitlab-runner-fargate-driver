@@ -232,13 +232,13 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 			setExpectationsForMetadataManager(mockMetadataManager, tt)
 
 			prepare := new(PrepareCommand)
-			prepare.newKeyFactory = func(logger logging.Logger) ssh.KeyFactory {
+			prepare.newKeyFactory = func(_ logging.Logger) ssh.KeyFactory {
 				return mockKeyFactory
 			}
-			prepare.newFargate = func(logger logging.Logger, awsRegion, roleARN, stsSessionVars string) aws.Fargate {
+			prepare.newFargate = func(_ logging.Logger, _, _, _ string) aws.Fargate {
 				return mockAwsFargate
 			}
-			prepare.newMetadataManager = func(logger logging.Logger, directory string) task.MetadataManager {
+			prepare.newMetadataManager = func(_ logging.Logger, _ string) task.MetadataManager {
 				return mockMetadataManager
 			}
 
