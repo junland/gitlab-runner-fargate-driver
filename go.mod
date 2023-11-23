@@ -1,6 +1,6 @@
 module gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate
 
-go 1.18
+go 1.21
 
 require (
 	github.com/BurntSushi/toml v1.3.2

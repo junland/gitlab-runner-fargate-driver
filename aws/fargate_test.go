@@ -129,7 +129,8 @@ func TestRunTask(t *testing.T) {
 				if tt.expectedRunFailure == "" {
 					output.Tasks = []*ecs.Task{{TaskArn: &taskARN}}
 				} else {
-					output.Failures = []*ecs.Failure{{Reason: &tt.expectedRunFailure}}
+					expectedRunFailure := tt.expectedRunFailure
+					output.Failures = []*ecs.Failure{{Reason: &expectedRunFailure}}
 				}
 
 				if tt.clusterName != "" && tt.taskDefinition != "" {
@@ -495,13 +496,14 @@ func TestStopTask(t *testing.T) {
 			clusterName := "ecs-cluster-name"
 			taskArn := "arn:task:mock"
 			if tt.initializeAdapter {
+				stopReason := tt.stopReason
 				mockECS.On(
 					"StopTaskWithContext",
 					mock.AnythingOfType("backgroundCtx"),
 					mock.MatchedBy(func(sti *ecs.StopTaskInput) bool {
 						return *sti.Cluster == clusterName &&
 							*sti.Task == taskArn &&
-							assert.Equal(t, &tt.stopReason, sti.Reason)
+							assert.Equal(t, &stopReason, sti.Reason)
 					}),
 				).
 					Return(tt.awsTaskOutput, tt.awsError).
