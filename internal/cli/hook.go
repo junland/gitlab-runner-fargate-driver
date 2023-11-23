@@ -20,5 +20,5 @@ func (h Hooks) Execute(cliCtx *Context) error {
 }
 
 func NewNopHook() Hook {
-	return func(ctx *Context) error { return nil }
+	return func(_ *Context) error { return nil }
 }

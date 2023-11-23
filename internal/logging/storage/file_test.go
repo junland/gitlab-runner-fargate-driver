@@ -20,11 +20,11 @@ func TestFile_Open(t *testing.T) {
 		expectedError error
 	}{
 		"when file opening fails": {
-			openFileMock:  func(filename string) (*os.File, error) { return nil, testError },
+			openFileMock:  func(_ string) (*os.File, error) { return nil, testError },
 			expectedError: testError,
 		},
 		"when file opening works properly": {
-			openFileMock:  func(filename string) (*os.File, error) { return nil, nil },
+			openFileMock:  func(_ string) (*os.File, error) { return nil, nil },
 			expectedError: nil,
 		},
 	}
