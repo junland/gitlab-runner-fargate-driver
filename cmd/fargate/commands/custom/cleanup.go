@@ -51,7 +51,7 @@ type CleanupCommand struct {
 	metadataManager task.MetadataManager
 
 	// Wrapping constructors to make easier mocking in the unit tests
-	newFargate         func(logger logging.Logger, awsRegion string, roleARN string, stsSessionVars string) aws.Fargate
+	newFargate         func(logger logging.Logger, awsRegion, roleARN, stsSessionVars string) aws.Fargate
 	newMetadataManager func(logger logging.Logger, directory string) task.MetadataManager
 }
 
