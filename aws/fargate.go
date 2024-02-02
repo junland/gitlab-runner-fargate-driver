@@ -139,12 +139,12 @@ func (a *awsFargate) Init() error {
 			return fmt.Errorf("stsSessionVars is only intended to be used with roleARN. Please provide a value for roleARN")
 		}
 
-		a.logger.WithField("role-arn", a.roleARN).Info(`[Init] Assuming role`)
+		a.logger.WithField("role-arn", a.roleARN).Info(`[Init] Attempting to assume IAM role`)
 
 		creds := *stscreds.NewCredentials(sess, a.roleARN)
 
 		if a.stsSessionVars != "" {
-			a.logger.WithField("variables", a.stsSessionVars).Info(`[Init] Adding tags to session`)
+			a.logger.WithField("variables", a.stsSessionVars).Info(`[Init] Attemping to add tags to session`)
 
 			tags, tagKeys := getSTSTags(a.stsSessionVars)
 			creds = *stscreds.NewCredentials(sess, a.roleARN, func(p *stscreds.AssumeRoleProvider) {
