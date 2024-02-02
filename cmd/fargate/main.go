@@ -117,6 +117,7 @@ func loadConfigurationFile(ctx *cli.Context) error {
 	return nil
 }
 
+//nolint:gocyclo
 func loadCliArgsEnvVars(ctx *cli.Context) error {
 	// Override parameters from config.toml if received by command line or env variable
 	config := ctx.Config()

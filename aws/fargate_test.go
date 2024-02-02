@@ -100,6 +100,7 @@ func TestRunTask(t *testing.T) {
 
 	for tn, tt := range tests {
 		t.Run(tn, func(t *testing.T) {
+			tt := tt
 			mockECS := new(mockEcsClient)
 			defer mockECS.AssertExpectations(t)
 
@@ -500,6 +501,7 @@ func TestStopTask(t *testing.T) {
 	}
 
 	for tn, tt := range tests {
+		tt := tt
 		t.Run(tn, func(t *testing.T) {
 			mockECS := new(mockEcsClient)
 			defer mockECS.AssertExpectations(t)

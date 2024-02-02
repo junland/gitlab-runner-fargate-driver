@@ -160,6 +160,7 @@ func (a *awsFargate) Init() error {
 	return nil
 }
 
+//nolint:goconst
 func getSTSTags(stsSessionVars string) ([]*sts.Tag, []*string) {
 	stsTags, tagKeys := []*sts.Tag{}, []*string{}
 	if stsSessionVars != "" {
