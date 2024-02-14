@@ -15,9 +15,10 @@ type Global struct {
 	LogFile   string
 	LogFormat string
 
-	Fargate      Fargate
-	TaskMetadata TaskMetadata
-	SSH          SSH
+	STSConfiguration STSConfiguration
+	Fargate          Fargate
+	TaskMetadata     TaskMetadata
+	SSH              SSH
 }
 
 type Fargate struct {
@@ -51,6 +52,11 @@ func toPointerSlice[T any](s []T) []*T {
 		result = append(result, &s[i])
 	}
 	return result
+}
+
+type STSConfiguration struct {
+	RoleARN     string
+	SessionVars string
 }
 
 type TaskMetadata struct {

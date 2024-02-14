@@ -104,7 +104,7 @@ func TestCustomExecuteCleanup(t *testing.T) {
 			setExpectationForClearMetadata(mockMetadataManager, shouldCallClearMetadata, tt)
 
 			cleanup := new(CleanupCommand)
-			cleanup.newFargate = func(logger logging.Logger, awsRegion string) aws.Fargate {
+			cleanup.newFargate = func(logger logging.Logger, awsRegion, roleARN, stsSessionVars string) aws.Fargate {
 				return mockAwsFargate
 			}
 			cleanup.newMetadataManager = func(logger logging.Logger, directory string) task.MetadataManager {

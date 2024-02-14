@@ -5,13 +5,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ecs"
+	"github.com/aws/aws-sdk-go/service/sts"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/config"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
@@ -90,10 +94,12 @@ type extendedEcsSvc struct {
 }
 
 type awsFargate struct {
-	logger    logging.Logger
-	awsRegion string
-	ecsSvc    ecsClient
-	ec2Svc    ec2Client
+	logger         logging.Logger
+	awsRegion      string
+	roleARN        string
+	stsSessionVars string
+	ecsSvc         ecsClient
+	ec2Svc         ec2Client
 
 	// The AWS NewSession function was encapsulated into the sessionCreator
 	// to make easier creating unit tests
@@ -101,7 +107,7 @@ type awsFargate struct {
 }
 
 // NewFargate is a constructor for the concrete type of the Fargate interface
-func NewFargate(logger logging.Logger, awsRegion string) Fargate {
+func NewFargate(logger logging.Logger, awsRegion, roleARN, stsSessionVars string) Fargate {
 	awsFargate := new(awsFargate)
 
 	awsFargate.logger = logger
@@ -113,6 +119,8 @@ func NewFargate(logger logging.Logger, awsRegion string) Fargate {
 			},
 		)
 	}
+	awsFargate.roleARN = roleARN
+	awsFargate.stsSessionVars = stsSessionVars
 
 	return awsFargate
 }
@@ -126,7 +134,42 @@ func (a *awsFargate) Init() error {
 	a.ecsSvc = extendedEcsSvc{ecs.New(sess)}
 	a.ec2Svc = ec2.New(sess)
 
+	if a.roleARN != "" {
+		if a.stsSessionVars != "" && a.roleARN == "" {
+			return fmt.Errorf("stsSessionVars is only intended to be used with roleARN. Please provide a value for roleARN")
+		}
+
+		a.logger.WithField("role-arn", a.roleARN).Info(`[Init] Attempting to assume IAM role`)
+
+		creds := *stscreds.NewCredentials(sess, a.roleARN)
+
+		if a.stsSessionVars != "" {
+			a.logger.WithField("variables", a.stsSessionVars).Info(`[Init] Attemping to add tags to session`)
+
+			tags, tagKeys := getSTSTags(a.stsSessionVars)
+			creds = *stscreds.NewCredentials(sess, a.roleARN, func(p *stscreds.AssumeRoleProvider) {
+				p.Tags = tags
+				p.TransitiveTagKeys = tagKeys
+			})
+		}
+
+		a.ecsSvc = extendedEcsSvc{ecs.New(sess, &aws.Config{Credentials: &creds})}
+		a.ec2Svc = ec2.New(sess, &aws.Config{Credentials: &creds})
+	}
+
 	return nil
+}
+
+//nolint:goconst
+func getSTSTags(stsSessionVars string) ([]*sts.Tag, []*string) {
+	stsTags, tagKeys := []*sts.Tag{}, []*string{}
+	if stsSessionVars != "" {
+		for _, v := range strings.Split(stsSessionVars, ",") {
+			stsTags = append(stsTags, &sts.Tag{Key: aws.String(v), Value: aws.String(os.Getenv("CUSTOM_ENV_" + v))})
+			tagKeys = append(tagKeys, aws.String(v))
+		}
+	}
+	return stsTags, tagKeys
 }
 
 //nolint:gocyclo
@@ -278,7 +321,6 @@ func (a *awsFargate) WaitUntilTaskHealthy(ctx context.Context, taskARN string, c
 	}
 
 	hasHealthCheck, err := a.IsTaskDefinitionWithHealthCheckDefined(taskDefinitionDetails)
-
 	if err != nil {
 		return fmt.Errorf("error extracting health check: %w", err)
 	}
