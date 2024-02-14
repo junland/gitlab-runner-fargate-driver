@@ -50,7 +50,7 @@ type PrepareCommand struct {
 	keyFactory      ssh.KeyFactory
 
 	// Wrapping constructors to make easier mocking in the unit tests
-	newFargate         func(logger logging.Logger, awsRegion string) aws.Fargate
+	newFargate         func(logger logging.Logger, awsRegion, roleARN, stsSessionVars string) aws.Fargate
 	newMetadataManager func(logger logging.Logger, directory string) task.MetadataManager
 	newKeyFactory      func(logger logging.Logger) ssh.KeyFactory
 }
@@ -106,7 +106,7 @@ func (c *PrepareCommand) init(ctx *cli.Context) error {
 		Logger().
 		WithField("command", "prepare_exec")
 
-	c.awsFargate = c.newFargate(c.logger, c.cfg.Fargate.Region)
+	c.awsFargate = c.newFargate(c.logger, c.cfg.Fargate.Region, c.cfg.STSConfiguration.RoleARN, c.cfg.STSConfiguration.SessionVars)
 	err := c.awsFargate.Init()
 	if err != nil {
 		return fmt.Errorf("initializing Fargate adapter: %w", err)
