@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 
@@ -58,10 +59,12 @@ func NewExecutor(logger logging.Logger) executors.Executor {
 	return executor
 }
 
+const sshDialMaxRetry = 5
+
 func (s *executor) Execute(ctx context.Context, connection executors.ConnectionSettings, script []byte) (err error) {
 	s.logger.Debug("[Execute] Will connect to server and execute the specified shell script")
 
-	err = s.connect(connection)
+	err = s.retry(sshDialMaxRetry, time.Second, func() error { return s.connect(connection) }, &errInvalidPrivateKey{})
 	if err != nil {
 		return fmt.Errorf("connecting to server: %w", err)
 	}
@@ -82,6 +85,24 @@ func (s *executor) Execute(ctx context.Context, connection executors.ConnectionS
 	s.logger.Debug("[Execute] Successfully executed script")
 
 	return nil
+}
+
+func (s *executor) retry(attempts int, delay time.Duration, fn func() error, terminalErrs ...error) error {
+	var err error
+	for i := 0; i < attempts; i++ {
+		if err = fn(); err == nil {
+			return nil // success
+		}
+		// check for terminal errors (i.e. don't retry on these errors)
+		for _, e := range terminalErrs {
+			if errors.Is(err, e) {
+				return err
+			}
+		}
+		time.Sleep(delay)
+		delay = delay * 2 // exponential backoff
+	}
+	return err
 }
 
 func (s *executor) connect(connection executors.ConnectionSettings) error {
