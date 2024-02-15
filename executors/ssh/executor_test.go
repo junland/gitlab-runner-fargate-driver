@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -340,6 +341,66 @@ done
 
 			assert.NoError(t, err)
 			tt.assertOutput(t, out.String())
+		})
+	}
+}
+
+func Test_Retry(t *testing.T) {
+	attempts := 0
+	someErr := fmt.Errorf("blammo")
+	specificError := errInvalidPrivateKey{inner: someErr}
+
+	tests := map[string]struct {
+		fn            func() error
+		wantError     error
+		terminalError error
+		wantAttempts  int
+	}{
+		"immediate success": {
+			wantAttempts: 1,
+			fn: func() error {
+				attempts++
+				return nil
+			},
+		},
+		"eventual success": {
+			wantAttempts: 3,
+			fn: func() error {
+				attempts++
+				if attempts < 3 {
+					return someErr
+				}
+				return nil
+			},
+		},
+		"eventual failure": {
+			wantAttempts: 5,
+			wantError:    someErr,
+			fn: func() error {
+				attempts++
+				return someErr
+			},
+		},
+		"with terminal error": {
+			wantAttempts:  1,
+			wantError:     &specificError,
+			terminalError: &specificError,
+			fn: func() error {
+				attempts++
+				return &specificError
+			},
+		},
+	}
+
+	e := executor{}
+
+	for name, tt := range tests {
+		attempts = 0
+		t.Run(name, func(t *testing.T) {
+			err := e.retry(5, 25*time.Millisecond, tt.fn, tt.terminalError)
+
+			assert.Equal(t, tt.wantError, err)
+			assert.Equal(t, tt.wantAttempts, attempts)
 		})
 	}
 }
