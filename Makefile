@@ -193,3 +193,7 @@ $(releaseIndexGen):
 	@mkdir -p $(shell dirname $(releaseIndexGen))
 	@curl -sL "$(DOWNLOAD_URL)" -o "$(releaseIndexGen)"
 	@chmod +x "$(releaseIndexGen)"
+
+.PHONY: clean
+clean:
+	rm -fr dist build
