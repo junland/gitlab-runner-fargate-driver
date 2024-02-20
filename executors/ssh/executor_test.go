@@ -39,7 +39,7 @@ func createTestLogger() logging.Logger {
 type connectClientFn func(string, string, *ssh.ClientConfig) (client.Client, error)
 
 func newConnectClientFn(cli client.Client, err error) connectClientFn {
-	return func(network string, addr string, config *ssh.ClientConfig) (client.Client, error) {
+	return func(_ string, _ string, _ *ssh.ClientConfig) (client.Client, error) {
 		return cli, err
 	}
 }
@@ -89,14 +89,14 @@ func TestExecute(t *testing.T) {
 		"Private key invalid": {
 			validPrivateKey: false,
 			connectClient: func() (connectClientFn, func(*testing.T)) {
-				return newConnectClientFn(nil, nil), func(t *testing.T) {}
+				return newConnectClientFn(nil, nil), func(_ *testing.T) {}
 			},
 			expectedError: testErrorSSHInternal,
 		},
 		"Connect to server error": {
 			validPrivateKey: true,
 			connectClient: func() (connectClientFn, func(*testing.T)) {
-				return newConnectClientFn(nil, testError), func(t *testing.T) {}
+				return newConnectClientFn(nil, testError), func(_ *testing.T) {}
 			},
 			expectedError: testError,
 		},
@@ -149,7 +149,7 @@ func TestExecute(t *testing.T) {
 		"Error when not connected to server": {
 			validPrivateKey: true,
 			connectClient: func() (connectClientFn, func(*testing.T)) {
-				return newConnectClientFn(nil, nil), func(t *testing.T) {}
+				return newConnectClientFn(nil, nil), func(_ *testing.T) {}
 			},
 			expectedError: ErrNotConnected,
 		},

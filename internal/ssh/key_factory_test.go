@@ -80,12 +80,12 @@ func TestKeyFactory_Create(t *testing.T) {
 		t.Run(tn, func(t *testing.T) {
 			factory := NewKeyFactory(test.NewNullLogger())
 
-			factory.(*keyFactory).generateEd25519Key = func(r io.Reader) (ed25519.PublicKey, ed25519.PrivateKey, error) {
+			factory.(*keyFactory).generateEd25519Key = func(_ io.Reader) (ed25519.PublicKey, ed25519.PrivateKey, error) {
 				return tt.mockedEd25519PubKey, tt.mockedEd25519PrivKey, tt.ed25519KeyError
 			}
 
 			if tt.publicKeyError != nil {
-				factory.(*keyFactory).newSSHPublicKey = func(k interface{}) (ssh.PublicKey, error) {
+				factory.(*keyFactory).newSSHPublicKey = func(_ interface{}) (ssh.PublicKey, error) {
 					return nil, tt.publicKeyError
 				}
 			}

@@ -125,10 +125,10 @@ func TestCustomExecuteRun(t *testing.T) {
 			setExpectationForExecuteScript(mockExecutor, shouldCallExecuteScript, tt)
 
 			run := new(RunCommand)
-			run.newMetadataManager = func(logger logging.Logger, directory string) task.MetadataManager {
+			run.newMetadataManager = func(_ logging.Logger, _ string) task.MetadataManager {
 				return mockMetadataManager
 			}
-			run.newExecutor = func(logger logging.Logger) executors.Executor {
+			run.newExecutor = func(_ logging.Logger) executors.Executor {
 				return mockExecutor
 			}
 			run.newFS = func() fs.FS {
