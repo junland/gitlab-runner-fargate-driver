@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -340,6 +341,121 @@ done
 
 			assert.NoError(t, err)
 			tt.assertOutput(t, out.String())
+		})
+	}
+}
+
+type temporaryError struct{}
+
+func (te *temporaryError) Error() string   { return "this too shall pass" }
+func (te *temporaryError) Temporary() bool { return true }
+func (te *temporaryError) Timeout() bool   { return false }
+
+type timeoutError struct{}
+
+func (te *timeoutError) Error() string   { return "too late" }
+func (te *timeoutError) Temporary() bool { return false }
+func (te *timeoutError) Timeout() bool   { return true }
+
+func Test_Retry(t *testing.T) {
+	attempts := 0
+	someErr := fmt.Errorf("blammo")
+	tempErr := temporaryError{}
+	toErr := timeoutError{}
+
+	tests := map[string]struct {
+		fn           func() error
+		wantError    error
+		shouldRetry  func(error) bool
+		wantAttempts int
+	}{
+		"immediate success": {
+			wantAttempts: 1,
+			fn: func() error {
+				attempts++
+				return nil
+			},
+		},
+		"eventual success": {
+			wantAttempts: 3,
+			fn: func() error {
+				attempts++
+				if attempts < 3 {
+					return someErr
+				}
+				return nil
+			},
+			shouldRetry: func(_ error) bool {
+				return true
+			},
+		},
+		"eventual failure": {
+			wantAttempts: 5,
+			wantError:    someErr,
+			fn: func() error {
+				attempts++
+				return someErr
+			},
+			shouldRetry: func(_ error) bool {
+				return true
+			},
+		},
+		"with non-retryable error": {
+			wantAttempts: 1,
+			wantError:    someErr,
+			fn: func() error {
+				attempts++
+				return someErr
+			},
+			shouldRetry: func(_ error) bool {
+				return false
+			},
+		},
+		"with temporary error": {
+			wantAttempts: 2,
+			wantError:    nil,
+			fn: func() error {
+				attempts++
+				if attempts < 2 {
+					return &tempErr
+				}
+				return nil
+			},
+			shouldRetry: isOpErrorRetryable,
+		},
+		"with timeout error": {
+			wantAttempts: 2,
+			wantError:    nil,
+			fn: func() error {
+				attempts++
+				if attempts < 2 {
+					return &toErr
+				}
+				return nil
+			},
+			shouldRetry: isOpErrorRetryable,
+		},
+
+		"with non opError error": {
+			wantAttempts: 1,
+			wantError:    someErr,
+			fn: func() error {
+				attempts++
+				return someErr
+			},
+			shouldRetry: isOpErrorRetryable,
+		},
+	}
+
+	e := executor{}
+
+	for name, tt := range tests {
+		attempts = 0
+		t.Run(name, func(t *testing.T) {
+			err := e.retry(5, 25*time.Millisecond, tt.fn, tt.shouldRetry)
+
+			assert.Equal(t, tt.wantError, err)
+			assert.Equal(t, tt.wantAttempts, attempts)
 		})
 	}
 }

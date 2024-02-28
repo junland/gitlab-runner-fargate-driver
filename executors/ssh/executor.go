@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
+	"github.com/jpillora/backoff"
 	"golang.org/x/crypto/ssh"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/executors"
@@ -61,7 +63,7 @@ func NewExecutor(logger logging.Logger) executors.Executor {
 func (s *executor) Execute(ctx context.Context, connection executors.ConnectionSettings, script []byte) (err error) {
 	s.logger.Debug("[Execute] Will connect to server and execute the specified shell script")
 
-	err = s.connect(connection)
+	err = s.retry(5, time.Second, func() error { return s.connect(connection) }, isOpErrorRetryable)
 	if err != nil {
 		return fmt.Errorf("connecting to server: %w", err)
 	}
@@ -82,6 +84,45 @@ func (s *executor) Execute(ctx context.Context, connection executors.ConnectionS
 	s.logger.Debug("[Execute] Successfully executed script")
 
 	return nil
+}
+
+// Corresponds to a subset https://pkg.go.dev/net#OpError returned by https://pkg.go.dev/net#Dialer.Dial
+type opError interface {
+	Temporary() bool
+	Timeout() bool
+}
+
+// retryableErrorFunc returns true if the specified error is temporary/ephemeral and the operation that returned that
+// error should be retried.
+type retryableErrorFunc func(error) bool
+
+// returns true IFF the error can be type asserted to opError AND they error is temporary or a timeout.
+func isOpErrorRetryable(err error) bool {
+	oerr, ok := err.(opError)
+	if !ok {
+		return false
+	}
+	return oerr.Temporary() || oerr.Timeout()
+}
+
+func (s *executor) retry(attempts int, delay time.Duration, fn func() error, shouldRetry retryableErrorFunc) error {
+	var err error
+	backoff := backoff.Backoff{
+		Min: delay,
+		Max: time.Minute,
+	}
+
+	for i := 0; i < attempts; i++ {
+		if err = fn(); err == nil {
+			return nil // success
+		}
+		// check for retryable errors
+		if !shouldRetry(err) {
+			return err
+		}
+		time.Sleep(backoff.Duration())
+	}
+	return err
 }
 
 func (s *executor) connect(connection executors.ConnectionSettings) error {
