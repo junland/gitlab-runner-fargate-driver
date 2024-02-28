@@ -207,7 +207,7 @@ func setLoggingToFile(ctx *cli.Context) error {
 		return err
 	}
 
-	closeLogFile = func(ctx *cli.Context) error {
+	closeLogFile = func(_ *cli.Context) error {
 		return logStorage.Close()
 	}
 
