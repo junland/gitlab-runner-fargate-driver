@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/jpillora/backoff"
 	"golang.org/x/crypto/ssh"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/executors"
@@ -87,6 +88,11 @@ func (s *executor) Execute(ctx context.Context, connection executors.ConnectionS
 
 func (s *executor) retry(attempts int, delay time.Duration, fn func() error, terminalErrs ...error) error {
 	var err error
+	backoff := backoff.Backoff{
+		Min: delay,
+		Max: time.Minute,
+	}
+
 	for i := 0; i < attempts; i++ {
 		if err = fn(); err == nil {
 			return nil // success
@@ -97,8 +103,7 @@ func (s *executor) retry(attempts int, delay time.Duration, fn func() error, ter
 				return err
 			}
 		}
-		time.Sleep(delay)
-		delay = delay * 2 // exponential backoff
+		time.Sleep(backoff.Duration())
 	}
 	return err
 }
