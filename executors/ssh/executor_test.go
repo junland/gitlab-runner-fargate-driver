@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -345,16 +346,29 @@ done
 	}
 }
 
+type temporaryError struct{}
+
+func (te *temporaryError) Error() string   { return "this too shall pass" }
+func (te *temporaryError) Temporary() bool { return true }
+func (te *temporaryError) Timeout() bool   { return false }
+
+type timeoutError struct{}
+
+func (te *timeoutError) Error() string   { return "too late" }
+func (te *timeoutError) Temporary() bool { return false }
+func (te *timeoutError) Timeout() bool   { return true }
+
 func Test_Retry(t *testing.T) {
 	attempts := 0
 	someErr := fmt.Errorf("blammo")
-	specificError := errInvalidPrivateKey{inner: someErr}
+	tempErr := temporaryError{}
+	toErr := timeoutError{}
 
 	tests := map[string]struct {
-		fn            func() error
-		wantError     error
-		terminalError error
-		wantAttempts  int
+		fn           func() error
+		wantError    error
+		shouldRetry  func(error) bool
+		wantAttempts int
 	}{
 		"immediate success": {
 			wantAttempts: 1,
@@ -372,6 +386,9 @@ func Test_Retry(t *testing.T) {
 				}
 				return nil
 			},
+			shouldRetry: func(_ error) bool {
+				return true
+			},
 		},
 		"eventual failure": {
 			wantAttempts: 5,
@@ -380,24 +397,74 @@ func Test_Retry(t *testing.T) {
 				attempts++
 				return someErr
 			},
+			shouldRetry: func(_ error) bool {
+				return true
+			},
 		},
-		"with terminal error": {
-			wantAttempts:  1,
-			wantError:     &specificError,
-			terminalError: &specificError,
+		"with non-retryable error": {
+			wantAttempts: 1,
+			wantError:    someErr,
 			fn: func() error {
 				attempts++
-				return &specificError
+				return someErr
 			},
+			shouldRetry: func(_ error) bool {
+				return false
+			},
+		},
+		"with temporary error": {
+			wantAttempts: 2,
+			wantError:    nil,
+			fn: func() error {
+				attempts++
+				if attempts < 2 {
+					return &tempErr
+				}
+				return nil
+			},
+			shouldRetry: isOpErrorRetryable,
+		},
+		"with timeout error": {
+			wantAttempts: 2,
+			wantError:    nil,
+			fn: func() error {
+				attempts++
+				if attempts < 2 {
+					return &toErr
+				}
+				return nil
+			},
+			shouldRetry: isOpErrorRetryable,
+		},
+		"with connection refused error": {
+			wantAttempts: 2,
+			wantError:    nil,
+			fn: func() error {
+				attempts++
+				if attempts < 2 {
+					return syscall.ECONNREFUSED
+				}
+				return nil
+			},
+			shouldRetry: isOpErrorRetryable,
+		},
+		"with non opError error": {
+			wantAttempts: 1,
+			wantError:    someErr,
+			fn: func() error {
+				attempts++
+				return someErr
+			},
+			shouldRetry: isOpErrorRetryable,
 		},
 	}
 
-	e := executor{}
+	e := &executor{logger: createTestLogger()}
 
 	for name, tt := range tests {
 		attempts = 0
 		t.Run(name, func(t *testing.T) {
-			err := e.retry(5, 25*time.Millisecond, tt.fn, tt.terminalError)
+			err := e.retry(5, 25*time.Millisecond, tt.fn, tt.shouldRetry)
 
 			assert.Equal(t, tt.wantError, err)
 			assert.Equal(t, tt.wantAttempts, attempts)

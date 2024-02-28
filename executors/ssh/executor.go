@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"syscall"
 	"time"
 
 	"github.com/jpillora/backoff"
@@ -65,7 +66,7 @@ const sshDialMaxRetry = 5
 func (s *executor) Execute(ctx context.Context, connection executors.ConnectionSettings, script []byte) (err error) {
 	s.logger.Debug("[Execute] Will connect to server and execute the specified shell script")
 
-	err = s.retry(sshDialMaxRetry, time.Second, func() error { return s.connect(connection) }, &errInvalidPrivateKey{})
+	err = s.retry(sshDialMaxRetry, time.Second, func() error { return s.connect(connection) }, isOpErrorRetryable)
 	if err != nil {
 		return fmt.Errorf("connecting to server: %w", err)
 	}
@@ -88,7 +89,29 @@ func (s *executor) Execute(ctx context.Context, connection executors.ConnectionS
 	return nil
 }
 
-func (s *executor) retry(attempts int, delay time.Duration, fn func() error, terminalErrs ...error) error {
+// Corresponds to a subset https://pkg.go.dev/net#OpError returned by https://pkg.go.dev/net#Dialer.Dial
+type opError interface {
+	Temporary() bool
+	Timeout() bool
+}
+
+// retryableErrorFunc returns true if the specified error is temporary/ephemeral and the operation that returned that
+// error should be retried.
+type retryableErrorFunc func(error) bool
+
+// returns true IFF the error can be type asserted to opError AND they error is temporary or a timeout.
+func isOpErrorRetryable(err error) bool {
+	if errors.Is(err, syscall.ECONNREFUSED) {
+		return true
+	}
+	oerr, ok := err.(opError)
+	if !ok {
+		return false
+	}
+	return oerr.Temporary() || oerr.Timeout()
+}
+
+func (s *executor) retry(attempts int, delay time.Duration, fn func() error, shouldRetry retryableErrorFunc) error {
 	var err error
 	backoff := backoff.Backoff{
 		Min: delay,
@@ -99,12 +122,12 @@ func (s *executor) retry(attempts int, delay time.Duration, fn func() error, ter
 		if err = fn(); err == nil {
 			return nil // success
 		}
-		// check for terminal errors (i.e. don't retry on these errors)
-		for _, e := range terminalErrs {
-			if errors.Is(err, e) {
-				return err
-			}
+		// check for retryable errors
+		if !shouldRetry(err) {
+			s.logger.WithField("error", err).Debug("will not retry operation")
+			return err
 		}
+		s.logger.WithField("error", err).Debug("will retry operation")
 		time.Sleep(backoff.Duration())
 	}
 	return err
