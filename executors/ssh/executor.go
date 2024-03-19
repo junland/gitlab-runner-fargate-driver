@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"syscall"
+	"time"
 
+	"github.com/jpillora/backoff"
 	"golang.org/x/crypto/ssh"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/executors"
@@ -58,10 +61,12 @@ func NewExecutor(logger logging.Logger) executors.Executor {
 	return executor
 }
 
-func (s *executor) Execute(ctx context.Context, connection executors.ConnectionSettings, script []byte) (err error) {
-	s.logger.Debug("[Execute] Will connect to server and execute the specified shell script")
+const sshDialMaxRetry = 5
 
-	err = s.connect(connection)
+func (s *executor) Execute(ctx context.Context, connection executors.ConnectionSettings, script []byte) (err error) {
+	s.logger.Info("[Execute] Will connect to server and execute the specified shell script")
+
+	err = s.retry(sshDialMaxRetry, time.Second, func() error { return s.connect(connection) }, isOpErrorRetryable)
 	if err != nil {
 		return fmt.Errorf("connecting to server: %w", err)
 	}
@@ -82,6 +87,52 @@ func (s *executor) Execute(ctx context.Context, connection executors.ConnectionS
 	s.logger.Debug("[Execute] Successfully executed script")
 
 	return nil
+}
+
+// Corresponds to a subset https://pkg.go.dev/net#OpError returned by https://pkg.go.dev/net#Dialer.Dial
+type opError interface {
+	Temporary() bool
+	Timeout() bool
+}
+
+// retryableErrorFunc returns true if the specified error is temporary/ephemeral and the operation that returned that
+// error should be retried.
+type retryableErrorFunc func(error) bool
+
+// isOpErrorRetryable returns true if the error is ECONNREFUSED or it can be type asserted to opError and they error is
+// temporary or a timeout.
+func isOpErrorRetryable(err error) bool {
+	if errors.Is(err, syscall.ECONNREFUSED) {
+		return true
+	}
+	oerr, ok := err.(opError)
+	if ok {
+		return oerr.Temporary() || oerr.Timeout()
+	}
+	return false
+}
+
+func (s *executor) retry(attempts int, delay time.Duration, fn func() error, shouldRetry retryableErrorFunc) error {
+	backoff := backoff.Backoff{
+		Min: delay,
+		Max: time.Minute,
+	}
+
+	var err error
+	for i := 0; i < attempts; i++ {
+		err = fn()
+		if err == nil {
+			return nil
+		}
+
+		if !shouldRetry(err) {
+			s.logger.WithField("error", err).Info("will not retry operation")
+			return err
+		}
+		s.logger.WithField("error", err).Info("will retry operation")
+		time.Sleep(backoff.Duration())
+	}
+	return err
 }
 
 func (s *executor) connect(connection executors.ConnectionSettings) error {
