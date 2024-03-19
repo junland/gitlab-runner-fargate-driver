@@ -16,16 +16,23 @@ Runner](https://docs.gitlab.com/runner/install/) 12.4 or higher, then:
 
 1. Download one of the binaries for your system:
 
+As of version `0.4.0` the main release page is <https://gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/-/releases>
+
    ```sh
    # Linux amd64
-   sudo curl -L --output /etc/gitlab-runner/fargate/fargate https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com/latest/fargate-linux-amd64
+   sudo curl -L --output /etc/gitlab-runner/fargate/fargate https://gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/-/releases/permalink/latest/fargate-linux-amd64
    ```
 
    The full list of available binaries can be found at
-   <https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com/latest/index.html>
+   <https://gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/-/releases/permalink/latest>
 
    To install a specific version, replace `latest` in the above urls with a
    [stable or RC release](https://gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/-/releases).
+
+   Note that releases are still available at <https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com> but will
+   be phased out over time. Example URLs are
+   <https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com/latest/index.html> and
+   <https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com/v0.2.0/index.html>
 
 1. On Linux/Unix give execute permissions to the driver:
 
