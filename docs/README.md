@@ -20,7 +20,7 @@ As of version `0.4.0` the main release page is <https://gitlab.com/gitlab-org/ci
 
    ```sh
    # Linux amd64
-   sudo curl -L --output /etc/gitlab-runner/fargate/fargate https://gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/-/releases/permalink/latest/fargate-linux-amd64
+   sudo curl -L --output /etc/gitlab-runner/fargate/fargate https://gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/-/releases/permalink/latest/downloads/fargate_0.4.0_linux_amd64.tar.gz
    ```
 
    The full list of available binaries can be found at
