@@ -131,7 +131,7 @@ LogFormat = "text"
 
 ### The `[Fargate]` section
 
-| Settings         | Type   | Required | Default | Description                                                                                                                                                                                                                   |
+| Setting         | Type   | Required | Default | Description                                                                                                                                                                                                                   |
 | ---------------- | ------ | -------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Cluster`        | string | Yes      | - |The AWS cluster name where the tasks should be started.                                                                                                                                                                       |
 | `Region`         | string | Yes      | - |The AWS region to send requests to.                                                                                                                                                                                           |
@@ -142,7 +142,8 @@ LogFormat = "text"
 | `UsePublicIP` | bool   | No       | false |This flag dictates whether the the runner should use the public IP address to communicate with Fargate tasks.|
 | `PlatformVersion` | string   | No      |  LATEST |Fargate Platform Version. See the list of [available versions](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/platform_versions.html). Note that this setting is overriden if a different value is provided by the `platform-version` command line argument or by the `CUSTOM_ENV_FARGATE_PLATFORM_VERSION` environment variable. |
 | `PropagateTags`  | bool   | No      | false |When set to true, the tags from the associated the task definition will be propagated to the executing task. |
-| `EvaluateTaskHealth` | bool | No | false |When set to true, the driver will evaluate the task health until it becomes 'healthy' before continuing. Note that this setting is overriden if a different value is provided by the `evaluate-task-health` command line argument or by the `CUSTOM_ENV_FARGATE_EVALUATE_TASK_HEALTH` environment variable. Enabling this option requires that your `Container Definition` specify a healthcheck. For more information on how to configure a healthcheck, refer to the [Dockerfile reference](https://docs.docker.com/engine/reference/builder/#healthcheck) and the [AWS HealthCheck API reference](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_HealthCheck.html).
+| `EvaluateTaskHealth` | bool | No | false |When set to true, the driver will evaluate the task health until it becomes 'healthy' before continuing. Note that this setting is overriden if a different value is provided by the `evaluate-task-health` command line argument or by the `CUSTOM_ENV_FARGATE_EVALUATE_TASK_HEALTH` environment variable. Enabling this option requires that your `Container Definition` specify a healthcheck. For more information on how to configure a healthcheck, refer to the [Dockerfile reference](https://docs.docker.com/engine/reference/builder/#healthcheck) and the [AWS HealthCheck API reference](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_HealthCheck.html). |
+| `EnableExecuteCommand` | bool | No | false |When set to true, starts the ECS task with the `enableExecuteCommand` flag enabled. Read more in the ECS [RunTask](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_RunTask.html) documentation. Also see important [note](#enableexecutecommand) below.
 
 #### The `[Fargate.TaskHealthWaitConfig]` section
 
@@ -243,6 +244,26 @@ Evaluation logic for communication between the Gitlab Runner and the Fargate tas
   Port = 22
 ```
 
+### EnableExecuteCommand
+
+This option enables the user to "step into" the running CI container (similar to the [docker exec](https://docs.docker.com/reference/cli/docker/container/exec/) command).
+
+It's mainly useful for troubleshooting purposes and it's not recommended to leave it enabled as there are security implications for doing so.
+
+As an example you can add a wait/sleep in your CI configuration and then run
+
+```sh
+aws ecs execute-command \
+  --region "${AWS_REGION}" \
+  --cluster "${cluster}" \
+  --task "${task_arn}" \
+  --container "ci-coordinator" \
+  --command "/bin/bash" \
+  --interactive
+```
+
+to open an interactive shell. You can then use that shell to inspect environment variables, the filesystem, etc.
+
 ## Example
 
 Below is an example of how to use the AWS Fargate driver, and how to configure
@@ -321,6 +342,7 @@ LogFormat = "text"
   TaskDefinition = "fargateExecutor:1"
   EnablePublicIP = false
   UsePublicIP = false
+  EnableExecuteCommand = false
 
 [TaskMetadata]
   Directory = "/etc/gitlab-runner/metadata"

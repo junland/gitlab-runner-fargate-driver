@@ -69,14 +69,15 @@ func TestPrepareCommand_CustomExecute(t *testing.T) {
 	defer cancel()
 
 	testFargateConfig := config.Fargate{
-		Cluster:            "cluster",
-		Region:             "region",
-		Subnet:             "subnet",
-		SecurityGroup:      "security-group",
-		TaskDefinition:     "task-definition",
-		EnablePublicIP:     true,
-		UsePublicIP:        true,
-		EvaluateTaskHealth: true,
+		Cluster:              "cluster",
+		Region:               "region",
+		Subnet:               "subnet",
+		SecurityGroup:        "security-group",
+		TaskDefinition:       "task-definition",
+		EnablePublicIP:       true,
+		UsePublicIP:          true,
+		EvaluateTaskHealth:   true,
+		EnableExecuteCommand: true,
 	}
 	testMetadataConfig := config.TaskMetadata{
 		Directory: "directory",
@@ -296,6 +297,7 @@ func setExpectationForFargateRunTask(mockAwsFargate *aws.MockFargate, testParams
 		EnvironmentVariables: map[string]string{
 			"SSH_PUBLIC_KEY": string(testParams.keyPair.PublicKey),
 		},
+		EnableExecuteCommand: testParams.fargateConfig.EnableExecuteCommand,
 	}
 
 	mockAwsFargate.On(

@@ -11,6 +11,7 @@ LogFormat = "text"
     EnablePublicIP = true
     UsePublicIP = false
     PlatformVersion = "LATEST"
+    EnableExecuteCommand = true
 
 [TaskMetadata]
     Directory = "/fargate-driver/"

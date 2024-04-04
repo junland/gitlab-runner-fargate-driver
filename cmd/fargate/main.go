@@ -26,11 +26,12 @@ type globalFlags struct {
 
 	ConfigFile string `long:"config" description:"Path to configuration file"`
 
-	EvaluateTaskHealth *bool  `long:"evaluate-task-health" description:"Whether to evaluate task health" env:"CUSTOM_ENV_FARGATE_EVALUATE_TASK_HEALTH"`
-	TaskDefinition     string `long:"task-def" description:"Task definition" env:"CUSTOM_ENV_FARGATE_TASK_DEFINITION"`
-	PlatformVersion    string `long:"platform-version" description:"Fargate platform version" env:"CUSTOM_ENV_FARGATE_PLATFORM_VERSION"`
-	Subnet             string `long:"subnet" description:"Task level subnets" env:"CUSTOM_ENV_FARGATE_SUBNET"`
-	SecurityGroup      string `long:"security-group" description:"Task level security groups" env:"CUSTOM_ENV_FARGATE_SECURITY_GROUP"`
+	EvaluateTaskHealth   *bool  `long:"evaluate-task-health" description:"Whether to evaluate task health" env:"CUSTOM_ENV_FARGATE_EVALUATE_TASK_HEALTH"`
+	TaskDefinition       string `long:"task-def" description:"Task definition" env:"CUSTOM_ENV_FARGATE_TASK_DEFINITION"`
+	PlatformVersion      string `long:"platform-version" description:"Fargate platform version" env:"CUSTOM_ENV_FARGATE_PLATFORM_VERSION"`
+	Subnet               string `long:"subnet" description:"Task level subnets" env:"CUSTOM_ENV_FARGATE_SUBNET"`
+	SecurityGroup        string `long:"security-group" description:"Task level security groups" env:"CUSTOM_ENV_FARGATE_SECURITY_GROUP"`
+	EnableExecuteCommand *bool  `long:"enable-execute-command" description:"Whether to enable ECS Exec" env:"CUSTOM_ENV_FARGATE_ENABLE_EXECUTE_COMMAND"`
 
 	RoleARN     string `long:"role-arn" description:"Role to assume with STS" env:"CUSTOM_ENV_ROLE_ARN"`
 	SessionVars string `long:"session-vars" description:"Comma separated list of env variables to add to STS session as request tags" env:"CUSTOM_ENV_SESSION_VARS"`
@@ -148,6 +149,10 @@ func loadCliArgsEnvVars(ctx *cli.Context) error {
 
 	if global.SessionVars != "" {
 		config.STSConfiguration.SessionVars = global.SessionVars
+	}
+
+	if global.EnableExecuteCommand != nil {
+		config.Fargate.EnableExecuteCommand = *global.EnableExecuteCommand
 	}
 
 	ctx.SetConfig(config)
