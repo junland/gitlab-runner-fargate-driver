@@ -4,7 +4,8 @@ go 1.21
 
 require (
 	github.com/BurntSushi/toml v1.3.2
-	github.com/aws/aws-sdk-go v1.29.19
+	github.com/aws/aws-sdk-go v1.51.14
+	github.com/jpillora/backoff v1.0.0
 	github.com/jstemmer/go-junit-report v0.9.1
 	github.com/mitchellh/gox v1.0.1
 	github.com/sirupsen/logrus v1.9.0
@@ -20,8 +21,7 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/hashicorp/go-version v1.0.0 // indirect
-	github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af // indirect
-	github.com/jpillora/backoff v1.0.0 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/mitchellh/iochan v1.0.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
