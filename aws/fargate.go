@@ -62,6 +62,8 @@ type TaskSettings struct {
 	EnvironmentVariables map[string]string
 	// Indicates whether to propagate the tags from the task definition to the running task
 	PropagateTags bool
+	// Indidcates whether ECS Exec is enabled
+	EnableExecuteCommand bool
 }
 
 // ConnectionSettings centralizes attributes related to the task's network configuration
@@ -201,8 +203,9 @@ func (a *awsFargate) RunTask(ctx context.Context, taskSettings TaskSettings, con
 				AssignPublicIp: &publicIP,
 			},
 		},
-		Overrides:       a.processEnvVariablesToInject(taskSettings.EnvironmentVariables),
-		PlatformVersion: platformVersion,
+		Overrides:            a.processEnvVariablesToInject(taskSettings.EnvironmentVariables),
+		PlatformVersion:      platformVersion,
+		EnableExecuteCommand: &taskSettings.EnableExecuteCommand,
 	}
 
 	if taskSettings.PropagateTags {

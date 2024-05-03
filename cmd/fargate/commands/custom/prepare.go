@@ -130,6 +130,7 @@ func (c *PrepareCommand) startNewFargateTask(ctx *cli.Context, publicKey []byte)
 		EnvironmentVariables: map[string]string{
 			"SSH_PUBLIC_KEY": string(publicKey),
 		},
+		EnableExecuteCommand: c.cfg.Fargate.EnableExecuteCommand,
 	}
 
 	connection := aws.ConnectionSettings{
