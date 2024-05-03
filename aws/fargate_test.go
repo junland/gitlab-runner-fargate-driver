@@ -36,16 +36,17 @@ func TestRunTask(t *testing.T) {
 	taskDefinition := "task-def"
 
 	tests := map[string]struct {
-		initializeAdapter  bool
-		environmentVars    map[string]string
-		platformVersion    string
-		awsError           error
-		expectedARN        string
-		expectedError      error
-		expectedRunFailure string
-		propagateTags      bool
-		taskDefinition     string
-		clusterName        string
+		initializeAdapter    bool
+		environmentVars      map[string]string
+		platformVersion      string
+		awsError             error
+		expectedARN          string
+		expectedError        error
+		expectedRunFailure   string
+		propagateTags        bool
+		taskDefinition       string
+		clusterName          string
+		enableExecuteCommand bool
 	}{
 		"Fargate API returning success": {
 			initializeAdapter:  true,
@@ -96,6 +97,14 @@ func TestRunTask(t *testing.T) {
 			clusterName:    cluster,
 			taskDefinition: taskDefinition,
 		},
+		"Fargate API returning success when execute command enabled": {
+			initializeAdapter:    true,
+			expectedARN:          taskARN,
+			expectedRunFailure:   "",
+			clusterName:          cluster,
+			taskDefinition:       taskDefinition,
+			enableExecuteCommand: true,
+		},
 	}
 
 	for tn, tt := range tests {
@@ -124,6 +133,7 @@ func TestRunTask(t *testing.T) {
 				PlatformVersion:      tt.platformVersion,
 				EnvironmentVariables: tt.environmentVars,
 				PropagateTags:        tt.propagateTags,
+				EnableExecuteCommand: tt.enableExecuteCommand,
 			}
 
 			if tt.initializeAdapter {
@@ -149,7 +159,8 @@ func TestRunTask(t *testing.T) {
 								((tt.platformVersion != "" && *rti.PlatformVersion == tt.platformVersion) || rti.PlatformVersion == nil) &&
 								*rti.NetworkConfiguration.AwsvpcConfiguration.AssignPublicIp == "ENABLED" &&
 								*rti.NetworkConfiguration.AwsvpcConfiguration.Subnets[0] == "subnet-name" &&
-								*rti.NetworkConfiguration.AwsvpcConfiguration.SecurityGroups[0] == "security-group-name"
+								*rti.NetworkConfiguration.AwsvpcConfiguration.SecurityGroups[0] == "security-group-name" &&
+								((tt.enableExecuteCommand && *rti.EnableExecuteCommand == tt.enableExecuteCommand) || *rti.EnableExecuteCommand == false)
 						}),
 					).
 						Return(output, tt.awsError).

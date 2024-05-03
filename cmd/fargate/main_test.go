@@ -17,6 +17,7 @@ func TestLoadCliArgsEnvVars(t *testing.T) {
 	originalSecurityGroup := "sg-123456"
 	originalRoleARN := "arn:aws:iam::xxxxxxxxx:role/role-name"
 	originalSessionVars := "CI_PROJECT_ID"
+	originalEnableExecuteCommand := false
 	overrideTaskDefinition := "another-task-def:1"
 	overridePlatformVersion := "1.4.0"
 	overrideSubnets := "subnet-1"         //,subnet-2"
@@ -25,6 +26,8 @@ func TestLoadCliArgsEnvVars(t *testing.T) {
 	expectedOverrideSecurityGroups := overrideSecurityGroups
 	overrideRoleARN := "arn:aws:iam::xxxxxxxxx:role/another-role-name"
 	overrideSessionVars := "CI_PROJECT_ID,CI_PROJECT_PATH"
+	overrideEnableExecuteCommand := true
+	expectedOverrideExecutecommand := overrideEnableExecuteCommand
 
 	tests := map[string]struct {
 		taskDefinitionOverrideValue  string
@@ -33,12 +36,14 @@ func TestLoadCliArgsEnvVars(t *testing.T) {
 		securityGroupOverrideValue   string
 		roleARNOverrideValue         string
 		sessionVarsOverrideValue     string
+		executeCommandOverrideValue  *bool
 		expectedTaskDefinition       string
 		expectedPlatformVersion      string
 		expectedSubnet               string
 		expectedSecurityGroup        string
 		expectedRoleARN              string
 		expectedSessionVars          string
+		expectedEnableExecuteCommand bool
 	}{
 		"Should keep original values if nothing received by command line or env variable": {
 			taskDefinitionOverrideValue:  "",
@@ -51,6 +56,7 @@ func TestLoadCliArgsEnvVars(t *testing.T) {
 			expectedSecurityGroup:        originalSecurityGroup,
 			expectedRoleARN:              originalRoleARN,
 			expectedSessionVars:          originalSessionVars,
+			expectedEnableExecuteCommand: originalEnableExecuteCommand,
 		},
 		"Should override task definition if received by command line or env variable": {
 			taskDefinitionOverrideValue: overrideTaskDefinition,
@@ -113,12 +119,14 @@ func TestLoadCliArgsEnvVars(t *testing.T) {
 			platformVersionOverrideValue: overridePlatformVersion,
 			subnetOverrideValue:          overrideSubnets,
 			securityGroupOverrideValue:   overrideSecurityGroups,
+			executeCommandOverrideValue:  &overrideEnableExecuteCommand,
 			expectedSubnet:               expectedOverrideSubnets,
 			expectedSecurityGroup:        expectedOverrideSecurityGroups,
 			expectedTaskDefinition:       overrideTaskDefinition,
 			expectedPlatformVersion:      overridePlatformVersion,
 			expectedRoleARN:              originalRoleARN,
 			expectedSessionVars:          originalSessionVars,
+			expectedEnableExecuteCommand: expectedOverrideExecutecommand,
 		},
 		"Should override role arn if received by command line or env variable": {
 			roleARNOverrideValue:    overrideRoleARN,
@@ -139,6 +147,16 @@ func TestLoadCliArgsEnvVars(t *testing.T) {
 			expectedRoleARN:          overrideRoleARN,
 			expectedSessionVars:      overrideSessionVars,
 		},
+		"Should override enable execute command if received by command line or env variable": {
+			executeCommandOverrideValue:  &overrideEnableExecuteCommand,
+			expectedSubnet:               expectedOverrideSubnets,
+			expectedSecurityGroup:        expectedOverrideSecurityGroups,
+			expectedTaskDefinition:       originalTaskDefinition,
+			expectedPlatformVersion:      originalPlatformVersion,
+			expectedRoleARN:              originalRoleARN,
+			expectedSessionVars:          originalSessionVars,
+			expectedEnableExecuteCommand: overrideEnableExecuteCommand,
+		},
 	}
 
 	for tn, tt := range tests {
@@ -149,12 +167,14 @@ func TestLoadCliArgsEnvVars(t *testing.T) {
 			oldSecurityGroupGlobalValue := global.SecurityGroup
 			oldRoleARNGlobalValue := global.RoleARN
 			oldVariablesGlobalValue := global.SessionVars
+			oldEnableExecuteCommandGlobalValue := global.EnableExecuteCommand
 			global.TaskDefinition = tt.taskDefinitionOverrideValue
 			global.PlatformVersion = tt.platformVersionOverrideValue
 			global.Subnet = tt.subnetOverrideValue
 			global.SecurityGroup = tt.securityGroupOverrideValue
 			global.RoleARN = tt.roleARNOverrideValue
 			global.SessionVars = tt.sessionVarsOverrideValue
+			global.EnableExecuteCommand = tt.executeCommandOverrideValue
 
 			defer func() {
 				global.TaskDefinition = oldTaskDefGlobalValue
@@ -163,6 +183,7 @@ func TestLoadCliArgsEnvVars(t *testing.T) {
 				global.SecurityGroup = oldSecurityGroupGlobalValue
 				global.RoleARN = oldRoleARNGlobalValue
 				global.SessionVars = oldVariablesGlobalValue
+				global.EnableExecuteCommand = oldEnableExecuteCommandGlobalValue
 			}()
 
 			testContext := createCliContextForTests(originalTaskDefinition, originalPlatformVersion, originalSubnet,
@@ -173,6 +194,7 @@ func TestLoadCliArgsEnvVars(t *testing.T) {
 			assert.Equal(t, originalSecurityGroup, testContext.Config().Fargate.SecurityGroup)
 			assert.Equal(t, originalRoleARN, testContext.Config().STSConfiguration.RoleARN)
 			assert.Equal(t, originalSessionVars, testContext.Config().STSConfiguration.SessionVars)
+			assert.Equal(t, originalEnableExecuteCommand, testContext.Config().Fargate.EnableExecuteCommand)
 
 			err := loadCliArgsEnvVars(testContext)
 			assert.NoError(t, err)
@@ -182,6 +204,7 @@ func TestLoadCliArgsEnvVars(t *testing.T) {
 			assert.Equal(t, tt.expectedSecurityGroup, testContext.Config().Fargate.SecurityGroup)
 			assert.Equal(t, tt.expectedRoleARN, testContext.Config().STSConfiguration.RoleARN)
 			assert.Equal(t, tt.expectedSessionVars, testContext.Config().STSConfiguration.SessionVars)
+			assert.Equal(t, tt.expectedEnableExecuteCommand, testContext.Config().Fargate.EnableExecuteCommand)
 		})
 	}
 }

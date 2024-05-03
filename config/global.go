@@ -36,6 +36,8 @@ type Fargate struct {
 	EvaluateTaskHealth   bool
 	TaskWaitConfig       TaskWaitConfig
 	TaskHealthWaitConfig TaskHealthWaitConfig
+	// EnableExecuteCommand indidcates whether ECS Exec is enabled
+	EnableExecuteCommand bool
 }
 
 func (f *Fargate) Subnets() []*string {
@@ -105,6 +107,7 @@ func LoadFromFile(file string) (Global, error) {
 				Retries:       AWSWaitTaskHealthDefaultRetries,
 				CheckInterval: AWSWaitTaskHealthDefaultCheckInterval,
 			},
+			EnableExecuteCommand: false,
 		},
 	}
 
