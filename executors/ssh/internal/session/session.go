@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/runner"
+
 	"golang.org/x/crypto/ssh"
 )
 
@@ -32,7 +34,7 @@ func (s *defaultSession) ExecuteScript(ctx context.Context, script string) error
 	select {
 	case err := <-waitErr:
 		if err != nil {
-			return fmt.Errorf("executing SSH command: %w", err)
+			return runner.NewScriptExecError(fmt.Errorf("executing SSH command: %w", err))
 		}
 	case <-ctx.Done():
 		err := s.internal.Signal(ssh.SIGINT)

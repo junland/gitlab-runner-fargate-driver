@@ -8,29 +8,29 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var errTest = errors.New("test error")
+var errTestBuild = errors.New("test error")
 
-func TestErrBuildFailure_Error(t *testing.T) {
-	err := NewBuildFailureError(errTest)
+func TestErrBuildFailureError(t *testing.T) {
+	err := NewBuildFailureError(errTestBuild)
 	assert.EqualError(t, err, "build failure")
 }
 
-func TestErrBuildFailure_Format(t *testing.T) {
-	err := NewBuildFailureError(errTest)
+func TestErrBuildFailureFormat(t *testing.T) {
+	err := NewBuildFailureError(errTestBuild)
 	output := fmt.Sprintf("%v", err)
 
 	assert.Equal(t, "build failure: test error", output)
 }
 
-func TestErrBuildFailure_Is(t *testing.T) {
-	err := NewBuildFailureError(errTest)
+func TestErrBuildFailureIs(t *testing.T) {
+	err := NewBuildFailureError(errTestBuild)
 
 	assert.True(t, err.Is(&BuildFailureError{}))
 	assert.False(t, err.Is(errors.New("test")))
 }
 
-func TestErrBuildFailure_Unwrap(t *testing.T) {
-	err := NewBuildFailureError(errTest)
+func TestErrBuildFailureUnwrap(t *testing.T) {
+	err := NewBuildFailureError(errTestBuild)
 
-	assert.Equal(t, errTest, err.Unwrap())
+	assert.Equal(t, errTestBuild, err.Unwrap())
 }

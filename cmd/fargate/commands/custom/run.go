@@ -11,6 +11,7 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/cli"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/fs"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/runner"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/task"
 )
 
@@ -164,7 +165,11 @@ func (c *RunCommand) executeScriptOnTaskContainer(ctx context.Context, taskData 
 
 	err := c.sshExecutor.Execute(runCtx, settings, script)
 	if err != nil {
-		return fmt.Errorf("executing script on container with IP %q: %w", taskData.ContainerIP, err)
+		rtnErr := fmt.Errorf("executing script on container with IP %q: %w", taskData.ContainerIP, err)
+		if errors.Is(rtnErr, &runner.ScriptExecError{}) {
+			rtnErr = runner.NewBuildFailureError(rtnErr)
+		}
+		return rtnErr
 	}
 
 	return nil
