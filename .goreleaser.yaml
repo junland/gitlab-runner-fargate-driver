@@ -23,3 +23,6 @@ builds:
       - -X gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate.BUILT={{ .Date }}
     main: ./cmd/fargate
     binary: "{{ .ProjectName }}"
+
+gitlab_urls:
+  use_package_registry: true
