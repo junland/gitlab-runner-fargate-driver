@@ -48,47 +48,46 @@ type keyFactory struct {
 
 	// Functions encapsulated to make easier creating unit tests
 	generateECDSAKey func(c elliptic.Curve, rand io.Reader) (*ecdsa.PrivateKey, error)
-	newSSHPublicKey    func(key interface{}) (ssh.PublicKey, error)
+	newSSHPublicKey  func(key interface{}) (ssh.PublicKey, error)
 }
 
 // NewKeyFactory instantiates a concrete instance of KeyFactory
 func NewKeyFactory(logger logging.Logger) KeyFactory {
 	return &keyFactory{
-		logger:             logger,
+		logger:           logger,
 		generateECDSAKey: ecdsa.GenerateKey,
-		newSSHPublicKey:    ssh.NewPublicKey,
+		newSSHPublicKey:  ssh.NewPublicKey,
 	}
 }
 
 // Create generates an ecdsa Public and Private key pair
 func (r *keyFactory) Create() (*KeyPair, error) {
 	r.logger.Debug("[Create] Will generate new key pair")
-    privateKey, err := r.generateECDSAKey(elliptic.P256(), rand.Reader)
+	privateKey, err := r.generateECDSAKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, fmt.Errorf("generating the private and public key: %w", err)
 	}
-    var (
-        bytes     []byte
-        publicKey ssh.PublicKey
-    )
+	var (
+		bytes     []byte
+		publicKey ssh.PublicKey
+	)
 
 	publicKey, err = ssh.NewPublicKey(privateKey.Public())
 	if err != nil {
 		return nil, fmt.Errorf("generating the private and public key: %w", err)
 	}
 
-    pubBytes := ssh.MarshalAuthorizedKey(publicKey)
+	pubBytes := ssh.MarshalAuthorizedKey(publicKey)
 
-    bytes, err = x509.MarshalECPrivateKey(privateKey)
+	bytes, err = x509.MarshalECPrivateKey(privateKey)
 	if err != nil {
 		return nil, fmt.Errorf("converting the the private key to PKCS8 format: %w", err)
 	}
 
-    privBytes := pem.EncodeToMemory(&pem.Block{
-        Type: "EC PRIVATE KEY",
-        Bytes: bytes,
-    })
-
+	privBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "EC PRIVATE KEY",
+		Bytes: bytes,
+	})
 
 	keyPair := &KeyPair{
 		PublicKey:  pubBytes,
