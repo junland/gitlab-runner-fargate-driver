@@ -31,10 +31,10 @@ func TestKeyFactory_Create(t *testing.T) {
 	testErrorecdsaInternal := new(ErrInvalidPrivateKey)
 	privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
-
+    publicKey, err = ssh.NewPublicKey(privateKey.Public())
 	tests := map[string]struct {
 		mockedecdsaPrivKey ecdsa.PrivateKey
-		mockedecdsaPubKey  privKey.Public()
+		mockedecdsaPubKey  publicKey
 		ecdsaKeyError      error
 		publicKeyError       error
 		expectedError        error
