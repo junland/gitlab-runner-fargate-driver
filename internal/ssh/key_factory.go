@@ -14,8 +14,7 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
 )
 
-
-// ErrInvalidPrivateKey will be used to wrap an Ed25519 internal error
+// ErrInvalidPrivateKey will be used to wrap an ecdsa internal error
 type ErrInvalidPrivateKey struct {
 	inner error
 }
@@ -61,7 +60,7 @@ func NewKeyFactory(logger logging.Logger) KeyFactory {
 	}
 }
 
-// Create generates an ed25519 Public and Private key pair
+// Create generates an ecdsa Public and Private key pair
 func (r *keyFactory) Create() (*KeyPair, error) {
 	r.logger.Debug("[Create] Will generate new key pair")
     privateKey, err := r.generateECDSAKey(elliptic.P256(), rand.Reader)
