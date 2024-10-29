@@ -1,7 +1,7 @@
 package ssh
 
 import (
-	"crypto/ed25519"
+	"crypto/ecdsa"
 	"crypto/rand"
 	"errors"
 	"io"
@@ -22,55 +22,48 @@ func TestNewKeyFactory(t *testing.T) {
 
 	assert.NotNil(t, factory)
 	assert.Equal(t, testLogger, factory.(*keyFactory).logger)
-	assert.NotNil(t, factory.(*keyFactory).generateEd25519Key)
+	assert.NotNil(t, factory.(*keyFactory).generateECDSAKey)
 	assert.NotNil(t, factory.(*keyFactory).newSSHPublicKey)
 }
 
 func TestKeyFactory_Create(t *testing.T) {
 	testError := errors.New("simulated error")
-	testErrorEd25519Internal := new(ErrInvalidPrivateKey)
-
-	pubKey, privKey, err := ed25519.GenerateKey(rand.Reader)
+	testErrorecdsaInternal := new(ErrInvalidPrivateKey)
+	privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
-	// Create Fake Byte Arrays to Represent ed25519 Key Pairs
-	invalidPrivKey := make([]byte, ed25519.PrivateKeySize)
-	invalidPubKey := make([]byte, ed25519.PublicKeySize)
-	_, _ = rand.Read(invalidPrivKey)
-	_, _ = rand.Read(invalidPubKey)
-
 	tests := map[string]struct {
-		mockedEd25519PrivKey ed25519.PrivateKey
-		mockedEd25519PubKey  ed25519.PublicKey
-		ed25519KeyError      error
+		mockedecdsaPrivKey ecdsa.PrivateKey
+		mockedecdsaPubKey  privKey.Public()
+		ecdsaKeyError      error
 		publicKeyError       error
 		expectedError        error
 	}{
 		"Key pair generated with success": {
-			mockedEd25519PrivKey: privKey,
-			mockedEd25519PubKey:  pubKey,
-			ed25519KeyError:      nil,
+			mockedecdsaPrivKey: privKey,
+			mockedecdsaPubKey:  pubKey,
+			ecdsaKeyError:      nil,
 			publicKeyError:       nil,
 			expectedError:        nil,
 		},
 		"Error generating key pair": {
-			mockedEd25519PrivKey: nil,
-			mockedEd25519PubKey:  nil,
-			ed25519KeyError:      testError,
+			mockedecdsaPrivKey: nil,
+			mockedecdsaPubKey:  nil,
+			ecdsaKeyError:      testError,
 			publicKeyError:       nil,
 			expectedError:        testError,
 		},
 		"Error invalid key pair": {
-			mockedEd25519PrivKey: invalidPrivKey,
-			mockedEd25519PubKey:  invalidPubKey,
-			ed25519KeyError:      nil,
+			mockedecdsaPrivKey: invalidPrivKey,
+			mockedecdsaPubKey:  invalidPubKey,
+			ecdsaKeyError:      nil,
 			publicKeyError:       nil,
-			expectedError:        testErrorEd25519Internal,
+			expectedError:        testErrorecdsaInternal,
 		},
 		"Error creating SSH public key": {
-			mockedEd25519PrivKey: privKey,
-			mockedEd25519PubKey:  pubKey,
-			ed25519KeyError:      nil,
+			mockedecdsaPrivKey: privKey,
+			mockedecdsaPubKey:  pubKey,
+			ecdsaKeyError:      nil,
 			publicKeyError:       testError,
 			expectedError:        testError,
 		},
@@ -80,8 +73,8 @@ func TestKeyFactory_Create(t *testing.T) {
 		t.Run(tn, func(t *testing.T) {
 			factory := NewKeyFactory(test.NewNullLogger())
 
-			factory.(*keyFactory).generateEd25519Key = func(_ io.Reader) (ed25519.PublicKey, ed25519.PrivateKey, error) {
-				return tt.mockedEd25519PubKey, tt.mockedEd25519PrivKey, tt.ed25519KeyError
+			factory.(*keyFactory).generateecdsaKey = func(c elliptic.Curve, _ io.Reader) (*ecdsa.PrivateKey, error) {
+				return tt.mockedecdsaPubKey, tt.mockedecdsaPrivKey, tt.ecdsaKeyError
 			}
 
 			if tt.publicKeyError != nil {
