@@ -14,9 +14,6 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
 )
 
-const (
-	ecdsaPrivateKeyType = "PRIVATE KEY"
-)
 
 // ErrInvalidPrivateKey will be used to wrap an Ed25519 internal error
 type ErrInvalidPrivateKey struct {
@@ -102,28 +99,4 @@ func (r *keyFactory) Create() (*KeyPair, error) {
 	r.logger.Debug("[Create] Key pair generated with success")
 
 	return keyPair, nil
-}
-
-func (r *keyFactory) encodePrivateKeyToPEM(privateKey ecdsa.PrivateKey) ([]byte, error) {
-	privDER, err := x509.MarshalPKCS8PrivateKey(privateKey)
-	if err != nil {
-		return nil, err
-	}
-
-	block := pem.Block{
-		Type:    ecdsaPrivateKeyType,
-		Headers: nil,
-		Bytes:   privDER,
-	}
-
-	return pem.EncodeToMemory(&block), nil
-}
-
-func (r *keyFactory) getPublicKey(pubKey ecdsa.PublicKey) ([]byte, error) {
-	publicKey, err := r.newSSHPublicKey(pubKey)
-	if err != nil {
-		return nil, err
-	}
-
-	return ssh.MarshalAuthorizedKey(publicKey), nil
 }
