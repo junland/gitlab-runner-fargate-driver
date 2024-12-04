@@ -81,3 +81,25 @@ func TestJobResponse_panics(t *testing.T) {
 		})
 	})
 }
+
+// Copied from https://gitlab.com/gitlab-org/gitlab-runner/-/blob/main/helpers/shorten_token.go
+func TestShortenToken(t *testing.T) {
+	tests := []struct {
+		in  string
+		out string
+	}{
+		{"short", "short"},
+		{"veryverylongtoken", "veryvery"},
+		{"GR1348941Z196cJVywzZpx_Ki_Cn2", "GR1348941Z196cJVy"},
+		{"GJ1348941Z196cJVywzZpx_Ki_Cn2", "GJ134894"},
+		{"GRveryverylongtoken", "GRveryve"},
+		{"glrt-t9Wkyj-HGRkqQ-VWTGAr", "t9Wkyj-HG"},
+	}
+
+	for _, test := range tests {
+		actual := shortenToken(test.in)
+		if actual != test.out {
+			t.Error("Expected ", test.out, ", get ", actual)
+		}
+	}
+}
