@@ -96,7 +96,7 @@ func (c *ConfigCommand) init(ctx *cli.Context) {
 func (c *ConfigCommand) createUniqueIdentifierForHostname() string {
 	jobResponse := jobresponse.Load()
 	runnerData := task.RunnerData{
-		ShortToken: jobResponse.ShortToken,
+		ShortToken: jobResponse.ShortToken(),
 		ProjectURL: jobResponse.ProjectURL(),
 		PipelineID: jobResponse.PipelineID(),
 		JobID:      jobResponse.JobID,
