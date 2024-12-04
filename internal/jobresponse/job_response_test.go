@@ -16,7 +16,8 @@ func TestLoadJobResponseFile(t *testing.T) {
 		jrf := Load()
 
 		assert.Equal(t, int64(123456789), jrf.JobID)
-		assert.Equal(t, "sdlkfjg;pi[p2309ir[093irpx2utp2985", jrf.ShortToken)
+		assert.Equal(t, "sdlkfjg;pi[p2309ir[093irpx2utp2985", jrf.Token)
+		assert.Equal(t, "sdlkfjg;", jrf.ShortToken())
 		assert.Equal(t, int64(987654321), jrf.PipelineID())
 		assert.Equal(t, "https://gitlab.com/blammo/some-awesome-project", jrf.ProjectURL())
 	})
@@ -80,4 +81,26 @@ func TestJobResponse_panics(t *testing.T) {
 			jr.ProjectURL()
 		})
 	})
+}
+
+// Copied from https://gitlab.com/gitlab-org/gitlab-runner/-/blob/main/helpers/shorten_token.go
+func TestShortenToken(t *testing.T) {
+	tests := []struct {
+		in  string
+		out string
+	}{
+		{"short", "short"},
+		{"veryverylongtoken", "veryvery"},
+		{"GR1348941Z196cJVywzZpx_Ki_Cn2", "GR1348941Z196cJVy"},
+		{"GJ1348941Z196cJVywzZpx_Ki_Cn2", "GJ134894"},
+		{"GRveryverylongtoken", "GRveryve"},
+		{"glrt-t9Wkyj-HGRkqQ-VWTGAr", "t9Wkyj-HG"},
+	}
+
+	for _, test := range tests {
+		actual := shortenToken(test.in)
+		if actual != test.out {
+			t.Error("Expected ", test.out, ", get ", actual)
+		}
+	}
 }

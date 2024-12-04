@@ -20,11 +20,15 @@ type (
 	}
 
 	JobResponse struct {
-		ShortToken string     `json:"token"`
-		Variables  []variable `json:"variables,omitempty"`
-		JobID      int64      `json:"id"`
+		Token     string     `json:"token"`
+		Variables []variable `json:"variables,omitempty"`
+		JobID     int64      `json:"id"`
 	}
 )
+
+func (j *JobResponse) ShortToken() string {
+	return shortenToken(j.Token)
+}
 
 func (j *JobResponse) PipelineID() int64 {
 	return j.getInt64Variable("CI_PIPELINE_ID")
@@ -73,4 +77,26 @@ func Load() JobResponse {
 	}
 
 	return jr
+}
+
+// Copied from https://gitlab.com/gitlab-org/gitlab-runner/-/blob/main/helpers/shorten_token.go
+func shortenToken(token string) string {
+	switch {
+	case len(token) < 8:
+		return token
+	case token[:5] == "glrt-":
+		// Token is prefixed with CREATED_RUNNER_TOKEN_PREFIX: glrt- (for Gitlab Runner Token).
+		// Let's add some more characters in order to compensate.
+		return token[5:14]
+	case token[:2] == "GR" && len(token) >= 17 && strings.IndexFunc(token[2:9], isInvalidPrefixRune) == -1:
+		// Token is prefixed with RUNNERS_TOKEN_PREFIX: GR (for Gitlab Runner) combined with the rotation
+		// date decimal-to-hex-encoded. Let's add some more characters in order to compensate.
+		return token[:17]
+	default:
+		return token[:8]
+	}
+}
+
+func isInvalidPrefixRune(r rune) bool {
+	return (r < '0' || r > '9') && (r < 'A' || r > 'F') && (r < 'a' || r > 'f')
 }
