@@ -16,7 +16,8 @@ func TestLoadJobResponseFile(t *testing.T) {
 		jrf := Load()
 
 		assert.Equal(t, int64(123456789), jrf.JobID)
-		assert.Equal(t, "sdlkfjg;pi[p2309ir[093irpx2utp2985", jrf.ShortToken)
+		assert.Equal(t, "sdlkfjg;pi[p2309ir[093irpx2utp2985", jrf.Token)
+		assert.Equal(t, "sdlkfjg;", jrf.ShortToken())
 		assert.Equal(t, int64(987654321), jrf.PipelineID())
 		assert.Equal(t, "https://gitlab.com/blammo/some-awesome-project", jrf.ProjectURL())
 	})

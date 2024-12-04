@@ -20,11 +20,15 @@ type (
 	}
 
 	JobResponse struct {
-		ShortToken string     `json:"token"`
-		Variables  []variable `json:"variables,omitempty"`
-		JobID      int64      `json:"id"`
+		Token     string     `json:"token"`
+		Variables []variable `json:"variables,omitempty"`
+		JobID     int64      `json:"id"`
 	}
 )
+
+func (j *JobResponse) ShortToken() string {
+	return shortenToken(j.Token)
+}
 
 func (j *JobResponse) PipelineID() int64 {
 	return j.getInt64Variable("CI_PIPELINE_ID")
