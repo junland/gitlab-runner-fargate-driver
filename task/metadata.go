@@ -51,7 +51,7 @@ func NewMetadataManager(logger logging.Logger, filesDir string) MetadataManager 
 
 	jobResponse := jobresponse.Load()
 	runnerData := RunnerData{
-		ShortToken: jobResponse.ShortToken,
+		ShortToken: jobResponse.ShortToken(),
 		ProjectURL: jobResponse.ProjectURL(),
 		PipelineID: jobResponse.PipelineID(),
 		JobID:      jobResponse.JobID,
