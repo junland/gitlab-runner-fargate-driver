@@ -1,107 +1,82 @@
+// Copyright 2011 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package ssh
 
 import (
-	"crypto/ed25519"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
-	"errors"
-	"io"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"golang.org/x/crypto/ssh"
-
-	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/assertions"
-	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging/test"
 )
 
-func TestNewKeyFactory(t *testing.T) {
-	testLogger := test.NewNullLogger()
-
-	factory := NewKeyFactory(testLogger)
-
-	assert.NotNil(t, factory)
-	assert.Equal(t, testLogger, factory.(*keyFactory).logger)
-	assert.NotNil(t, factory.(*keyFactory).generateEd25519Key)
-	assert.NotNil(t, factory.(*keyFactory).newSSHPublicKey)
+func testAllCurves(t *testing.T, f func(*testing.T, elliptic.Curve)) {
+	tests := []struct {
+		name  string
+		curve elliptic.Curve
+	}{
+		{"P256", elliptic.P256()},
+		{"P224", elliptic.P224()},
+		{"P384", elliptic.P384()},
+		{"P521", elliptic.P521()},
+		{"P256/Generic", genericParamsForCurve(elliptic.P256())},
+	}
+	if testing.Short() {
+		tests = tests[:1]
+	}
+	for _, test := range tests {
+		curve := test.curve
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			f(t, curve)
+		})
+	}
 }
 
-func TestKeyFactory_Create(t *testing.T) {
-	testError := errors.New("simulated error")
-	testErrorEd25519Internal := new(ErrInvalidPrivateKey)
+// genericParamsForCurve returns the dereferenced CurveParams for
+// the specified curve. This is used to avoid the logic for
+// upgrading a curve to its specific implementation, forcing
+// usage of the generic implementation.
+func genericParamsForCurve(c elliptic.Curve) *elliptic.CurveParams {
+	d := *(c.Params())
+	return &d
+}
 
-	pubKey, privKey, err := ed25519.GenerateKey(rand.Reader)
-	require.NoError(t, err)
+func TestKeyGeneration(t *testing.T) {
+	testAllCurves(t, testKeyGeneration)
+}
 
-	// Create Fake Byte Arrays to Represent ed25519 Key Pairs
-	invalidPrivKey := make([]byte, ed25519.PrivateKeySize)
-	invalidPubKey := make([]byte, ed25519.PublicKeySize)
-	_, _ = rand.Read(invalidPrivKey)
-	_, _ = rand.Read(invalidPubKey)
+func testKeyGeneration(t *testing.T, c elliptic.Curve) {
+	priv, err := ecdsa.GenerateKey(c, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.IsOnCurve(priv.PublicKey.X, priv.PublicKey.Y) {
+		t.Errorf("public key invalid: %s", err)
+	}
+}
 
-	tests := map[string]struct {
-		mockedEd25519PrivKey ed25519.PrivateKey
-		mockedEd25519PubKey  ed25519.PublicKey
-		ed25519KeyError      error
-		publicKeyError       error
-		expectedError        error
-	}{
-		"Key pair generated with success": {
-			mockedEd25519PrivKey: privKey,
-			mockedEd25519PubKey:  pubKey,
-			ed25519KeyError:      nil,
-			publicKeyError:       nil,
-			expectedError:        nil,
-		},
-		"Error generating key pair": {
-			mockedEd25519PrivKey: nil,
-			mockedEd25519PubKey:  nil,
-			ed25519KeyError:      testError,
-			publicKeyError:       nil,
-			expectedError:        testError,
-		},
-		"Error invalid key pair": {
-			mockedEd25519PrivKey: invalidPrivKey,
-			mockedEd25519PubKey:  invalidPubKey,
-			ed25519KeyError:      nil,
-			publicKeyError:       nil,
-			expectedError:        testErrorEd25519Internal,
-		},
-		"Error creating SSH public key": {
-			mockedEd25519PrivKey: privKey,
-			mockedEd25519PubKey:  pubKey,
-			ed25519KeyError:      nil,
-			publicKeyError:       testError,
-			expectedError:        testError,
-		},
+func TestSignAndVerify(t *testing.T) {
+	testAllCurves(t, testSignAndVerify)
+}
+
+func testSignAndVerify(t *testing.T, c elliptic.Curve) {
+	priv, _ := ecdsa.GenerateKey(c, rand.Reader)
+
+	hashed := []byte("testing")
+	r, s, err := ecdsa.Sign(rand.Reader, priv, hashed)
+	if err != nil {
+		t.Errorf("error signing: %s", err)
+		return
 	}
 
-	for tn, tt := range tests {
-		t.Run(tn, func(t *testing.T) {
-			factory := NewKeyFactory(test.NewNullLogger())
+	if !ecdsa.Verify(&priv.PublicKey, hashed, r, s) {
+		t.Errorf("Verify failed")
+	}
 
-			factory.(*keyFactory).generateEd25519Key = func(_ io.Reader) (ed25519.PublicKey, ed25519.PrivateKey, error) {
-				return tt.mockedEd25519PubKey, tt.mockedEd25519PrivKey, tt.ed25519KeyError
-			}
-
-			if tt.publicKeyError != nil {
-				factory.(*keyFactory).newSSHPublicKey = func(_ interface{}) (ssh.PublicKey, error) {
-					return nil, tt.publicKeyError
-				}
-			}
-
-			keyPair, err := factory.Create()
-
-			if tt.expectedError != nil {
-				assertions.ErrorIs(t, err, tt.expectedError)
-				assert.Nil(t, keyPair)
-				return
-			}
-
-			assert.NoError(t, err)
-			require.NotNil(t, keyPair)
-			assert.NotEmpty(t, keyPair.PublicKey)
-			assert.NotEmpty(t, keyPair.PrivateKey)
-		})
+	hashed[0] ^= 0xff
+	if ecdsa.Verify(&priv.PublicKey, hashed, r, s) {
+		t.Errorf("Verify always works!")
 	}
 }
