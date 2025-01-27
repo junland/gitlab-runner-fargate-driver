@@ -20,7 +20,10 @@ As of version `0.4.0` the main release page is <https://gitlab.com/gitlab-org/ci
 
    ```sh
    # Linux amd64
-   sudo curl -L --output /etc/gitlab-runner/fargate/fargate https://gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/-/releases/permalink/latest/downloads/fargate_0.4.0_linux_amd64.tar.gz
+   sudo mkdir -p /etc/gitlab-runner/fargate
+   curl -LO https://gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/-/releases/permalink/latest/downloads/fargate_0.5.1_linux_amd64.tar.gz
+   sudo tar -zxf fargate_0.5.1_linux_amd64.tar.gz -C /etc/gitlab-runner/fargate
+   sudo chmod +x /etc/gitlab-runner/fargate/fargate
    ```
 
    The full list of available binaries can be found at
@@ -34,11 +37,7 @@ As of version `0.4.0` the main release page is <https://gitlab.com/gitlab-org/ci
    <https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com/latest/index.html> and
    <https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com/v0.2.0/index.html>
 
-1. On Linux/Unix give execute permissions to the driver:
 
-   ```sh
-   sudo chmod +x /etc/gitlab-runner/fargate/fargate
-   ```
 
 ## Commands
 
