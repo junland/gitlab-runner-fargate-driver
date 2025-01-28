@@ -20,7 +20,10 @@ As of version `0.4.0` the main release page is <https://gitlab.com/gitlab-org/ci
 
    ```sh
    # Linux amd64
-   sudo curl -L --output /etc/gitlab-runner/fargate/fargate https://gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/-/releases/permalink/latest/downloads/fargate_0.4.0_linux_amd64.tar.gz
+   sudo mkdir -p /etc/gitlab-runner/fargate
+   curl -LO https://gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/-/releases/permalink/latest/downloads/fargate_0.5.1_linux_amd64.tar.gz
+   sudo tar -zxf fargate_0.5.1_linux_amd64.tar.gz -C /etc/gitlab-runner/fargate
+   sudo chmod +x /etc/gitlab-runner/fargate/fargate
    ```
 
    The full list of available binaries can be found at
@@ -34,11 +37,17 @@ As of version `0.4.0` the main release page is <https://gitlab.com/gitlab-org/ci
    <https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com/latest/index.html> and
    <https://gitlab-runner-custom-fargate-downloads.s3.amazonaws.com/v0.2.0/index.html>
 
-1. On Linux/Unix give execute permissions to the driver:
+## Upgrading
 
-   ```sh
+Upgrading is identical to installation:
+
+```sh
+   # Linux amd64
+   sudo mkdir -p /etc/gitlab-runner/fargate
+   curl -LO https://gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/-/releases/permalink/latest/downloads/fargate_0.5.1_linux_amd64.tar.gz
+   sudo tar -zxf fargate_0.5.1_linux_amd64.tar.gz -C /etc/gitlab-runner/fargate
    sudo chmod +x /etc/gitlab-runner/fargate/fargate
-   ```
+```
 
 ## Commands
 
@@ -151,10 +160,10 @@ LogFormat = "text"
 | ---------------- | ------ | -------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Retries`        | integer | No      | 3 |The maximum API retry attempts when  waiting for the task  to be healthy. If an invalid value is specified (Retries < 1), the default is used.                                                                                                                                                           |
 | `CheckInterval`        | string | No      | 30s |The WaiterDelay between retries for the WaiterOption when calling WaitUntilTaskHealthy. Negative or zero values use the default instead. See the documentation for [time.ParseDuration](https://pkg.go.dev/time#ParseDuration) for more examples of possbile values. If an invalid value is specified (CheckInterval < 1s), the default is used.                                                                                                                |
+
 >Note:
 **The maximum amount of time that the driver will wait is equal to `CheckInterval * Retries`.**<br>
 Using the default configuration as an example, the maximum amount of time waited is **30s * 3 = 90 seconds.**
-
 
 ```toml
 [Fargate]
@@ -171,7 +180,7 @@ Using the default configuration as an example, the maximum amount of time waited
   [Fargate.TaskHealthWaitConfig]
     Retries = 3
     CheckInterval = "30s"
-```                                                                       
+```
 
 #### The `[Fargate.TaskWaitConfig]` section
 
@@ -205,7 +214,6 @@ Evaluation logic for communication between the Gitlab Runner and the Fargate tas
 | false          | true        | Error      |
 | false          | false       | Private IP |
 
-
 ### The `[STSConfiguration]` section
 
 | Settings                     | Type   | Required | Description                                                                                                                                                                                                                                                        |
@@ -218,7 +226,6 @@ Evaluation logic for communication between the Gitlab Runner and the Fargate tas
   RoleARN = "arn:aws:iam::xxxxxxxxx:role/role-name"
   SessionVars = "CI_PROJECT_ID,CI_PROJECT_PATH,GITLAB_USER_EMAIL"
 ```
-
 
 ### The `[TaskMetadata]` section
 
