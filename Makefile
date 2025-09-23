@@ -8,7 +8,7 @@ export GOPATH ?= $(shell (go env GOPATH))
 export BUILD_PLATFORMS ?= -osarch 'linux/amd64 linux/386 linux/arm linux/arm64'
 
 export goJunitReport ?= $(GOPATH)/bin/go-junit-report
-MOCKERY_VERSION ?= 2.38.0
+MOCKERY_VERSION ?= 2.53.5
 MOCKERY = .tmp/mockery-$(MOCKERY_VERSION)
 gox ?= $(GOPATH)/bin/gox
 
@@ -50,10 +50,9 @@ tests_race: $(testsDir) $(goJunitReport)
 	@./scripts/tests.sh race
 
 .PHONY: lint
-lint: OUT_FORMAT ?= colored-line-number
 lint: LINT_FLAGS ?=
 lint:
-	@golangci-lint run ./... --out-format $(OUT_FORMAT) $(LINT_FLAGS)
+	@golangci-lint run ./... $(LINT_FLAGS)
 
 $(testsDir):
 	# Preparing tests output directory
