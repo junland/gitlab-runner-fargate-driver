@@ -2,7 +2,7 @@ variables:
   DOCKER_VERSION: "24.0.7"
   GO_VERSION: "1.25.1"
   GOLANGCI_LINT_VERSION: "1.56.2"
-  ALPINE_VERSION: "3.19"
+  ALPINE_VERSION: "3.22"
   RELEASE_INDEX_GEN_VERSION: "latest"
   GOPATH: $CI_PROJECT_DIR/.go
   CI_IMAGE: registry.gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/ci:go${GO_VERSION}-alpine${ALPINE_VERSION}
