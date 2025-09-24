@@ -269,7 +269,7 @@ func TestSSHIntegration(t *testing.T) {
 		t.Skipf("Couldn't access SSH service: %v", err)
 	}
 
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	var sshInfo struct {
 		Port           int

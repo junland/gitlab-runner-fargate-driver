@@ -10,8 +10,8 @@ import (
 
 func TestLoadJobResponseFile(t *testing.T) {
 	t.Run("file exists and is valid", func(t *testing.T) {
-		os.Setenv(JobResponseFileVar, "testdata/response.json")
-		defer os.Unsetenv(JobResponseFileVar)
+		os.Setenv(JobResponseFileVar, "testdata/response.json") //nolint:errcheck
+		defer os.Unsetenv(JobResponseFileVar)                   //nolint:errcheck
 
 		jrf := Load()
 
@@ -29,8 +29,8 @@ func TestLoadJobResponseFile(t *testing.T) {
 	})
 
 	t.Run("file does not exist", func(t *testing.T) {
-		os.Setenv(JobResponseFileVar, "blammo")
-		defer os.Unsetenv(JobResponseFileVar)
+		os.Setenv(JobResponseFileVar, "blammo") //nolint:errcheck
+		defer os.Unsetenv(JobResponseFileVar)   //nolint:errcheck
 
 		require.Panics(t, func() {
 			Load()

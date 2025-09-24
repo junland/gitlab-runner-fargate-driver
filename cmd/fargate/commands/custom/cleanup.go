@@ -13,7 +13,7 @@ import (
 // NewCleanupCommand constructs the command line abstraction for the "cleanup" stage
 func NewCleanupCommand() cli.Command {
 	cmd := new(CleanupCommand)
-	cmd.abstractCustomCommand.customCommand = cmd
+	cmd.abstractCustomCommand.customCommand = cmd //nolint:staticcheck
 
 	cmd.newFargate = func(logger logging.Logger, awsRegion, roleARN, stsSessionVars string) aws.Fargate {
 		return aws.NewFargate(logger, awsRegion, roleARN, stsSessionVars)

@@ -14,7 +14,7 @@ import (
 // NewPrepareCommand constructs the command line abstraction for the "prepare" stage
 func NewPrepareCommand() cli.Command {
 	cmd := new(PrepareCommand)
-	cmd.abstractCustomCommand.customCommand = cmd
+	cmd.abstractCustomCommand.customCommand = cmd //nolint:staticcheck
 
 	cmd.newFargate = aws.NewFargate
 	cmd.newMetadataManager = task.NewMetadataManager
