@@ -36,7 +36,7 @@ code quality:
   image: golangci/golangci-lint:v${GOLANGCI_LINT_VERSION}
   variables:
     REPORT_FILE: gl-code-quality-report.json
-    LINT_FLAGS: "--color never --output.code-climate.path stdout"
+    LINT_FLAGS: "--no-config --color never --output.code-climate.path stdout"
   script:
     - make lint | tee ${REPORT_FILE}
   timeout: 15 minutes

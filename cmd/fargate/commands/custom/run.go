@@ -21,7 +21,7 @@ var ErrMissingRequiredArguments = errors.New("missing required arguments")
 // NewRunCommand constructs the command line abstraction for the "run" stage
 func NewRunCommand() cli.Command {
 	cmd := new(RunCommand)
-	cmd.abstractCustomCommand.customCommand = cmd
+	cmd.abstractCustomCommand.customCommand = cmd //nolint:staticcheck
 
 	cmd.newMetadataManager = func(logger logging.Logger, directory string) task.MetadataManager {
 		return task.NewMetadataManager(logger, directory)
