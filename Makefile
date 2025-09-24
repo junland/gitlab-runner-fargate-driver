@@ -50,7 +50,7 @@ tests_race: $(testsDir) $(goJunitReport)
 	@./scripts/tests.sh race
 
 .PHONY: lint
-lint: LINT_FLAGS ?=
+lint: LINT_FLAGS ?= "--output.text.path --output.text.print-linter-name --output.text.print-issued-lines --output.text.colors"
 lint:
 	@golangci-lint run ./... $(LINT_FLAGS)
 
