@@ -34,7 +34,7 @@ func (e *errWriteConfig) Is(err error) bool {
 // NewConfigCommand constructs the command line abstraction for the "config" stage
 func NewConfigCommand() cli.Command {
 	cmd := new(ConfigCommand)
-	cmd.abstractCustomCommand.customCommand = cmd
+	cmd.abstractCustomCommand.customCommand = cmd //nolint:staticcheck
 
 	cmd.output = os.Stdout
 
