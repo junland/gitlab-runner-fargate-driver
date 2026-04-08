@@ -1,7 +1,8 @@
 package ssh
 
 import (
-	"crypto/ed25519"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"errors"
 	"io"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/crypto/ssh"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/assertions"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging/test"
@@ -22,57 +22,30 @@ func TestNewKeyFactory(t *testing.T) {
 
 	assert.NotNil(t, factory)
 	assert.Equal(t, testLogger, factory.(*keyFactory).logger)
-	assert.NotNil(t, factory.(*keyFactory).generateEd25519Key)
+	assert.NotNil(t, factory.(*keyFactory).generateECDSAKey)
 	assert.NotNil(t, factory.(*keyFactory).newSSHPublicKey)
 }
 
 func TestKeyFactory_Create(t *testing.T) {
 	testError := errors.New("simulated error")
-	testErrorEd25519Internal := new(ErrInvalidPrivateKey)
 
-	pubKey, privKey, err := ed25519.GenerateKey(rand.Reader)
+	privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
-	// Create Fake Byte Arrays to Represent ed25519 Key Pairs
-	invalidPrivKey := make([]byte, ed25519.PrivateKeySize)
-	invalidPubKey := make([]byte, ed25519.PublicKeySize)
-	_, _ = rand.Read(invalidPrivKey)
-	_, _ = rand.Read(invalidPubKey)
-
 	tests := map[string]struct {
-		mockedEd25519PrivKey ed25519.PrivateKey
-		mockedEd25519PubKey  ed25519.PublicKey
-		ed25519KeyError      error
-		publicKeyError       error
-		expectedError        error
+		mockedECDSAPrivKey *ecdsa.PrivateKey
+		ecdsaKeyError      error
+		expectedError      error
 	}{
 		"Key pair generated with success": {
-			mockedEd25519PrivKey: privKey,
-			mockedEd25519PubKey:  pubKey,
-			ed25519KeyError:      nil,
-			publicKeyError:       nil,
-			expectedError:        nil,
+			mockedECDSAPrivKey: privKey,
+			ecdsaKeyError:      nil,
+			expectedError:      nil,
 		},
 		"Error generating key pair": {
-			mockedEd25519PrivKey: nil,
-			mockedEd25519PubKey:  nil,
-			ed25519KeyError:      testError,
-			publicKeyError:       nil,
-			expectedError:        testError,
-		},
-		"Error invalid key pair": {
-			mockedEd25519PrivKey: invalidPrivKey,
-			mockedEd25519PubKey:  invalidPubKey,
-			ed25519KeyError:      nil,
-			publicKeyError:       nil,
-			expectedError:        testErrorEd25519Internal,
-		},
-		"Error creating SSH public key": {
-			mockedEd25519PrivKey: privKey,
-			mockedEd25519PubKey:  pubKey,
-			ed25519KeyError:      nil,
-			publicKeyError:       testError,
-			expectedError:        testError,
+			mockedECDSAPrivKey: nil,
+			ecdsaKeyError:      testError,
+			expectedError:      testError,
 		},
 	}
 
@@ -80,14 +53,8 @@ func TestKeyFactory_Create(t *testing.T) {
 		t.Run(tn, func(t *testing.T) {
 			factory := NewKeyFactory(test.NewNullLogger())
 
-			factory.(*keyFactory).generateEd25519Key = func(_ io.Reader) (ed25519.PublicKey, ed25519.PrivateKey, error) {
-				return tt.mockedEd25519PubKey, tt.mockedEd25519PrivKey, tt.ed25519KeyError
-			}
-
-			if tt.publicKeyError != nil {
-				factory.(*keyFactory).newSSHPublicKey = func(_ interface{}) (ssh.PublicKey, error) {
-					return nil, tt.publicKeyError
-				}
+			factory.(*keyFactory).generateECDSAKey = func(_ elliptic.Curve, _ io.Reader) (*ecdsa.PrivateKey, error) {
+				return tt.mockedECDSAPrivKey, tt.ecdsaKeyError
 			}
 
 			keyPair, err := factory.Create()
@@ -102,6 +69,32 @@ func TestKeyFactory_Create(t *testing.T) {
 			require.NotNil(t, keyPair)
 			assert.NotEmpty(t, keyPair.PublicKey)
 			assert.NotEmpty(t, keyPair.PrivateKey)
+
+			// Verify the public key starts with the expected ECDSA prefix
+			assert.Contains(t, string(keyPair.PublicKey), "ecdsa-sha2-nistp256")
+
+			// Verify the private key is in PEM format
+			assert.Contains(t, string(keyPair.PrivateKey), "-----BEGIN EC PRIVATE KEY-----")
+			assert.Contains(t, string(keyPair.PrivateKey), "-----END EC PRIVATE KEY-----")
 		})
 	}
+}
+
+func TestKeyFactory_Create_Integration(t *testing.T) {
+	// Integration test that uses the real implementation
+	factory := NewKeyFactory(test.NewNullLogger())
+
+	keyPair, err := factory.Create()
+
+	require.NoError(t, err)
+	require.NotNil(t, keyPair)
+	assert.NotEmpty(t, keyPair.PublicKey)
+	assert.NotEmpty(t, keyPair.PrivateKey)
+
+	// Verify the public key is in the expected format
+	assert.Contains(t, string(keyPair.PublicKey), "ecdsa-sha2-nistp256")
+
+	// Verify the private key is in PEM format
+	assert.Contains(t, string(keyPair.PrivateKey), "-----BEGIN EC PRIVATE KEY-----")
+	assert.Contains(t, string(keyPair.PrivateKey), "-----END EC PRIVATE KEY-----")
 }
