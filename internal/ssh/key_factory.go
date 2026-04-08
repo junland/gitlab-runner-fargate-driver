@@ -63,25 +63,25 @@ func NewKeyFactory(logger logging.Logger) KeyFactory {
 // Create generates an ecdsa Public and Private key pair
 func (r *keyFactory) Create() (*KeyPair, error) {
 	r.logger.Debug("[Create] Will generate new key pair")
-	privateKey, err := r.generateECDSAKey(elliptic.P256(), rand.Reader)
+	privateKey, err := r.generateECDSAKey(elliptic.P521(), rand.Reader)
 	if err != nil {
-		return nil, fmt.Errorf("generating the private and public key: %w", err)
+		return nil, fmt.Errorf("generating private key: %w", err)
 	}
 	var (
 		bytes     []byte
 		publicKey ssh.PublicKey
 	)
 
-	publicKey, err = ssh.NewPublicKey(privateKey.Public())
+	publicKey, err = r.newSSHPublicKey(privateKey.Public())
 	if err != nil {
-		return nil, fmt.Errorf("generating the private and public key: %w", err)
+		return nil, fmt.Errorf("generating public key: %w", err)
 	}
 
 	pubBytes := ssh.MarshalAuthorizedKey(publicKey)
 
 	bytes, err = x509.MarshalECPrivateKey(privateKey)
 	if err != nil {
-		return nil, fmt.Errorf("converting the the private key to PKCS8 format: %w", err)
+		return nil, fmt.Errorf("encoding private key: %w", err)
 	}
 
 	privBytes := pem.EncodeToMemory(&pem.Block{
