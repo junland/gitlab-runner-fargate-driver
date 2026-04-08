@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/ssh"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/assertions"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging/test"
@@ -29,22 +30,31 @@ func TestNewKeyFactory(t *testing.T) {
 func TestKeyFactory_Create(t *testing.T) {
 	testError := errors.New("simulated error")
 
-	privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	privKey, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 	require.NoError(t, err)
 
 	tests := map[string]struct {
 		mockedECDSAPrivKey *ecdsa.PrivateKey
 		ecdsaKeyError      error
+		publicKeyError     error
 		expectedError      error
 	}{
 		"Key pair generated with success": {
 			mockedECDSAPrivKey: privKey,
 			ecdsaKeyError:      nil,
+			publicKeyError:     nil,
 			expectedError:      nil,
 		},
 		"Error generating key pair": {
 			mockedECDSAPrivKey: nil,
 			ecdsaKeyError:      testError,
+			publicKeyError:     nil,
+			expectedError:      testError,
+		},
+		"Error creating SSH public key": {
+			mockedECDSAPrivKey: privKey,
+			ecdsaKeyError:      nil,
+			publicKeyError:     testError,
 			expectedError:      testError,
 		},
 	}
@@ -55,6 +65,12 @@ func TestKeyFactory_Create(t *testing.T) {
 
 			factory.(*keyFactory).generateECDSAKey = func(_ elliptic.Curve, _ io.Reader) (*ecdsa.PrivateKey, error) {
 				return tt.mockedECDSAPrivKey, tt.ecdsaKeyError
+			}
+
+			if tt.publicKeyError != nil {
+				factory.(*keyFactory).newSSHPublicKey = func(_ interface{}) (ssh.PublicKey, error) {
+					return nil, tt.publicKeyError
+				}
 			}
 
 			keyPair, err := factory.Create()
@@ -71,7 +87,7 @@ func TestKeyFactory_Create(t *testing.T) {
 			assert.NotEmpty(t, keyPair.PrivateKey)
 
 			// Verify the public key starts with the expected ECDSA prefix
-			assert.Contains(t, string(keyPair.PublicKey), "ecdsa-sha2-nistp256")
+			assert.Contains(t, string(keyPair.PublicKey), "ecdsa-sha2-nistp521")
 
 			// Verify the private key is in PEM format
 			assert.Contains(t, string(keyPair.PrivateKey), "-----BEGIN EC PRIVATE KEY-----")
@@ -92,7 +108,7 @@ func TestKeyFactory_Create_Integration(t *testing.T) {
 	assert.NotEmpty(t, keyPair.PrivateKey)
 
 	// Verify the public key is in the expected format
-	assert.Contains(t, string(keyPair.PublicKey), "ecdsa-sha2-nistp256")
+	assert.Contains(t, string(keyPair.PublicKey), "ecdsa-sha2-nistp521")
 
 	// Verify the private key is in PEM format
 	assert.Contains(t, string(keyPair.PrivateKey), "-----BEGIN EC PRIVATE KEY-----")
