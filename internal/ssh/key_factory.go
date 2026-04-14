@@ -68,7 +68,7 @@ func (r *keyFactory) Create() (*KeyPair, error) {
 		return nil, fmt.Errorf("generating private key: %w", err)
 	}
 	var (
-		bytes     []byte
+		privDER   []byte
 		publicKey ssh.PublicKey
 	)
 
@@ -79,14 +79,14 @@ func (r *keyFactory) Create() (*KeyPair, error) {
 
 	pubBytes := ssh.MarshalAuthorizedKey(publicKey)
 
-	bytes, err = x509.MarshalECPrivateKey(privateKey)
+	privDER, err = x509.MarshalECPrivateKey(privateKey)
 	if err != nil {
 		return nil, fmt.Errorf("encoding private key: %w", err)
 	}
 
 	privBytes := pem.EncodeToMemory(&pem.Block{
 		Type:  "EC PRIVATE KEY",
-		Bytes: bytes,
+		Bytes: privDER,
 	})
 
 	keyPair := &KeyPair{
