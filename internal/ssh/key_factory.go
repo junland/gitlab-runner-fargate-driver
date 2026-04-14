@@ -14,24 +14,6 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
 )
 
-// ErrInvalidPrivateKey will be used to wrap an ecdsa internal error
-type ErrInvalidPrivateKey struct {
-	inner error
-}
-
-func (e *ErrInvalidPrivateKey) Error() string {
-	return fmt.Sprintf("invalid private key: %v", e.inner)
-}
-
-func (e *ErrInvalidPrivateKey) Unwrap() error {
-	return e.inner
-}
-
-func (e *ErrInvalidPrivateKey) Is(err error) bool {
-	_, ok := err.(*ErrInvalidPrivateKey)
-	return ok
-}
-
 // KeyFactory is a factory for Public and Private key pairs
 type KeyFactory interface {
 	Create() (*KeyPair, error)
@@ -63,7 +45,7 @@ func NewKeyFactory(logger logging.Logger) KeyFactory {
 // Create generates an ecdsa Public and Private key pair
 func (r *keyFactory) Create() (*KeyPair, error) {
 	r.logger.Debug("[Create] Will generate new key pair")
-	privateKey, err := r.generateECDSAKey(elliptic.P521(), rand.Reader)
+	privateKey, err := r.generateECDSAKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, fmt.Errorf("generating private key: %w", err)
 	}
@@ -79,13 +61,13 @@ func (r *keyFactory) Create() (*KeyPair, error) {
 
 	pubBytes := ssh.MarshalAuthorizedKey(publicKey)
 
-	privDER, err = x509.MarshalECPrivateKey(privateKey)
+	privDER, err = x509.MarshalPKCS8PrivateKey(privateKey)
 	if err != nil {
 		return nil, fmt.Errorf("encoding private key: %w", err)
 	}
 
 	privBytes := pem.EncodeToMemory(&pem.Block{
-		Type:  "EC PRIVATE KEY",
+		Type:  "PRIVATE KEY",
 		Bytes: privDER,
 	})
 

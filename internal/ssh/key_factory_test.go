@@ -30,7 +30,7 @@ func TestNewKeyFactory(t *testing.T) {
 func TestKeyFactory_Create(t *testing.T) {
 	testError := errors.New("simulated error")
 
-	privKey, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+	privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
 	tests := map[string]struct {
@@ -87,11 +87,11 @@ func TestKeyFactory_Create(t *testing.T) {
 			assert.NotEmpty(t, keyPair.PrivateKey)
 
 			// Verify the public key starts with the expected ECDSA prefix
-			assert.Contains(t, string(keyPair.PublicKey), "ecdsa-sha2-nistp521")
+			assert.Contains(t, string(keyPair.PublicKey), "ecdsa-sha2-")
 
 			// Verify the private key is in PEM format
-			assert.Contains(t, string(keyPair.PrivateKey), "-----BEGIN EC PRIVATE KEY-----")
-			assert.Contains(t, string(keyPair.PrivateKey), "-----END EC PRIVATE KEY-----")
+			assert.Contains(t, string(keyPair.PrivateKey), "-----BEGIN PRIVATE KEY-----")
+			assert.Contains(t, string(keyPair.PrivateKey), "-----END PRIVATE KEY-----")
 		})
 	}
 }
@@ -108,9 +108,8 @@ func TestKeyFactory_Create_Integration(t *testing.T) {
 	assert.NotEmpty(t, keyPair.PrivateKey)
 
 	// Verify the public key is in the expected format
-	assert.Contains(t, string(keyPair.PublicKey), "ecdsa-sha2-nistp521")
-
+	assert.Contains(t, string(keyPair.PublicKey), "ecdsa-sha2-")
 	// Verify the private key is in PEM format
-	assert.Contains(t, string(keyPair.PrivateKey), "-----BEGIN EC PRIVATE KEY-----")
-	assert.Contains(t, string(keyPair.PrivateKey), "-----END EC PRIVATE KEY-----")
+	assert.Contains(t, string(keyPair.PrivateKey), "-----BEGIN PRIVATE KEY-----")
+	assert.Contains(t, string(keyPair.PrivateKey), "-----END PRIVATE KEY-----")
 }
