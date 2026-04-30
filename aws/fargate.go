@@ -252,7 +252,7 @@ func (a *awsFargate) errIfNotInitialized() error {
 }
 
 func (a *awsFargate) processEnvVariablesToInject(envVars map[string]string) *ecs.TaskOverride {
-	if (envVars == nil) || (len(envVars) == 0) {
+	if len(envVars) == 0 {
 		return nil
 	}
 
@@ -351,7 +351,6 @@ func (a *awsFargate) WaitUntilTaskHealthy(ctx context.Context, taskARN string, c
 			w.Delay = request.ConstantWaiterDelay(taskHealthWaitConfig.CheckInterval)
 		},
 	)
-
 	if err != nil {
 		return fmt.Errorf(`error waiting AWS Fargate Task health %q to be in "Healthy" state: %w`, taskARN, err)
 	}
