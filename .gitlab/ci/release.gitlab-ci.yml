@@ -71,5 +71,7 @@ release stable:
   extends:
   - .release
   - .release_stable
+  variables:
+    $GITLAB_TOKEN: $CI_JOB_TOKEN
   script:
   - goreleaser release
