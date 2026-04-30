@@ -10,12 +10,12 @@
   only:
     refs:
     - master@gitlab-org/ci-cd/custom-executor-drivers/fargate
-    - /\Av[0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+\Z/@gitlab-org/ci-cd/custom-executor-drivers/fargate
+    - /^v[0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+$/@gitlab-org/ci-cd/custom-executor-drivers/fargate
 
 .release_stable:
   only:
     refs:
-    - /\Av[0-9]+\.[0-9]+\.[0-9]+\Z/@gitlab-org/ci-cd/custom-executor-drivers/fargate
+    - /^v[0-9]+\.[0-9]+\.[0-9]+$/@gitlab-org/ci-cd/custom-executor-drivers/fargate
 
 .release_S3:
   needs:

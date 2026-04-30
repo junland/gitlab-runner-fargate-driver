@@ -26,7 +26,7 @@ before_script:
     refs:
       - merge_requests
       - master@gitlab-org/ci-cd/custom-executor-drivers/fargate
-      - /\Av[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?\Z/@gitlab-org/ci-cd/custom-executor-drivers/fargate
+      - /^v[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?$/@gitlab-org/ci-cd/custom-executor-drivers/fargate
 
 .docker_in_docker:
   image: docker:${DOCKER_VERSION}
