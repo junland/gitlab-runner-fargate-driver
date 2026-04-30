@@ -29,7 +29,7 @@ before_script:
       - /\Av[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?\Z/@gitlab-org/ci-cd/custom-executor-drivers/fargate
 
 .docker_in_docker:
-  image: docker:${DOCKER_VERSION}-git
+  image: docker:${DOCKER_VERSION}
   services:
     - docker:${DOCKER_VERSION}-dind
   variables:
