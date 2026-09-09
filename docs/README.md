@@ -26,6 +26,8 @@ As of version `0.4.0` the main release page is <https://gitlab.com/gitlab-org/ci
    sudo chmod +x /etc/gitlab-runner/fargate/fargate
    ```
 
+   Note that when running GitLab Runner Versions since 17.9.0, the filesystem, where the custom executor writes its `BUILD_EXIT_CODE_FILE` to, must be writeable.
+
    The full list of available binaries can be found at
    <https://gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/-/releases/permalink/latest>
 

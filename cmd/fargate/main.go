@@ -58,7 +58,7 @@ func main() {
 			WithError(err).
 			Error("Application execution failed")
 
-		runner.GetAdapter().GenerateExitFromError(err)
+		runner.GetAdapter().GenerateExitFromError(err, logger)
 	}
 }
 

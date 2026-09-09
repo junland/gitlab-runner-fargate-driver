@@ -12,6 +12,7 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/encoding"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/env"
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
 )
 
 const (
@@ -19,6 +20,9 @@ const (
 	runnerProjectURLVariable = "CUSTOM_ENV_CI_PROJECT_URL"
 	runnerPipelineIDVariable = "CUSTOM_ENV_CI_PIPELINE_ID"
 	runnerJobIDVariable      = "CUSTOM_ENV_CI_JOB_ID"
+
+	// Mirrors the custom executor contract introduced in GitLab Runner 17.9.0 (MR !5028).
+	runnerBuildExitCodeFileVariable = "BUILD_EXIT_CODE_FILE"
 
 	unknownValue = "unknown"
 )
@@ -34,6 +38,8 @@ type Adapter struct {
 	buildFailureExitCode  int
 	systemFailureExitCode int
 
+	buildExitCodeFile string
+
 	shortToken string
 	projectURL string
 
@@ -41,13 +47,35 @@ type Adapter struct {
 	jobID      int64
 }
 
-func (a *Adapter) GenerateExitFromError(err error) {
-	exitCode := a.systemFailureExitCode
-	if errors.Is(err, &BuildFailureError{}) {
-		exitCode = a.buildFailureExitCode
+func (a *Adapter) GenerateExitFromError(err error, logger logging.Logger) {
+
+	if !errors.Is(err, &BuildFailureError{}) {
+		osExiter(a.systemFailureExitCode)
+		return
 	}
 
-	osExiter(exitCode)
+	var scriptExitCodeError *ScriptExitCodeError
+	if errors.As(err, &scriptExitCodeError) && a.buildExitCodeFile != unknownValue {
+		exitCode := scriptExitCodeError.ExitStatus()
+		a.createBuildExitCodeFile(exitCode, logger)
+	}
+
+	osExiter(a.buildFailureExitCode)
+}
+
+func (a *Adapter) createBuildExitCodeFile(exitCode int, logger logging.Logger) {
+	file, err := os.Create(a.buildExitCodeFile)
+	if err != nil {
+		logger.Warn(err)
+		return
+	}
+	defer file.Close()
+
+	_, err = file.Write(fmt.Appendf(nil, "%d\n", exitCode))
+	if err != nil {
+		logger.
+			Warnf("Failed to write exit code file: %w", err)
+	}
 }
 
 func (a *Adapter) ShortToken() string {
@@ -93,6 +121,8 @@ func InitAdapter() error {
 	if err != nil {
 		return err
 	}
+
+	adapter.buildExitCodeFile = getVariableValueOrUnknown(runnerBuildExitCodeFileVariable)
 
 	adapter.shortToken = getVariableValueOrUnknown(runnerShortTokenVariable)
 	adapter.projectURL = getVariableValueOrUnknown(runnerProjectURLVariable)
