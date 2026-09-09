@@ -69,7 +69,13 @@ func (a *Adapter) createBuildExitCodeFile(exitCode int, logger logging.Logger) {
 		logger.Warn(err)
 		return
 	}
-	defer file.Close()
+
+	defer func() {
+		cerr := file.Close()
+		if cerr != nil {
+			logger.Warn(cerr)
+		}
+	}()
 
 	_, err = file.Write(fmt.Appendf(nil, "%d\n", exitCode))
 	if err != nil {
