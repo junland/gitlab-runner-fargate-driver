@@ -38,7 +38,7 @@ func (s *defaultSession) ExecuteScript(ctx context.Context, script string) error
 
 			var sshExitError *ssh.ExitError
 			if errors.As(err, &sshExitError) {
-				err = runner.NewScriptExitCodeError("", sshExitError.ExitStatus(), sshExitError.Signal())
+				err = runner.NewScriptExitCodeError(sshExitError.Error(), sshExitError.ExitStatus())
 			}
 
 			return runner.NewScriptExecError(fmt.Errorf("executing SSH command: %w", err))

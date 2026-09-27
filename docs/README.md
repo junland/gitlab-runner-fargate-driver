@@ -26,8 +26,6 @@ As of version `0.4.0` the main release page is <https://gitlab.com/gitlab-org/ci
    sudo chmod +x /etc/gitlab-runner/fargate/fargate
    ```
 
-   Note that when running GitLab Runner Versions since 17.9.0, the filesystem, where the custom executor writes its `BUILD_EXIT_CODE_FILE` to, must be writeable.
-
    The full list of available binaries can be found at
    <https://gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/-/releases/permalink/latest>
 
@@ -291,6 +289,14 @@ in your infrastructure:
 - Fargate cluster
 - Task definition
 - Security group
+
+#### Writeable Temp Dir for Runner and Driver
+
+Starting with GitLab Runner 17.9.0, the runner communicates the job's exit code to the driver via a file, that the driver is writing to. The runner creates a temporary directory using `os.MkdirTemp("", ...)`, which usually defaults to `/tmp` on linux-based systems, while the driver places its file containing the script's exit code into one of the subdirectories of the temp directory.
+
+Both the runner and driver users must therefore have write permissions to the temp directory, which may be problematic for read-only filesystem configurations.
+
+This underlying contract between the runner and driver enables the [`allow_failure:exit_codes`](https://docs.gitlab.com/ci/yaml/#allow_failureexit_codes) feature (note that a script that was killed by a signal, is reported as having an exit code equaling to `128 + signal number`).
 
 ### File structure
 

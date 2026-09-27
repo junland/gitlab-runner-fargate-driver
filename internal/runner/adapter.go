@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/fs"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/custom/api"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate"
@@ -30,6 +31,7 @@ const (
 var (
 	osExiter    = os.Exit
 	envResolver = env.New()
+	fsResolver  = fs.NewOS()
 
 	adapter *Adapter
 )
@@ -55,32 +57,28 @@ func (a *Adapter) GenerateExitFromError(err error, logger logging.Logger) {
 	}
 
 	var scriptExitCodeError *ScriptExitCodeError
-	if errors.As(err, &scriptExitCodeError) && a.buildExitCodeFile != unknownValue {
+	if errors.As(err, &scriptExitCodeError) && a.buildExitCodeFile != "" {
 		exitCode := scriptExitCodeError.ExitStatus()
-		a.createBuildExitCodeFile(exitCode, logger)
+		a.writeBuildExitCodeFile(exitCode, logger)
+	} else {
+		a.removeBuildExitCodeFile(logger)
 	}
 
 	osExiter(a.buildFailureExitCode)
 }
 
-func (a *Adapter) createBuildExitCodeFile(exitCode int, logger logging.Logger) {
-	file, err := os.Create(a.buildExitCodeFile)
-	if err != nil {
-		logger.Warn(err)
-		return
+func (a *Adapter) writeBuildExitCodeFile(exitCode int, logger logging.Logger) {
+	content := fmt.Appendf(nil, "%d\n", exitCode)
+
+	if err := fsResolver.WriteFile(a.buildExitCodeFile, content, 0o644); err != nil {
+		logger.WithError(err).Warn("Failed to write build exit code file")
 	}
+}
 
-	defer func() {
-		cerr := file.Close()
-		if cerr != nil {
-			logger.Warn(cerr)
-		}
-	}()
-
-	_, err = file.Write(fmt.Appendf(nil, "%d\n", exitCode))
-	if err != nil {
-		logger.
-			Warnf("Failed to write exit code file: %w", err)
+func (a *Adapter) removeBuildExitCodeFile(logger logging.Logger) {
+	err := fsResolver.Remove(a.buildExitCodeFile)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		logger.WithError(err).Warn("Failed to remove build exit code file")
 	}
 }
 
@@ -128,7 +126,7 @@ func InitAdapter() error {
 		return err
 	}
 
-	adapter.buildExitCodeFile = getVariableValueOrUnknown(runnerBuildExitCodeFileVariable)
+	adapter.buildExitCodeFile = envResolver.Get(runnerBuildExitCodeFileVariable)
 
 	adapter.shortToken = getVariableValueOrUnknown(runnerShortTokenVariable)
 	adapter.projectURL = getVariableValueOrUnknown(runnerProjectURLVariable)

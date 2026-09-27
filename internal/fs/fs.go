@@ -22,6 +22,10 @@ func NewOS() FS {
 	return &fs{afs: afero.NewOsFs()}
 }
 
+func NewMem() FS {
+	return &fs{afs: afero.NewMemMapFs()}
+}
+
 func (f *fs) ReadFile(filename string) ([]byte, error) {
 	return afero.ReadFile(f.afs, filename)
 }
