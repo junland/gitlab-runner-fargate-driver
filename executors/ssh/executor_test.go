@@ -347,7 +347,7 @@ done`,
 				require.ErrorAs(t, err, &exitCodeErr)
 				assert.Equal(t, 42, exitCodeErr.ExitStatus())
 				assert.ErrorIs(t, err, &runner.ScriptExecError{})
-				assert.Contains(t, err.Error(), "Script exited with non-zero status: Process exited with status 42")
+				assert.Contains(t, err.Error(), "script exit code 42: Process exited with status 42")
 			},
 			assertOutput: func(t *testing.T, output string) {
 				assert.Equal(t, "Running script with exit code\n", output)

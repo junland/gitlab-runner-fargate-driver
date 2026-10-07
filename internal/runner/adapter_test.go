@@ -66,7 +66,7 @@ func useMemFS() func() {
 
 func TestAdapter_GenerateExitFromError(t *testing.T) {
 	testError := errors.New("test-error")
-	testBuildErrorWithExitCode := NewBuildFailureError(NewScriptExitCodeError("", 42))
+	testBuildErrorWithExitCode := NewBuildFailureError(NewScriptExitCodeError(fmt.Errorf("Process exited with status 42"), 42))
 	testBuildError := NewBuildFailureError(testError)
 	testExitCodeFile := "gitlab-runner-build-exit-code"
 	testExitCodeFileContent := []byte("42\n")
