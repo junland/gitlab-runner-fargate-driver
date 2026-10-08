@@ -10,9 +10,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gitlab.com/gitlab-org/gitlab-runner/executors/custom/api"
-
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/env"
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/fs"
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
+	"gitlab.com/gitlab-org/gitlab-runner/executors/custom/api"
 )
 
 var (
@@ -53,49 +54,87 @@ func mockOsExiter(exiter func(int)) func() {
 	return cleanup
 }
 
+func useMemFS() func() {
+	oldFsResolver := fsResolver
+	cleanup := func() {
+		fsResolver = oldFsResolver
+	}
+	fsResolver = fs.NewMem()
+
+	return cleanup
+}
+
 func TestAdapter_GenerateExitFromError(t *testing.T) {
 	testError := errors.New("test-error")
+	testBuildErrorWithExitCode := NewBuildFailureError(NewScriptExitCodeError(fmt.Errorf("Process exited with status 42"), 42))
 	testBuildError := NewBuildFailureError(testError)
+	testExitCodeFile := "gitlab-runner-build-exit-code"
+	testExitCodeFileContent := []byte("42\n")
 
 	tests := map[string]struct {
-		stubs              env.Stubs
-		err                error
-		expectedValue      int
-		expectsErrorOnLoad bool
+		stubs                     env.Stubs
+		err                       error
+		expectedValue             int
+		expectsErrorOnLoad        bool
+		expectExitCodeFileToExist bool
 	}{
 		"build exit code variable undefined": {
-			stubs:              env.Stubs{api.BuildFailureExitCodeVariable: ""},
-			err:                testBuildError,
-			expectedValue:      -1,
-			expectsErrorOnLoad: true,
+			stubs:                     env.Stubs{api.BuildFailureExitCodeVariable: ""},
+			err:                       testBuildError,
+			expectedValue:             -1,
+			expectsErrorOnLoad:        true,
+			expectExitCodeFileToExist: false,
 		},
 		"build exit code variable invalid": {
-			stubs:              env.Stubs{api.BuildFailureExitCodeVariable: "abcd"},
-			err:                testBuildError,
-			expectedValue:      -1,
-			expectsErrorOnLoad: true,
+			stubs:                     env.Stubs{api.BuildFailureExitCodeVariable: "abcd"},
+			err:                       testBuildError,
+			expectedValue:             -1,
+			expectsErrorOnLoad:        true,
+			expectExitCodeFileToExist: false,
 		},
 		"system exit code variable undefined": {
-			stubs:              env.Stubs{api.SystemFailureExitCodeVariable: ""},
-			err:                testError,
-			expectedValue:      -1,
-			expectsErrorOnLoad: true,
+			stubs:                     env.Stubs{api.SystemFailureExitCodeVariable: ""},
+			err:                       testError,
+			expectedValue:             -1,
+			expectsErrorOnLoad:        true,
+			expectExitCodeFileToExist: false,
 		},
 		"system exit code variable invalid": {
-			stubs:              env.Stubs{api.SystemFailureExitCodeVariable: "abcd"},
-			err:                testError,
-			expectedValue:      -1,
-			expectsErrorOnLoad: true,
+			stubs:                     env.Stubs{api.SystemFailureExitCodeVariable: "abcd"},
+			err:                       testError,
+			expectedValue:             -1,
+			expectsErrorOnLoad:        true,
+			expectExitCodeFileToExist: false,
 		},
 		"build error": {
-			stubs:         env.Stubs{},
-			err:           testBuildError,
-			expectedValue: defaultBuildFailureExitCode,
+			stubs:                     env.Stubs{},
+			err:                       testBuildError,
+			expectedValue:             defaultBuildFailureExitCode,
+			expectExitCodeFileToExist: false,
 		},
 		"other error": {
-			stubs:         env.Stubs{},
-			err:           testError,
-			expectedValue: defaultSystemFailureExitCode,
+			stubs:                     env.Stubs{},
+			err:                       testError,
+			expectedValue:             defaultSystemFailureExitCode,
+			expectExitCodeFileToExist: false,
+		},
+		"build error without exit code and variable set": {
+			stubs:                     env.Stubs{runnerBuildExitCodeFileVariable: testExitCodeFile},
+			err:                       testBuildError,
+			expectedValue:             defaultBuildFailureExitCode,
+			expectExitCodeFileToExist: false,
+		},
+		"build error with exit code and variable set": {
+			stubs:                     env.Stubs{runnerBuildExitCodeFileVariable: testExitCodeFile},
+			err:                       testBuildErrorWithExitCode,
+			expectedValue:             defaultBuildFailureExitCode,
+			expectExitCodeFileToExist: true,
+		},
+		"build error with exit code and variable unset": {
+			stubs:                     env.Stubs{},
+			err:                       testBuildErrorWithExitCode,
+			expectedValue:             defaultBuildFailureExitCode,
+			expectExitCodeFileToExist: false,
 		},
 	}
 
@@ -107,6 +146,7 @@ func TestAdapter_GenerateExitFromError(t *testing.T) {
 
 			defer mockEnvResolver(testCase.stubs)()
 			defer mockOsExiter(exiter)()
+			defer useMemFS()()
 
 			guard := require.NoError
 			if testCase.expectsErrorOnLoad {
@@ -116,9 +156,49 @@ func TestAdapter_GenerateExitFromError(t *testing.T) {
 			guard(t, InitAdapter())
 
 			err := fmt.Errorf("another error layer: %w", testCase.err)
-			GetAdapter().GenerateExitFromError(err)
+			GetAdapter().GenerateExitFromError(err, logging.New())
+
+			exists, err := fsResolver.Exists(testExitCodeFile)
+			assert.NoError(t, err, "An error occurred during file existence checking")
+			assert.Equal(t, testCase.expectExitCodeFileToExist, exists)
+
+			if exists {
+				bytes, err := fsResolver.ReadFile(testExitCodeFile)
+				assert.NoError(t, err)
+				assert.Equal(t, testExitCodeFileContent, bytes)
+			}
 		})
 	}
+}
+
+func TestAdapter_LeftoverExitCodeFileIsRemoved(t *testing.T) {
+	testError := errors.New("test-error")
+	testBuildError := NewBuildFailureError(testError)
+	testExitCodeFile := "gitlab-runner-build-exit-code"
+	testExitCodeFileContent := []byte("42\n")
+
+	stubs := env.Stubs{runnerBuildExitCodeFileVariable: testExitCodeFile}
+
+	exiter := func(exitCode int) {
+		assert.Equal(t, defaultBuildFailureExitCode, exitCode)
+	}
+
+	defer mockEnvResolver(stubs)()
+	defer mockOsExiter(exiter)()
+	defer useMemFS()()
+
+	err := fsResolver.WriteFile(testExitCodeFile, testExitCodeFileContent, 0o644)
+	require.NoError(t, err, "setup: failed to create \"leftover\" exit code file")
+
+	guard := require.NoError
+	guard(t, InitAdapter())
+
+	buildError := fmt.Errorf("another error layer: %w", testBuildError)
+	GetAdapter().GenerateExitFromError(buildError, logging.New())
+
+	exists, err := fsResolver.Exists(testExitCodeFile)
+	assert.NoError(t, err, "An error occurred during file existence checking")
+	assert.False(t, exists, "exit code file should be removed after buildFailure without exit code")
 }
 
 func TestAdapter_ShortToken(t *testing.T) {
