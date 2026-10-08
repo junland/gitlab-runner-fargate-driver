@@ -5,23 +5,18 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/assertions"
 )
 
-func newMem() FS {
-	return &fs{afs: afero.NewMemMapFs()}
-}
-
 func TestNewOS(t *testing.T) {
 	assert.Implements(t, (*FS)(nil), NewOS())
 }
 
 func TestFs_ReadFile(t *testing.T) {
-	fs := newMem()
+	fs := NewMem()
 
 	data, err := fs.ReadFile("false-file")
 	assert.Empty(t, data)
@@ -29,7 +24,7 @@ func TestFs_ReadFile(t *testing.T) {
 }
 
 func TestFs_WriteFile(t *testing.T) {
-	fs := newMem()
+	fs := NewMem()
 
 	file := "test-file"
 	content := []byte("content")
@@ -43,7 +38,7 @@ func TestFs_WriteFile(t *testing.T) {
 }
 
 func TestFs_Exists(t *testing.T) {
-	fs := newMem()
+	fs := NewMem()
 
 	file := "test-file"
 	e, err := fs.Exists(file)
@@ -59,7 +54,7 @@ func TestFs_Exists(t *testing.T) {
 }
 
 func TestFs_TempDir(t *testing.T) {
-	fs := newMem()
+	fs := NewMem()
 
 	dir := "some-dir"
 	prefix := "some-prefix"
@@ -70,7 +65,7 @@ func TestFs_TempDir(t *testing.T) {
 }
 
 func TestFs_Remove(t *testing.T) {
-	fs := newMem()
+	fs := NewMem()
 
 	file := "test-file"
 	err := fs.WriteFile(file, nil, 0o600)
