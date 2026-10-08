@@ -26,6 +26,7 @@ import (
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/assertions"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging/test"
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/runner"
 )
 
 func TestNewExecutor(t *testing.T) {
@@ -293,7 +294,9 @@ func TestSSHIntegration(t *testing.T) {
 
 	tests := map[string]struct {
 		ctx          func() context.Context
+		assertError  func(t *testing.T, err error)
 		assertOutput func(t *testing.T, output string)
+		script       string
 	}{
 		"context finished before command": {
 			ctx: func() context.Context {
@@ -302,19 +305,54 @@ func TestSSHIntegration(t *testing.T) {
 
 				return ctx
 			},
+			assertError: func(t *testing.T, err error) { assert.NoError(t, err) },
 			assertOutput: func(t *testing.T, output string) {
 				t.Log(output)
 				assert.NotContains(t, output, "Exiting!")
 			},
+			script: `
+#!/usr/bin/env bash
+trap 'echo "Exiting!"' EXIT
+
+for i in $(seq 1 30); do
+	echo -n .
+	sleep 1
+done`,
 		},
 		"context finished after command": {
 			ctx: func() context.Context {
 				return context.Background()
 			},
+			assertError: func(t *testing.T, err error) { assert.NoError(t, err) },
 			assertOutput: func(t *testing.T, output string) {
 				t.Log(output)
 				assert.Contains(t, output, "Exiting!")
 			},
+			script: `
+#!/usr/bin/env bash
+
+trap 'echo "Exiting!"' EXIT
+
+for i in $(seq 1 30); do
+	echo -n .
+	sleep 1
+done`,
+		},
+		"context finished after script exit": {
+			ctx: func() context.Context {
+				return context.Background()
+			},
+			assertError: func(t *testing.T, err error) {
+				var exitCodeErr *runner.ScriptExitCodeError
+				require.ErrorAs(t, err, &exitCodeErr)
+				assert.Equal(t, 42, exitCodeErr.ExitStatus())
+				assert.ErrorIs(t, err, &runner.ScriptExecError{})
+				assert.Contains(t, err.Error(), "script exit code 42: Process exited with status 42")
+			},
+			assertOutput: func(t *testing.T, output string) {
+				assert.Equal(t, "Running script with exit code\n", output)
+			},
+			script: "echo 'Running script with exit code'; exit 42",
 		},
 	}
 
@@ -327,20 +365,9 @@ func TestSSHIntegration(t *testing.T) {
 			e.stdout = out
 			e.stderr = out
 
-			script := `
-#!/usr/bin/env bash
+			err := e.Execute(tt.ctx(), settings, []byte(tt.script))
 
-trap 'echo "Exiting!"' EXIT
-
-for i in $(seq 1 30); do
-  echo -n .
-  sleep 1
-done
-`
-
-			err := e.Execute(tt.ctx(), settings, []byte(script))
-
-			assert.NoError(t, err)
+			tt.assertError(t, err)
 			tt.assertOutput(t, out.String())
 		})
 	}
