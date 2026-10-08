@@ -290,6 +290,14 @@ in your infrastructure:
 - Task definition
 - Security group
 
+#### Writeable Temp Dir for Runner and Driver
+
+Starting with GitLab Runner 17.9.0, the runner communicates the job's exit code to the driver via a file, that the driver is writing to. The runner creates a temporary directory using `os.MkdirTemp("", ...)`, which usually defaults to `/tmp` on linux-based systems, while the driver places its file containing the script's exit code into one of the subdirectories of the temp directory.
+
+Both the runner and driver users must therefore have write permissions to the temp directory, which may be problematic for read-only filesystem configurations.
+
+This underlying contract between the runner and driver enables the [`allow_failure:exit_codes`](https://docs.gitlab.com/ci/yaml/#allow_failureexit_codes) feature (note that a script that was killed by a signal, is reported as having an exit code equaling to `128 + signal number`).
+
 ### File structure
 
 All of our configuration and binaries will be installed in

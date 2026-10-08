@@ -7,11 +7,13 @@ import (
 	"os"
 	"strconv"
 
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/fs"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/custom/api"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/encoding"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/env"
+	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging"
 )
 
 const (
@@ -20,12 +22,16 @@ const (
 	runnerPipelineIDVariable = "CUSTOM_ENV_CI_PIPELINE_ID"
 	runnerJobIDVariable      = "CUSTOM_ENV_CI_JOB_ID"
 
+	// Mirrors the custom executor contract introduced in GitLab Runner 17.9.0 (MR !5028).
+	runnerBuildExitCodeFileVariable = "BUILD_EXIT_CODE_FILE"
+
 	unknownValue = "unknown"
 )
 
 var (
 	osExiter    = os.Exit
 	envResolver = env.New()
+	fsResolver  = fs.NewOS()
 
 	adapter *Adapter
 )
@@ -34,6 +40,8 @@ type Adapter struct {
 	buildFailureExitCode  int
 	systemFailureExitCode int
 
+	buildExitCodeFile string
+
 	shortToken string
 	projectURL string
 
@@ -41,13 +49,37 @@ type Adapter struct {
 	jobID      int64
 }
 
-func (a *Adapter) GenerateExitFromError(err error) {
-	exitCode := a.systemFailureExitCode
-	if errors.Is(err, &BuildFailureError{}) {
-		exitCode = a.buildFailureExitCode
+func (a *Adapter) GenerateExitFromError(err error, logger logging.Logger) {
+
+	if !errors.Is(err, &BuildFailureError{}) {
+		osExiter(a.systemFailureExitCode)
+		return
 	}
 
-	osExiter(exitCode)
+	var scriptExitCodeError *ScriptExitCodeError
+	if errors.As(err, &scriptExitCodeError) && a.buildExitCodeFile != "" {
+		exitCode := scriptExitCodeError.ExitStatus()
+		a.writeBuildExitCodeFile(exitCode, logger)
+	} else {
+		a.removeBuildExitCodeFile(logger)
+	}
+
+	osExiter(a.buildFailureExitCode)
+}
+
+func (a *Adapter) writeBuildExitCodeFile(exitCode int, logger logging.Logger) {
+	content := fmt.Appendf(nil, "%d\n", exitCode)
+
+	if err := fsResolver.WriteFile(a.buildExitCodeFile, content, 0o644); err != nil {
+		logger.WithError(err).Warn("Failed to write build exit code file")
+	}
+}
+
+func (a *Adapter) removeBuildExitCodeFile(logger logging.Logger) {
+	err := fsResolver.Remove(a.buildExitCodeFile)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		logger.WithError(err).Warn("Failed to remove build exit code file")
+	}
 }
 
 func (a *Adapter) ShortToken() string {
@@ -93,6 +125,8 @@ func InitAdapter() error {
 	if err != nil {
 		return err
 	}
+
+	adapter.buildExitCodeFile = envResolver.Get(runnerBuildExitCodeFileVariable)
 
 	adapter.shortToken = getVariableValueOrUnknown(runnerShortTokenVariable)
 	adapter.projectURL = getVariableValueOrUnknown(runnerProjectURLVariable)
