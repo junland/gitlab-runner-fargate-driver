@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/runner"
@@ -34,6 +35,12 @@ func (s *defaultSession) ExecuteScript(ctx context.Context, script string) error
 	select {
 	case err := <-waitErr:
 		if err != nil {
+
+			var sshExitError *ssh.ExitError
+			if errors.As(err, &sshExitError) {
+				err = runner.NewScriptExitCodeError(sshExitError, sshExitError.ExitStatus())
+			}
+
 			return runner.NewScriptExecError(fmt.Errorf("executing SSH command: %w", err))
 		}
 	case <-ctx.Done():
