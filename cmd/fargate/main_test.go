@@ -233,6 +233,32 @@ func TestAssertRequiredConfig(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestAssertRequiredConfigStoresTheDefaultedWaitSettings(t *testing.T) {
+	cliCtx := new(cli.Context)
+	cliCtx.SetLogger(test.NewNullLogger())
+	cliCtx.SetConfig(config.Global{
+		Fargate: config.Fargate{
+			Cluster:              "my-cluster",
+			Region:               "eu-west-1",
+			SecurityGroup:        "sg-123456",
+			Subnet:               "subnet-1",
+			TaskDefinition:       "default-task-def:1",
+			TaskWaitConfig:       config.TaskWaitConfig{MaxAttempts: 0, WaitTimeout: 7},
+			TaskHealthWaitConfig: config.TaskHealthWaitConfig{Retries: 5, CheckInterval: 0},
+		},
+	})
+
+	err := assertRequiredConfig(cliCtx)
+
+	assert.NoError(t, err)
+	assert.Equal(t,
+		config.TaskWaitConfig{MaxAttempts: config.AWSWaitDefaultMaxAttempts, WaitTimeout: 7},
+		cliCtx.Config().Fargate.TaskWaitConfig)
+	assert.Equal(t,
+		config.TaskHealthWaitConfig{Retries: 5, CheckInterval: config.AWSWaitTaskHealthDefaultCheckInterval},
+		cliCtx.Config().Fargate.TaskHealthWaitConfig)
+}
+
 func createCliContextForTests(taskDefinition, platformVersion, subnet, securityGroup, roleARN, sessionVars string) *cli.Context {
 	cliCtx := new(cli.Context)
 	cliCtx.SetConfig(config.Global{

@@ -165,7 +165,16 @@ func assertRequiredConfig(ctx *cli.Context) error {
 	// we now assert the config for required values to ensure we can
 	// safely start the driver
 	cfg := ctx.Config()
-	return cfg.AssertRequiredConfig(ctx.Logger())
+	if err := cfg.AssertRequiredConfig(ctx.Logger()); err != nil {
+		return err
+	}
+
+	// AssertRequiredConfig replaces invalid wait settings with their
+	// defaults, and ctx.Config() returns a copy, so store the result
+	// for the commands to read.
+	ctx.SetConfig(cfg)
+
+	return nil
 }
 
 func updateLogLevel(ctx *cli.Context) error {
