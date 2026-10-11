@@ -71,30 +71,42 @@ func TestPersist(t *testing.T) {
 	tests := map[string]struct {
 		data           Data
 		encodingError  error
+		mkdirAllError  error
 		writeFileError error
 		expectedError  error
 	}{
 		"Persist with success": {
 			data:           testData,
 			encodingError:  nil,
+			mkdirAllError:  nil,
 			writeFileError: nil,
 			expectedError:  nil,
 		},
 		"Persist with success when no private key (backward compatibility)": {
 			data:           testDataWithoutPrivateKey,
 			encodingError:  nil,
+			mkdirAllError:  nil,
 			writeFileError: nil,
 			expectedError:  nil,
 		},
 		"Error on encoding JSON": {
 			data:           testData,
 			encodingError:  testError,
+			mkdirAllError:  nil,
+			writeFileError: nil,
+			expectedError:  testError,
+		},
+		"Error on creating directory": {
+			data:           testData,
+			encodingError:  nil,
+			mkdirAllError:  testError,
 			writeFileError: nil,
 			expectedError:  testError,
 		},
 		"Error on persisting file": {
 			data:           testData,
 			encodingError:  nil,
+			mkdirAllError:  nil,
 			writeFileError: testError,
 			expectedError:  testError,
 		},
@@ -113,6 +125,12 @@ func TestPersist(t *testing.T) {
 				Once()
 
 			if tt.encodingError == nil {
+				mockFS.On("MkdirAll", "/tmp", os.FileMode(0o700)).
+					Return(tt.mkdirAllError).
+					Once()
+			}
+
+			if tt.encodingError == nil && tt.mkdirAllError == nil {
 				mockFS.On("WriteFile",
 					mock.AnythingOfType("string"),
 					mock.AnythingOfType("[]uint8"),
@@ -161,6 +179,9 @@ func TestPersistOnDisk(t *testing.T) {
 		// existingMode is set when the expected directory exists before
 		// Persist runs, to the mode it must still have afterwards.
 		existingMode os.FileMode
+		// createsDirectory is set when neither the expected directory
+		// nor its parent exists before Persist runs.
+		createsDirectory bool
 	}{
 		"existing directory": {
 			directory: func(t *testing.T) (string, string) {
@@ -179,11 +200,21 @@ func TestPersistOnDisk(t *testing.T) {
 				return "", dir
 			},
 		},
+		"missing directory": {
+			directory: func(t *testing.T) (string, string) {
+				dir := filepath.Join(t.TempDir(), "gitlab-runner", "metadata")
+				return dir, dir
+			},
+			createsDirectory: true,
+		},
 	}
 
 	for tn, tt := range tests {
 		t.Run(tn, func(t *testing.T) {
 			configured, expected := tt.directory(t)
+			if tt.createsDirectory {
+				require.NoDirExists(t, filepath.Dir(expected))
+			}
 
 			manager := NewMetadataManager(createTestLogger(), configured)
 			require.NoError(t, manager.Persist(data))
@@ -192,6 +223,15 @@ func TestPersistOnDisk(t *testing.T) {
 				info, err := os.Stat(expected)
 				require.NoError(t, err)
 				assert.Equal(t, tt.existingMode, info.Mode().Perm(), "an existing directory keeps its mode")
+			}
+
+			if tt.createsDirectory {
+				for _, dir := range []string{filepath.Dir(expected), expected} {
+					info, err := os.Stat(dir)
+					require.NoError(t, err)
+					assert.True(t, info.IsDir(), dir)
+					assert.Equal(t, os.FileMode(0o700), info.Mode().Perm(), dir)
+				}
 			}
 
 			file := filepath.Join(expected, manager.(*fsMetadataManager).filename+".json")
