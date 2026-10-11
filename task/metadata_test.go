@@ -3,6 +3,7 @@ package task
 import (
 	"errors"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -133,6 +134,78 @@ func TestPersist(t *testing.T) {
 			}
 
 			assert.NoError(t, err)
+		})
+	}
+}
+
+// TestPersistOnDisk stores, reads back and removes the metadata on the
+// operating system's file system, where the mocks of TestPersist,
+// TestGet and TestClear cannot show where the file lands or with which
+// permissions it is written.
+func TestPersistOnDisk(t *testing.T) {
+	// An absolute path, because one case changes the working directory.
+	jobResponseFile, err := filepath.Abs("../internal/jobresponse/testdata/response.json")
+	require.NoError(t, err)
+	t.Setenv(jobresponse.JobResponseFileVar, jobResponseFile)
+
+	data := Data{
+		TaskARN:     "task-arn",
+		ContainerIP: "192.168.0.1",
+		PrivateKey:  []byte("Testing"),
+	}
+
+	tests := map[string]struct {
+		// directory returns the configured TaskMetadata directory and
+		// the directory the metadata file is expected in.
+		directory func(t *testing.T) (configured string, expected string)
+		// existingMode is set when the expected directory exists before
+		// Persist runs, to the mode it must still have afterwards.
+		existingMode os.FileMode
+	}{
+		"existing directory": {
+			directory: func(t *testing.T) (string, string) {
+				// Not the 0700 t.TempDir creates, so that a change of
+				// mode would show.
+				dir := t.TempDir()
+				require.NoError(t, os.Chmod(dir, 0o755)) //nolint:gosec // a test directory, opened on purpose
+				return dir, dir
+			},
+			existingMode: 0o755,
+		},
+		"no directory configured": {
+			directory: func(t *testing.T) (string, string) {
+				dir := t.TempDir()
+				t.Chdir(dir)
+				return "", dir
+			},
+		},
+	}
+
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			configured, expected := tt.directory(t)
+
+			manager := NewMetadataManager(createTestLogger(), configured)
+			require.NoError(t, manager.Persist(data))
+
+			if tt.existingMode != 0 {
+				info, err := os.Stat(expected)
+				require.NoError(t, err)
+				assert.Equal(t, tt.existingMode, info.Mode().Perm(), "an existing directory keeps its mode")
+			}
+
+			file := filepath.Join(expected, manager.(*fsMetadataManager).filename+".json")
+			info, err := os.Stat(file)
+			require.NoError(t, err)
+			assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+
+			persisted, err := manager.Get()
+			require.NoError(t, err)
+			assert.Equal(t, data, persisted)
+
+			require.NoError(t, manager.Clear())
+			_, err = os.Stat(file)
+			assert.ErrorIs(t, err, os.ErrNotExist)
 		})
 	}
 }
