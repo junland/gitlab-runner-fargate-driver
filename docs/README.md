@@ -231,7 +231,7 @@ Evaluation logic for communication between the Gitlab Runner and the Fargate tas
 
 | Settings         | Type   | Required | Default | Description                                                                                                                                                                                                                   |
 | ----------- | ------ | -------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Directory` | string | Yes      | - | The directory where the application will store metadata related to Fargate Tasks started by the driver. Metadata is created during the "prepare" stage and removed during the "cleanup" stage. |
+| `Directory` | string | Yes      | - | The directory where the application will store metadata related to Fargate Tasks started by the driver. Metadata is created during the "prepare" stage and removed during the "cleanup" stage. If the directory does not exist, the driver creates it, and any missing parent directory, with permissions `0700` during the "prepare" stage. |
 
 ```toml
 [TaskMetadata]
