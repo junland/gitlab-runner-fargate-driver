@@ -82,3 +82,22 @@ func TestFs_Remove(t *testing.T) {
 	assert.False(t, e)
 	assert.NoError(t, err)
 }
+
+func TestFs_MkdirAll(t *testing.T) {
+	fs := NewMem()
+
+	parent := "some-dir"
+	dir := filepath.Join(parent, "nested-dir")
+
+	err := fs.MkdirAll(dir, 0o700)
+	require.NoError(t, err)
+
+	for _, path := range []string{parent, dir} {
+		e, err := fs.Exists(path)
+		assert.True(t, e, path)
+		assert.NoError(t, err, path)
+	}
+
+	err = fs.MkdirAll(dir, 0o700)
+	assert.NoError(t, err, "an existing directory is not an error")
+}
