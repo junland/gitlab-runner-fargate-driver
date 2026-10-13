@@ -249,7 +249,7 @@ func Test_AssertRequiredConfigDefaultsEachInvalidWaitSettingOnItsOwn(t *testing.
 
 			err := cfg.AssertRequiredConfig(logger)
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.wantHealth, cfg.Fargate.TaskHealthWaitConfig)
 			assert.Equal(t, test.wantWait, cfg.Fargate.TaskWaitConfig)
 
