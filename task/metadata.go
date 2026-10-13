@@ -80,9 +80,9 @@ func (f *fsMetadataManager) Persist(data Data) error {
 		return fmt.Errorf("creating directory %q: %w", dir, err)
 	}
 
-	err = f.fs.WriteFile(f.getFullFilePath(), buf.Bytes(), 0o600)
+	err = f.fs.WriteFile(path, buf.Bytes(), 0o600)
 	if err != nil {
-		return fmt.Errorf("writing file %q: %w", f.getFullFilePath(), err)
+		return fmt.Errorf("writing file %q: %w", path, err)
 	}
 
 	f.logger.Debug("[Persist] Metadata was persisted")
