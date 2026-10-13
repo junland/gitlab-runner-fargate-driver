@@ -140,8 +140,15 @@ func (g *Global) AssertRequiredConfig(logger logging.Logger) error {
 		return fmt.Errorf("a maximum of 5 security groups can be specified for awsvpcConfiguration")
 	}
 
-	// Each wait setting falls back to its own default, so an invalid value
-	// leaves the other settings as configured.
+	g.applyWaitDefaults(logger)
+
+	return nil
+}
+
+// applyWaitDefaults replaces each invalid wait setting with its default and
+// logs a warning for it. Each setting falls back to its own default, so an
+// invalid value leaves the other settings as configured.
+func (g *Global) applyWaitDefaults(logger logging.Logger) {
 	if g.Fargate.TaskWaitConfig.MaxAttempts < 1 {
 		logger.Warnf("Invalid number of TaskWaitConfig.MaxAttempts specified: %d. Defaulting to %d.", g.Fargate.TaskWaitConfig.MaxAttempts, AWSWaitDefaultMaxAttempts)
 		g.Fargate.TaskWaitConfig.MaxAttempts = AWSWaitDefaultMaxAttempts
@@ -158,6 +165,4 @@ func (g *Global) AssertRequiredConfig(logger logging.Logger) error {
 		logger.Warnf("Invalid TaskHealthWaitConfig.CheckInterval specified: %s. Defaulting to %s.", g.Fargate.TaskHealthWaitConfig.CheckInterval, AWSWaitTaskHealthDefaultCheckInterval)
 		g.Fargate.TaskHealthWaitConfig.CheckInterval = AWSWaitTaskHealthDefaultCheckInterval
 	}
-
-	return nil
 }
