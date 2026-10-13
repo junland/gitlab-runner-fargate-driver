@@ -73,7 +73,8 @@ func (f *fsMetadataManager) Persist(data Data) error {
 	// The file holds the private key of the SSH connection to the task,
 	// so a directory created here is accessible to its owner only, as
 	// the file is. An existing directory is left as it is.
-	dir := filepath.Dir(f.getFullFilePath())
+	path := f.getFullFilePath()
+	dir := filepath.Dir(path)
 	err = f.fs.MkdirAll(dir, 0o700)
 	if err != nil {
 		return fmt.Errorf("creating directory %q: %w", dir, err)

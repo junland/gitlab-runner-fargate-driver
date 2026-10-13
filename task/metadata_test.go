@@ -244,8 +244,7 @@ func TestPersistOnDisk(t *testing.T) {
 			assert.Equal(t, data, persisted)
 
 			require.NoError(t, manager.Clear())
-			_, err = os.Stat(file)
-			assert.ErrorIs(t, err, os.ErrNotExist)
+			assert.NoFileExists(t, file)
 		})
 	}
 }
