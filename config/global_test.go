@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	logging "gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging/test"
 )
 
@@ -111,80 +112,6 @@ func Test_LoadSubnetConfigFromFile(t *testing.T) {
 	}
 }
 
-func Test_AssertRequiredConfigInvalidValues(t *testing.T) {
-	expectedGlobal := getGlobalConfiguration(
-		TaskHealthWaitConfig{
-			Retries:       AWSWaitTaskHealthDefaultRetries,
-			CheckInterval: AWSWaitTaskHealthDefaultCheckInterval,
-		},
-		TaskWaitConfig{
-			MaxAttempts: AWSWaitDefaultMaxAttempts,
-			WaitTimeout: AWSWaitDefaultTimeoutSeconds,
-		})
-	tests := map[string]struct {
-		global         Global
-		expectedGlobal Global
-	}{
-		"Invalid TaskWaitConfig.MaxAttempts": {
-			global: getGlobalConfiguration(
-				TaskHealthWaitConfig{
-					Retries:       AWSWaitTaskHealthDefaultRetries,
-					CheckInterval: AWSWaitTaskHealthDefaultCheckInterval,
-				},
-				TaskWaitConfig{
-					MaxAttempts: 0,
-					WaitTimeout: AWSWaitDefaultTimeoutSeconds,
-				}),
-			expectedGlobal: expectedGlobal,
-		},
-		"Invalid TaskWaitConfig.WaitTimeout": {
-			global: getGlobalConfiguration(
-				TaskHealthWaitConfig{
-					Retries:       AWSWaitTaskHealthDefaultRetries,
-					CheckInterval: AWSWaitTaskHealthDefaultCheckInterval,
-				},
-				TaskWaitConfig{
-					MaxAttempts: AWSWaitDefaultMaxAttempts,
-					WaitTimeout: 0,
-				}),
-			expectedGlobal: expectedGlobal,
-		},
-		"Invalid TaskHealthWaitConfig.Retries": {
-			global: getGlobalConfiguration(
-				TaskHealthWaitConfig{
-					Retries:       0,
-					CheckInterval: AWSWaitTaskHealthDefaultCheckInterval,
-				},
-				TaskWaitConfig{
-					MaxAttempts: AWSWaitDefaultMaxAttempts,
-					WaitTimeout: AWSWaitDefaultTimeoutSeconds,
-				}),
-			expectedGlobal: expectedGlobal,
-		},
-		"Invalid TaskHealthWaitConfig.CheckInterval": {
-			global: getGlobalConfiguration(
-				TaskHealthWaitConfig{
-					Retries:       AWSWaitTaskHealthDefaultRetries,
-					CheckInterval: time.Millisecond,
-				},
-				TaskWaitConfig{
-					MaxAttempts: AWSWaitDefaultMaxAttempts,
-					WaitTimeout: AWSWaitDefaultTimeoutSeconds,
-				}),
-			expectedGlobal: expectedGlobal,
-		},
-	}
-
-	for name, test := range tests {
-		t.Run(name, func(t *testing.T) {
-			cfg := test.global
-			err := cfg.AssertRequiredConfig(logging.NewNullLogger())
-			assert.NoError(t, err)
-			assert.Equal(t, cfg, test.expectedGlobal)
-		})
-	}
-}
-
 func Test_AssertRequiredConfigDefaultsEachInvalidWaitSettingOnItsOwn(t *testing.T) {
 	validHealth := TaskHealthWaitConfig{Retries: 5, CheckInterval: 10 * time.Second}
 	validWait := TaskWaitConfig{MaxAttempts: 50, WaitTimeout: 7}
@@ -230,6 +157,13 @@ func Test_AssertRequiredConfigDefaultsEachInvalidWaitSettingOnItsOwn(t *testing.
 			wantWait:     validWait,
 			wantWarnings: []string{"Invalid TaskHealthWaitConfig.CheckInterval specified: 0s. Defaulting to 30s."},
 		},
+		"invalid TaskHealthWaitConfig.CheckInterval between zero and one second": {
+			health:       TaskHealthWaitConfig{Retries: 5, CheckInterval: time.Millisecond},
+			wait:         validWait,
+			wantHealth:   TaskHealthWaitConfig{Retries: 5, CheckInterval: AWSWaitTaskHealthDefaultCheckInterval},
+			wantWait:     validWait,
+			wantWarnings: []string{"Invalid TaskHealthWaitConfig.CheckInterval specified: 1ms. Defaulting to 30s."},
+		},
 		"invalid TaskWaitConfig.WaitTimeout and TaskHealthWaitConfig.Retries": {
 			health:     TaskHealthWaitConfig{Retries: -2, CheckInterval: 10 * time.Second},
 			wait:       TaskWaitConfig{MaxAttempts: 50, WaitTimeout: -1},
@@ -250,8 +184,9 @@ func Test_AssertRequiredConfigDefaultsEachInvalidWaitSettingOnItsOwn(t *testing.
 			err := cfg.AssertRequiredConfig(logger)
 
 			require.NoError(t, err)
-			assert.Equal(t, test.wantHealth, cfg.Fargate.TaskHealthWaitConfig)
-			assert.Equal(t, test.wantWait, cfg.Fargate.TaskWaitConfig)
+			// The whole configuration, so that a change to any setting
+			// other than the invalid ones fails too.
+			assert.Equal(t, getGlobalConfiguration(test.wantHealth, test.wantWait), cfg)
 
 			logged := output.String()
 			for _, warning := range test.wantWarnings {

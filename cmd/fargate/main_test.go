@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/config"
 	"gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/cli"
@@ -250,7 +251,7 @@ func TestAssertRequiredConfigStoresTheDefaultedWaitSettings(t *testing.T) {
 
 	err := assertRequiredConfig(cliCtx)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t,
 		config.TaskWaitConfig{MaxAttempts: config.AWSWaitDefaultMaxAttempts, WaitTimeout: 7},
 		cliCtx.Config().Fargate.TaskWaitConfig)
