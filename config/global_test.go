@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	logging "gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate/internal/logging/test"
 )
 
@@ -111,76 +112,88 @@ func Test_LoadSubnetConfigFromFile(t *testing.T) {
 	}
 }
 
-func Test_AssertRequiredConfigInvalidValues(t *testing.T) {
-	expectedGlobal := getGlobalConfiguration(
-		TaskHealthWaitConfig{
-			Retries:       AWSWaitTaskHealthDefaultRetries,
-			CheckInterval: AWSWaitTaskHealthDefaultCheckInterval,
-		},
-		TaskWaitConfig{
-			MaxAttempts: AWSWaitDefaultMaxAttempts,
-			WaitTimeout: AWSWaitDefaultTimeoutSeconds,
-		})
+func Test_AssertRequiredConfigDefaultsEachInvalidWaitSettingOnItsOwn(t *testing.T) {
+	validHealth := TaskHealthWaitConfig{Retries: 5, CheckInterval: 10 * time.Second}
+	validWait := TaskWaitConfig{MaxAttempts: 50, WaitTimeout: 7}
+
 	tests := map[string]struct {
-		global         Global
-		expectedGlobal Global
+		health       TaskHealthWaitConfig
+		wait         TaskWaitConfig
+		wantHealth   TaskHealthWaitConfig
+		wantWait     TaskWaitConfig
+		wantWarnings []string
 	}{
-		"Invalid TaskWaitConfig.MaxAttempts": {
-			global: getGlobalConfiguration(
-				TaskHealthWaitConfig{
-					Retries:       AWSWaitTaskHealthDefaultRetries,
-					CheckInterval: AWSWaitTaskHealthDefaultCheckInterval,
-				},
-				TaskWaitConfig{
-					MaxAttempts: 0,
-					WaitTimeout: AWSWaitDefaultTimeoutSeconds,
-				}),
-			expectedGlobal: expectedGlobal,
+		"all wait settings valid": {
+			health:     validHealth,
+			wait:       validWait,
+			wantHealth: validHealth,
+			wantWait:   validWait,
 		},
-		"Invalid TaskWaitConfig.WaitTimeout": {
-			global: getGlobalConfiguration(
-				TaskHealthWaitConfig{
-					Retries:       AWSWaitTaskHealthDefaultRetries,
-					CheckInterval: AWSWaitTaskHealthDefaultCheckInterval,
-				},
-				TaskWaitConfig{
-					MaxAttempts: AWSWaitDefaultMaxAttempts,
-					WaitTimeout: 0,
-				}),
-			expectedGlobal: expectedGlobal,
+		"invalid TaskWaitConfig.MaxAttempts": {
+			health:       validHealth,
+			wait:         TaskWaitConfig{MaxAttempts: 0, WaitTimeout: 7},
+			wantHealth:   validHealth,
+			wantWait:     TaskWaitConfig{MaxAttempts: AWSWaitDefaultMaxAttempts, WaitTimeout: 7},
+			wantWarnings: []string{"Invalid number of TaskWaitConfig.MaxAttempts specified: 0. Defaulting to 100."},
 		},
-		"Invalid TaskHealthWaitConfig.Retries": {
-			global: getGlobalConfiguration(
-				TaskHealthWaitConfig{
-					Retries:       0,
-					CheckInterval: AWSWaitTaskHealthDefaultCheckInterval,
-				},
-				TaskWaitConfig{
-					MaxAttempts: AWSWaitDefaultMaxAttempts,
-					WaitTimeout: AWSWaitDefaultTimeoutSeconds,
-				}),
-			expectedGlobal: expectedGlobal,
+		"invalid TaskWaitConfig.WaitTimeout": {
+			health:       validHealth,
+			wait:         TaskWaitConfig{MaxAttempts: 50, WaitTimeout: 0},
+			wantHealth:   validHealth,
+			wantWait:     TaskWaitConfig{MaxAttempts: 50, WaitTimeout: AWSWaitDefaultTimeoutSeconds},
+			wantWarnings: []string{"Invalid TaskWaitConfig.WaitTimeout specified: 0. Defaulting to 6."},
 		},
-		"Invalid TaskHealthWaitConfig.CheckInterval": {
-			global: getGlobalConfiguration(
-				TaskHealthWaitConfig{
-					Retries:       AWSWaitTaskHealthDefaultRetries,
-					CheckInterval: time.Millisecond,
-				},
-				TaskWaitConfig{
-					MaxAttempts: AWSWaitDefaultMaxAttempts,
-					WaitTimeout: AWSWaitDefaultTimeoutSeconds,
-				}),
-			expectedGlobal: expectedGlobal,
+		"invalid TaskHealthWaitConfig.Retries": {
+			health:       TaskHealthWaitConfig{Retries: 0, CheckInterval: 10 * time.Second},
+			wait:         validWait,
+			wantHealth:   TaskHealthWaitConfig{Retries: AWSWaitTaskHealthDefaultRetries, CheckInterval: 10 * time.Second},
+			wantWait:     validWait,
+			wantWarnings: []string{"Invalid number of TaskHealthWaitConfig.Retries specified: 0. Defaulting to 3."},
+		},
+		"invalid TaskHealthWaitConfig.CheckInterval": {
+			health:       TaskHealthWaitConfig{Retries: 5, CheckInterval: 0},
+			wait:         validWait,
+			wantHealth:   TaskHealthWaitConfig{Retries: 5, CheckInterval: AWSWaitTaskHealthDefaultCheckInterval},
+			wantWait:     validWait,
+			wantWarnings: []string{"Invalid TaskHealthWaitConfig.CheckInterval specified: 0s. Defaulting to 30s."},
+		},
+		"invalid TaskHealthWaitConfig.CheckInterval between zero and one second": {
+			health:       TaskHealthWaitConfig{Retries: 5, CheckInterval: time.Millisecond},
+			wait:         validWait,
+			wantHealth:   TaskHealthWaitConfig{Retries: 5, CheckInterval: AWSWaitTaskHealthDefaultCheckInterval},
+			wantWait:     validWait,
+			wantWarnings: []string{"Invalid TaskHealthWaitConfig.CheckInterval specified: 1ms. Defaulting to 30s."},
+		},
+		"invalid TaskWaitConfig.WaitTimeout and TaskHealthWaitConfig.Retries": {
+			health:     TaskHealthWaitConfig{Retries: -2, CheckInterval: 10 * time.Second},
+			wait:       TaskWaitConfig{MaxAttempts: 50, WaitTimeout: -1},
+			wantHealth: TaskHealthWaitConfig{Retries: AWSWaitTaskHealthDefaultRetries, CheckInterval: 10 * time.Second},
+			wantWait:   TaskWaitConfig{MaxAttempts: 50, WaitTimeout: AWSWaitDefaultTimeoutSeconds},
+			wantWarnings: []string{
+				"Invalid TaskWaitConfig.WaitTimeout specified: -1. Defaulting to 6.",
+				"Invalid number of TaskHealthWaitConfig.Retries specified: -2. Defaulting to 3.",
+			},
 		},
 	}
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			cfg := test.global
-			err := cfg.AssertRequiredConfig(logging.NewNullLogger())
-			assert.NoError(t, err)
-			assert.Equal(t, cfg, test.expectedGlobal)
+			logger, output := logging.NewBufferedLogger()
+			cfg := getGlobalConfiguration(test.health, test.wait)
+
+			err := cfg.AssertRequiredConfig(logger)
+
+			require.NoError(t, err)
+			// The whole configuration, so that a change to any setting
+			// other than the invalid ones fails too.
+			assert.Equal(t, getGlobalConfiguration(test.wantHealth, test.wantWait), cfg)
+
+			logged := output.String()
+			for _, warning := range test.wantWarnings {
+				assert.Contains(t, logged, warning)
+			}
+			assert.Equal(t, len(test.wantWarnings), strings.Count(logged, "level=warning"), logged)
+			assert.NotContains(t, logged, "%!")
 		})
 	}
 }

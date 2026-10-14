@@ -138,23 +138,31 @@ func (g *Global) AssertRequiredConfig(logger logging.Logger) error {
 		return fmt.Errorf("at leat 1 subnet must be specified for awsvpcConfiguration")
 	case len(g.Fargate.SecurityGroups()) > 5:
 		return fmt.Errorf("a maximum of 5 security groups can be specified for awsvpcConfiguration")
-	case g.Fargate.TaskWaitConfig.MaxAttempts < 1:
-		logger.Warnf("Invalid number of TaskWaitConfig.MaxAttempts specified: %s. Defaulting to %s.", g.Fargate.TaskWaitConfig.MaxAttempts, AWSWaitDefaultMaxAttempts)
+	}
+
+	g.applyWaitDefaults(logger)
+
+	return nil
+}
+
+// applyWaitDefaults replaces each invalid wait setting with its default and
+// logs a warning for it. Each setting falls back to its own default, so an
+// invalid value leaves the other settings as configured.
+func (g *Global) applyWaitDefaults(logger logging.Logger) {
+	if g.Fargate.TaskWaitConfig.MaxAttempts < 1 {
+		logger.Warnf("Invalid number of TaskWaitConfig.MaxAttempts specified: %d. Defaulting to %d.", g.Fargate.TaskWaitConfig.MaxAttempts, AWSWaitDefaultMaxAttempts)
 		g.Fargate.TaskWaitConfig.MaxAttempts = AWSWaitDefaultMaxAttempts
-		fallthrough
-	case g.Fargate.TaskWaitConfig.WaitTimeout < 1:
-		logger.Warnf("Invalid TaskWaitConfig.WaitTimeout specified: %s. Defaulting to %s.", g.Fargate.TaskWaitConfig.WaitTimeout, AWSWaitDefaultTimeoutSeconds)
+	}
+	if g.Fargate.TaskWaitConfig.WaitTimeout < 1 {
+		logger.Warnf("Invalid TaskWaitConfig.WaitTimeout specified: %d. Defaulting to %d.", g.Fargate.TaskWaitConfig.WaitTimeout, AWSWaitDefaultTimeoutSeconds)
 		g.Fargate.TaskWaitConfig.WaitTimeout = AWSWaitDefaultTimeoutSeconds
-		fallthrough
-	case g.Fargate.TaskHealthWaitConfig.Retries < 1:
-		logger.Warnf("Invalid number of TaskHealthWaitConfig.Retries specified: %s. Defaulting to %s.", g.Fargate.TaskHealthWaitConfig.Retries, AWSWaitTaskHealthDefaultRetries)
+	}
+	if g.Fargate.TaskHealthWaitConfig.Retries < 1 {
+		logger.Warnf("Invalid number of TaskHealthWaitConfig.Retries specified: %d. Defaulting to %d.", g.Fargate.TaskHealthWaitConfig.Retries, AWSWaitTaskHealthDefaultRetries)
 		g.Fargate.TaskHealthWaitConfig.Retries = AWSWaitTaskHealthDefaultRetries
-		fallthrough
-	case g.Fargate.TaskHealthWaitConfig.CheckInterval < time.Second:
+	}
+	if g.Fargate.TaskHealthWaitConfig.CheckInterval < time.Second {
 		logger.Warnf("Invalid TaskHealthWaitConfig.CheckInterval specified: %s. Defaulting to %s.", g.Fargate.TaskHealthWaitConfig.CheckInterval, AWSWaitTaskHealthDefaultCheckInterval)
 		g.Fargate.TaskHealthWaitConfig.CheckInterval = AWSWaitTaskHealthDefaultCheckInterval
-		return nil
-	default:
-		return nil
 	}
 }
