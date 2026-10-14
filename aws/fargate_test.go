@@ -307,7 +307,7 @@ func TestWaitUntilTaskRunning(t *testing.T) {
 					"WaitUntilTasksRunningWithContext",
 					mock.AnythingOfType("backgroundCtx"),
 					mock.AnythingOfType("*ecs.DescribeTasksInput"),
-					mock.AnythingOfType("WaiterOption"),
+					mock.AnythingOfType("[]request.WaiterOption"),
 				).
 					Return(tt.awsError).
 					Once()
@@ -315,7 +315,7 @@ func TestWaitUntilTaskRunning(t *testing.T) {
 					"WaitUntilTasksHealthy",
 					mock.AnythingOfType("backgroundCtx"),
 					mock.AnythingOfType("*ecs.DescribeTasksInput"),
-					mock.AnythingOfType("WaiterOption"),
+					mock.AnythingOfType("[]request.WaiterOption"),
 				).
 					Return(tt.awsError).
 					Maybe()
@@ -419,7 +419,7 @@ func TestWaitUntilTaskHealthy(t *testing.T) {
 					"WaitUntilTaskHealthyWithContext",
 					mock.AnythingOfType("*context.timerCtx"),
 					mock.AnythingOfType("*ecs.DescribeTasksInput"),
-					mock.AnythingOfType("request.WaiterOption"),
+					mock.AnythingOfType("[]request.WaiterOption"),
 				).
 					Return(tt.waitUntilTaskHealthyWithContextError).
 					Once()

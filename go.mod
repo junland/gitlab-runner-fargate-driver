@@ -1,6 +1,6 @@
 module gitlab.com/gitlab-org/ci-cd/custom-executor-drivers/fargate
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/BurntSushi/toml v1.3.2
@@ -14,7 +14,7 @@ require (
 	github.com/urfave/cli v1.22.2
 	gitlab.com/ayufan/golang-cli-helpers v0.0.0-20171103152739-a7cf72d604cd
 	gitlab.com/gitlab-org/gitlab-runner v12.5.0+incompatible
-	golang.org/x/crypto v0.46.0
+	golang.org/x/crypto v0.57.0
 )
 
 require (
@@ -27,7 +27,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/stretchr/objx v0.1.1 // indirect
-	golang.org/x/sys v0.39.0 // indirect
-	golang.org/x/text v0.32.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
