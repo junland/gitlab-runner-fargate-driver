@@ -8,7 +8,7 @@ export GOPATH ?= $(shell (go env GOPATH))
 export BUILD_PLATFORMS ?= -osarch 'linux/amd64 linux/386 linux/arm linux/arm64'
 
 export goJunitReport ?= $(GOPATH)/bin/go-junit-report
-MOCKERY_VERSION ?= 2.53.5
+MOCKERY_VERSION ?= 3.8.1
 MOCKERY = .tmp/mockery-$(MOCKERY_VERSION)
 gox ?= $(GOPATH)/bin/gox
 
@@ -68,7 +68,7 @@ mocks: $(MOCKERY)
 	# Removing existing mocks
 	@find * -name "mock_*.go" -delete
 	# Generating new mocks
-	@$(MOCKERY) --recursive --all --inpackage
+	@$(MOCKERY)
 
 .PHONY: check_mocks
 check_mocks:
