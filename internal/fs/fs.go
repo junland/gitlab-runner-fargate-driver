@@ -12,6 +12,7 @@ type FS interface {
 	Exists(path string) (bool, error)
 	TempDir(dir string, prefix string) (string, error)
 	Remove(path string) error
+	MkdirAll(path string, perm os.FileMode) error
 }
 
 type fs struct {
@@ -44,4 +45,8 @@ func (f *fs) TempDir(dir string, prefix string) (string, error) {
 
 func (f *fs) Remove(path string) error {
 	return f.afs.Remove(path)
+}
+
+func (f *fs) MkdirAll(path string, perm os.FileMode) error {
+	return f.afs.MkdirAll(path, perm)
 }

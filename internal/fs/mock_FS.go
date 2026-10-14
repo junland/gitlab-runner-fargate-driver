@@ -41,6 +41,24 @@ func (_m *MockFS) Exists(path string) (bool, error) {
 	return r0, r1
 }
 
+// MkdirAll provides a mock function with given fields: path, perm
+func (_m *MockFS) MkdirAll(path string, perm iofs.FileMode) error {
+	ret := _m.Called(path, perm)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MkdirAll")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, iofs.FileMode) error); ok {
+		r0 = rf(path, perm)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // ReadFile provides a mock function with given fields: filename
 func (_m *MockFS) ReadFile(filename string) ([]byte, error) {
 	ret := _m.Called(filename)
